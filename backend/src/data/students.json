@@ -1,0 +1,32 @@
+[
+  {
+    "id": "STU-2024001",
+    "name": "Aisha Khan",
+    "program": "BSCS",
+    "department": "Computer Science",
+    "semester": 4,
+    "cgpa": 3.42,
+    "attendance": 88,
+    "fee": "Paid",
+    "city": "Islamabad",
+    "campus": "Main Campus - Islamabad",
+    "status": "Active",
+    "email": "aisha.khan@uni.edu.pk",
+    "phone": "+92 300 1234567"
+  },
+  {
+    "id": "STU-2024002",
+    "name": "Hamza Ali",
+    "program": "BSSE",
+    "department": "Software Engineering",
+    "semester": 2,
+    "cgpa": 3.1,
+    "attendance": 75,
+    "fee": "Pending",
+    "city": "Lahore",
+    "campus": "North Campus - Lahore",
+    "status": "Active",
+    "email": "hamza.ali@uni.edu.pk",
+    "phone": "+92 301 7654321"
+  }
+]
