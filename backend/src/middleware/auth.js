@@ -1,3 +1,4 @@
+// backend/src/middleware/auth.js
 import jwt from 'jsonwebtoken';
 
 /**
@@ -11,7 +12,8 @@ export const auth = async (req, res, next) => {
     req.user = {
       id: 'dev-user-id',
       email: 'dev@test.com',
-      role: 'admin'
+      role: 'admin',
+      name: 'Development User'
     };
     req.userId = 'dev-user-id';
     return next();
@@ -47,7 +49,8 @@ export const auth = async (req, res, next) => {
         req.user = {
           id: 'dev-user-id',
           email: 'dev@test.com',
-          role: 'admin'
+          role: 'admin',
+          name: 'Development User'
         };
         req.userId = 'dev-user-id';
         return next();
@@ -102,9 +105,16 @@ export const optionalAuth = async (req, res, next) => {
 
 /**
  * Role-based authorization middleware
+ * @param {...string} roles - Allowed roles
  */
 export const authorize = (...roles) => {
   return (req, res, next) => {
+    // In development, allow all requests
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔓 Development mode - bypassing role check');
+      return next();
+    }
+    
     if (!req.user) {
       return res.status(401).json({
         success: false,
@@ -119,6 +129,109 @@ export const authorize = (...roles) => {
       });
     }
 
+    next();
+  };
+};
+
+/**
+ * HR-specific authorization middleware
+ * Allows HR managers and admins to access HR routes
+ */
+export const hrAuth = async (req, res, next) => {
+  // In development, allow all requests
+  if (process.env.NODE_ENV === 'development') {
+    console.log('🔓 Development mode - bypassing HR auth');
+    req.user = {
+      id: 'dev-user-id',
+      email: 'dev@test.com',
+      role: 'admin',
+      name: 'Development User'
+    };
+    req.userId = 'dev-user-id';
+    return next();
+  }
+  
+  try {
+    const authHeader = req.headers.authorization;
+    
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({
+        success: false,
+        message: 'Authentication required'
+      });
+    }
+
+    const token = authHeader.split(' ')[1];
+    const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-for-development';
+    const decoded = jwt.verify(token, JWT_SECRET);
+    
+    // Check if user has HR access
+    const allowedRoles = ['admin', 'hr_manager', 'hr'];
+    if (!allowedRoles.includes(decoded.role)) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied. HR access required.'
+      });
+    }
+    
+    req.user = decoded;
+    req.userId = decoded.id || decoded.userId;
+    next();
+  } catch (error) {
+    console.error('❌ HR Auth error:', error.message);
+    res.status(401).json({
+      success: false,
+      message: 'Authentication failed'
+    });
+  }
+};
+
+/**
+ * Check if user has specific permission
+ */
+export const hasPermission = (req, permission) => {
+  if (process.env.NODE_ENV === 'development') {
+    return true;
+  }
+  
+  if (!req.user) return false;
+  
+  // Admin has all permissions
+  if (req.user.role === 'admin') return true;
+  
+  // Check user's permissions
+  const permissions = req.user.permissions || [];
+  return permissions.includes(permission);
+};
+
+/**
+ * Permission-based authorization middleware
+ */
+export const requirePermission = (permission) => {
+  return (req, res, next) => {
+    if (process.env.NODE_ENV === 'development') {
+      return next();
+    }
+    
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        message: 'Authentication required'
+      });
+    }
+    
+    if (req.user.role === 'admin') {
+      return next();
+    }
+    
+    const permissions = req.user.permissions || [];
+    if (!permissions.includes(permission)) {
+      return res.status(403).json({
+        success: false,
+        message: `Permission denied. Required: ${permission}`
+      });
+    }
+    
     next();
   };
 };

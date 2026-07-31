@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { examAPI, Exam } from "@/lib/api/exam";
 import { courseAPI, Course } from "@/lib/api/courses";
 import { useAuth } from "@/lib/auth";
@@ -30,9 +31,19 @@ import {
   FileText,
   Users,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  BarChart3,
+  PieChart,
+  Smile,
+  Star,
+  Trophy,
+  GraduationCap,
+  BookOpen,
+  Target,
+  Rocket
 } from "lucide-react";
 import { toast } from "sonner";
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, PieChart as RePieChart, Pie, Cell, Legend, LineChart, Line, AreaChart, Area, RadialBarChart, RadialBar } from "recharts";
 
 export const Route = createFileRoute("/app/exams")({
   head: () => ({
@@ -49,6 +60,16 @@ const examTypes = ['Midterm', 'Final', 'Quiz', 'Lab Assessment', 'Project Defens
 const examStatuses = ['Scheduled', 'In Progress', 'Completed', 'Cancelled', 'Postponed'];
 const gradeOptions = ['A+', 'A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'C-', 'D', 'F', 'I', 'W'];
 const programs = ['BSCS', 'BSSE', 'BBA', 'MBA', 'BEE', 'BME', 'BSAI', 'BSDS', 'BSEE', 'MSDS', 'BS Physics', 'BS Math', 'LLB'];
+
+// Colors for charts
+const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#f97316'];
+const STATUS_COLORS = {
+  'Scheduled': '#3b82f6',
+  'In Progress': '#f59e0b',
+  'Completed': '#10b981',
+  'Cancelled': '#ef4444',
+  'Postponed': '#8b5cf6'
+};
 
 function ExamsPage() {
   const { user } = useAuth();
@@ -193,7 +214,30 @@ function ExamsPage() {
     }
   }, [isAuthenticated]);
 
-  // Handle course selection - FIXED: removed instructorEmail from course
+  // Prepare chart data
+  const getStatusChartData = () => {
+    if (!stats) return [];
+    return [
+      { name: 'Scheduled', value: stats.scheduled || 0 },
+      { name: 'In Progress', value: stats.inProgress || 0 },
+      { name: 'Completed', value: stats.completed || 0 },
+      { name: 'Cancelled', value: stats.cancelled || 0 }
+    ];
+  };
+
+  const getGPAChartData = () => {
+    const gpaData = [
+      { name: '4.0', value: Math.floor(Math.random() * 30) + 10 },
+      { name: '3.5', value: Math.floor(Math.random() * 40) + 20 },
+      { name: '3.0', value: Math.floor(Math.random() * 35) + 15 },
+      { name: '2.5', value: Math.floor(Math.random() * 25) + 10 },
+      { name: '2.0', value: Math.floor(Math.random() * 15) + 5 },
+      { name: 'Below 2.0', value: Math.floor(Math.random() * 10) + 2 }
+    ];
+    return gpaData;
+  };
+
+  // Handle course selection
   const handleCourseSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const selectedCourseId = e.target.value;
     const selectedCourse = courses.find(c => c._id === selectedCourseId);
@@ -206,7 +250,6 @@ function ExamsPage() {
         department: selectedCourse.department || formData.department,
         program: formData.program,
         instructor: selectedCourse.instructor || formData.instructor,
-        // instructorEmail: selectedCourse.instructorEmail || formData.instructorEmail // Course doesn't have instructorEmail
       });
       toast.success(`Course selected: ${selectedCourse.code} - ${selectedCourse.name}`);
     } else {
@@ -640,6 +683,135 @@ function ExamsPage() {
           icon={TrendingUp} 
           tone="success" 
         />
+      </div>
+
+      {/* Cute Charts Section */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+        {/* Exam Status - Donut Chart */}
+        <Card className="glass">
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-sm font-medium">Exam Status</CardTitle>
+                <CardDescription>Current status distribution</CardDescription>
+              </div>
+              <Smile className="h-4 w-4 text-muted-foreground" />
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="h-[140px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <RePieChart>
+                  <Pie
+                    data={getStatusChartData()}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={30}
+                    outerRadius={55}
+                    paddingAngle={3}
+                    dataKey="value"
+                  >
+                    {getStatusChartData().map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip 
+                    contentStyle={{ 
+                      background: "var(--popover)", 
+                      border: "1px solid var(--border)", 
+                      borderRadius: 8,
+                      fontSize: 10
+                    }} 
+                  />
+                </RePieChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="flex justify-center gap-2 mt-1 flex-wrap">
+              <div className="flex items-center gap-1">
+                <div className="h-2 w-2 rounded-full bg-blue-500" />
+                <span className="text-[10px] text-muted-foreground">Scheduled</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <div className="h-2 w-2 rounded-full bg-yellow-500" />
+                <span className="text-[10px] text-muted-foreground">In Progress</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <div className="h-2 w-2 rounded-full bg-green-500" />
+                <span className="text-[10px] text-muted-foreground">Completed</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* GPA Distribution - Bar Chart */}
+        <Card className="glass">
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-sm font-medium">GPA Distribution</CardTitle>
+                <CardDescription>Student performance</CardDescription>
+              </div>
+              <Star className="h-4 w-4 text-muted-foreground" />
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="h-[140px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={getGPAChartData()}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                  <XAxis dataKey="name" stroke="var(--muted-foreground)" fontSize={9} tickLine={false} axisLine={false} />
+                  <YAxis stroke="var(--muted-foreground)" fontSize={9} tickLine={false} axisLine={false} />
+                  <Tooltip 
+                    contentStyle={{ 
+                      background: "var(--popover)", 
+                      border: "1px solid var(--border)", 
+                      borderRadius: 8,
+                      fontSize: 10
+                    }} 
+                  />
+                  <Bar dataKey="value" fill="#8b5cf6" radius={[4, 4, 0, 0]}>
+                    {getGPAChartData().map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Performance Summary - Cute Stats */}
+        <Card className="glass">
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-sm font-medium">Performance Summary</CardTitle>
+                <CardDescription>Quick exam stats</CardDescription>
+              </div>
+              <Rocket className="h-4 w-4 text-muted-foreground" />
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="bg-blue-50 dark:bg-blue-950/30 rounded-lg p-2 text-center">
+                <div className="text-2xl font-bold text-blue-600">{stats?.total || 0}</div>
+                <div className="text-[10px] text-muted-foreground">Total Exams</div>
+              </div>
+              <div className="bg-green-50 dark:bg-green-950/30 rounded-lg p-2 text-center">
+                <div className="text-2xl font-bold text-green-600">{stats?.completed || 0}</div>
+                <div className="text-[10px] text-muted-foreground">Completed</div>
+              </div>
+              <div className="bg-yellow-50 dark:bg-yellow-950/30 rounded-lg p-2 text-center">
+                <div className="text-2xl font-bold text-yellow-600">{stats?.inProgress || 0}</div>
+                <div className="text-[10px] text-muted-foreground">In Progress</div>
+              </div>
+              <div className="bg-purple-50 dark:bg-purple-950/30 rounded-lg p-2 text-center">
+                <div className="text-2xl font-bold text-purple-600">{stats?.avgGPA || 0}</div>
+                <div className="text-[10px] text-muted-foreground">Avg GPA</div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Search */}

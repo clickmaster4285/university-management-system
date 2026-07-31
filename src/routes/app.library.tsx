@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { bookAPI, Book as BookType } from "@/lib/api/book"; // Renamed import
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { bookAPI, Book as BookType } from "@/lib/api/book";
 import { useAuth } from "@/lib/auth";
 import { 
   Library, 
@@ -26,11 +27,20 @@ import {
   Save,
   Loader2,
   AlertCircle,
-  Book as BookIcon, // Renamed icon import
+  Book as BookIcon,
   Sparkles,
-  CheckCircle2
+  CheckCircle2,
+  TrendingUp,
+  BarChart3,
+  PieChart,
+  BookMarked,
+  GraduationCap,
+  Layers,
+  ArrowUp,
+  ArrowDown
 } from "lucide-react";
 import { toast } from "sonner";
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, PieChart as RePieChart, Pie, Cell, Legend, AreaChart, Area, Treemap } from "recharts";
 
 export const Route = createFileRoute("/app/library")({
   head: () => ({
@@ -48,9 +58,19 @@ const bookFormats = ['Hardcover', 'Paperback', 'E-book', 'Audio Book', 'Digital'
 const bookStatuses = ['Available', 'Partially Available', 'Checked Out', 'Reserved', 'Lost', 'Damaged', 'Under Repair'];
 const departments = ['Computer Science', 'Electrical Engineering', 'Mechanical Engineering', 'Civil Engineering', 'Business Administration', 'Economics', 'Mathematics', 'Physics', 'Chemistry', 'Biology', 'English Literature', 'Psychology', 'Law', 'Medicine', 'Pharmacy', 'Architecture', 'Design', 'Fine Arts', 'Media Studies', 'Data Science'];
 
+// Colors for charts
+const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#f97316', '#14b8a6', '#8b5cf6'];
+
+// Types
+interface CategoryStats {
+  category?: string;
+  _id?: string;
+  count?: number;
+}
+
 function LibraryPage() {
   const { user } = useAuth();
-  const [books, setBooks] = useState<BookType[]>([]); // Using BookType
+  const [books, setBooks] = useState<BookType[]>([]);
   const [filteredBooks, setFilteredBooks] = useState<BookType[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -170,6 +190,31 @@ function LibraryPage() {
       setLoading(false);
     }
   }, [isAuthenticated]);
+
+  // Prepare chart data - FIXED
+  const getCategoryChartData = (): { name: string; value: number }[] => {
+    if (!stats || !stats.categories) return [];
+    return stats.categories.map((item: CategoryStats) => ({
+      name: item.category || item._id || 'Other',
+      value: item.count || 0
+    }));
+  };
+
+  const getTopBooksData = (): { name: string; copies: number; available: number }[] => {
+    return books.slice(0, 6).map((book) => ({
+      name: book.title?.substring(0, 20) + (book.title?.length > 20 ? '...' : ''),
+      copies: book.totalCopies || 0,
+      available: book.availableCopies || 0
+    }));
+  };
+
+  const getFormatDistribution = (): { name: string; value: number }[] => {
+    const formats = ['Hardcover', 'Paperback', 'E-book', 'Audio Book', 'Digital'];
+    return formats.map((format) => ({
+      name: format,
+      value: books.filter(b => b.format === format).length
+    }));
+  };
 
   // Handle search
   const handleSearch = (query: string) => {
@@ -602,6 +647,124 @@ function LibraryPage() {
           icon={Clock} 
           tone="warning" 
         />
+      </div>
+
+      {/* Unique Library Charts Section */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+        {/* Category Distribution - Pie Chart */}
+        <Card className="glass">
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-sm font-medium">Category Distribution</CardTitle>
+                <CardDescription>Books by category</CardDescription>
+              </div>
+              <PieChart className="h-4 w-4 text-muted-foreground" />
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="h-[160px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <RePieChart>
+                  <Pie
+                    data={getCategoryChartData()}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={30}
+                    outerRadius={60}
+                    paddingAngle={2}
+                    dataKey="value"
+                    nameKey="name"
+                  >
+                    {getCategoryChartData().map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip 
+                    contentStyle={{ 
+                      background: "var(--popover)", 
+                      border: "1px solid var(--border)", 
+                      borderRadius: 8,
+                      fontSize: 11
+                    }} 
+                  />
+                  <Legend 
+                    verticalAlign="bottom" 
+                    height={30}
+                    wrapperStyle={{ fontSize: 9, paddingTop: 2 }}
+                  />
+                </RePieChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Format Distribution - Bar Chart */}
+        <Card className="glass">
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-sm font-medium">Format Distribution</CardTitle>
+                <CardDescription>Book formats</CardDescription>
+              </div>
+              <Layers className="h-4 w-4 text-muted-foreground" />
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="h-[160px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={getFormatDistribution()}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                  <XAxis dataKey="name" stroke="var(--muted-foreground)" fontSize={9} tickLine={false} axisLine={false} />
+                  <YAxis stroke="var(--muted-foreground)" fontSize={9} tickLine={false} axisLine={false} />
+                  <Tooltip 
+                    contentStyle={{ 
+                      background: "var(--popover)", 
+                      border: "1px solid var(--border)", 
+                      borderRadius: 8,
+                      fontSize: 11
+                    }} 
+                  />
+                  <Bar dataKey="value" fill="#3b82f6" radius={[3, 3, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Top Books - Horizontal Bar Chart */}
+        <Card className="glass">
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-sm font-medium">Top Books</CardTitle>
+                <CardDescription>Most copies in library</CardDescription>
+              </div>
+              <BookMarked className="h-4 w-4 text-muted-foreground" />
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="h-[160px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={getTopBooksData()} layout="vertical">
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" horizontal={false} />
+                  <XAxis type="number" stroke="var(--muted-foreground)" fontSize={9} tickLine={false} axisLine={false} />
+                  <YAxis dataKey="name" type="category" stroke="var(--muted-foreground)" fontSize={8} tickLine={false} axisLine={false} width={70} />
+                  <Tooltip 
+                    contentStyle={{ 
+                      background: "var(--popover)", 
+                      border: "1px solid var(--border)", 
+                      borderRadius: 8,
+                      fontSize: 11
+                    }} 
+                  />
+                  <Bar dataKey="copies" fill="#8b5cf6" radius={[0, 3, 3, 0]} />
+                  <Bar dataKey="available" fill="#10b981" radius={[0, 3, 3, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Search */}

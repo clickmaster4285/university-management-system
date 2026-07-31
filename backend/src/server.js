@@ -1,10 +1,10 @@
 import app from './app.js';
 import dotenv from 'dotenv';
 import connectDB from './config/database.js';
-
+import './jobs/statusUpdate.js';
 dotenv.config();
 
-const DEFAULT_PORT = Number(process.env.PORT || 4000);
+const DEFAULT_PORT = Number(process.env.PORT || 4005);
 
 const startServer = async (port = DEFAULT_PORT) => {
   try {

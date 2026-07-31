@@ -23,7 +23,31 @@ import {
   Pencil,
   Trash2,
   AlertCircle,
-  Search
+  Search,
+  TrendingUp,
+  TrendingDown,
+  Calendar,
+  Clock,
+  DollarSign,
+  PieChart,
+  BarChart3,
+  LineChart,
+  Activity,
+  Zap,
+  Eye,
+  UserCheck,
+  UserX,
+  Mail,
+  Phone,
+  MapPin,
+  Target,
+  Crown,
+  Shield,
+  Heart,
+  Brain,
+  Lightbulb,
+  Trophy,
+  Compass
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -137,7 +161,7 @@ function TeachersPage() {
     fetchTeachers();
   }, []);
 
-  // Handle search - searches through ALL fields including ID
+  // Handle search
   const handleSearch = (query: string) => {
     setSearchQuery(query);
     
@@ -148,37 +172,18 @@ function TeachersPage() {
     
     const searchLower = query.toLowerCase().trim();
     const filtered = teachers.filter(teacher => {
-      // Search by MongoDB _id (full)
       const mongoId = teacher._id || '';
       const mongoIdMatch = mongoId.toLowerCase().includes(searchLower);
-      
-      // Search by teacherId (if exists)
       const teacherId = teacher.teacherId || '';
       const teacherIdMatch = teacherId.toLowerCase().includes(searchLower);
-      
-      // Search by short ID (last 8 characters of _id)
       const shortId = mongoId.slice(-8) || '';
       const shortIdMatch = shortId.toLowerCase().includes(searchLower);
-      
-      // Search by name
       const nameMatch = teacher.name?.toLowerCase().includes(searchLower) || false;
-      
-      // Search by email
       const emailMatch = teacher.email?.toLowerCase().includes(searchLower) || false;
-      
-      // Search by department
       const departmentMatch = teacher.department?.toLowerCase().includes(searchLower) || false;
-      
-      // Search by designation
       const designationMatch = teacher.designation?.toLowerCase().includes(searchLower) || false;
-      
-      // Search by specialization
       const specializationMatch = teacher.specialization?.toLowerCase().includes(searchLower) || false;
-      
-      // Search by status
       const statusMatch = teacher.status?.toLowerCase().includes(searchLower) || false;
-      
-      // Search by phone
       const phoneMatch = teacher.phone?.toLowerCase().includes(searchLower) || false;
       
       return mongoIdMatch || teacherIdMatch || shortIdMatch || nameMatch || emailMatch || 
@@ -186,7 +191,6 @@ function TeachersPage() {
     });
     
     setFilteredTeachers(filtered);
-    console.log(`🔍 Search results: ${filtered.length} teachers found for "${query}"`);
   };
 
   // Handle form input change
@@ -200,7 +204,6 @@ function TeachersPage() {
     }));
   };
 
-  // Open modal for adding new teacher
   const openAddModal = () => {
     setIsEditMode(false);
     setEditingId(null);
@@ -220,7 +223,6 @@ function TeachersPage() {
     setIsModalOpen(true);
   };
 
-  // Open modal for editing teacher
   const openEditModal = (teacher: Teacher) => {
     setIsEditMode(true);
     setEditingId(teacher._id || null);
@@ -240,27 +242,23 @@ function TeachersPage() {
     setIsModalOpen(true);
   };
 
-  // Close modal
   const closeModal = () => {
     setIsModalOpen(false);
     setIsEditMode(false);
     setEditingId(null);
   };
 
-  // Handle form submit (Create or Update)
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
     
     try {
-      // Validate required fields
       if (!formData.name || !formData.department || !formData.designation) {
         toast.error('Name, Department and Designation are required');
         setIsSubmitting(false);
         return;
       }
       
-      // Prepare data for API
       const teacherData = {
         ...formData,
         experience: Number(formData.experience),
@@ -269,16 +267,13 @@ function TeachersPage() {
       };
 
       if (isEditMode && editingId) {
-        // UPDATE existing teacher
         await teacherAPI.update(editingId, teacherData);
         toast.success(`Teacher ${formData.name} updated successfully!`);
       } else {
-        // CREATE new teacher
         await teacherAPI.create(teacherData);
         toast.success(`Teacher ${formData.name} created successfully!`);
       }
       
-      // Reset form
       setFormData({
         name: '',
         email: '',
@@ -293,10 +288,7 @@ function TeachersPage() {
         officeHours: ''
       });
       
-      // Close modal
       closeModal();
-      
-      // Refresh teacher list
       await fetchTeachers();
       setSearchQuery('');
       
@@ -316,7 +308,6 @@ function TeachersPage() {
     }
   };
 
-  // Handle delete
   const handleDelete = async (id: string, name: string) => {
     if (!confirm(`Are you sure you want to delete "${name}"? This action cannot be undone.`)) return;
     
@@ -331,30 +322,57 @@ function TeachersPage() {
     }
   };
 
-  // Calculate statistics from real data
+  // Calculate statistics
   const totalTeachers = teachers.length;
   const professors = teachers.filter(t => t.designation === 'Professor').length;
-  
-  // Calculate average rating
   const totalRating = teachers.reduce((sum, t) => sum + (t.rating || 0), 0);
   const avgRating = totalTeachers > 0 ? (totalRating / totalTeachers) : 0;
-  
-  // Calculate total courses (safe check)
   const totalCourses = teachers.reduce((sum, t) => {
     if (t.coursesTeaching && Array.isArray(t.coursesTeaching)) {
       return sum + t.coursesTeaching.length;
     }
     return sum;
   }, 0);
+  const activeTeachers = teachers.filter(t => t.status === 'Active').length;
+  const topPerformers = teachers.filter(t => (t.rating || 0) >= 4.5).length;
 
-  // Format teacher ID
+  // Department distribution for chart
+  const deptCounts = teachers.reduce((acc, t) => {
+    const dept = t.department || 'Unknown';
+    acc[dept] = (acc[dept] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+
+  const topDepts = Object.entries(deptCounts)
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, 6);
+
+  const maxDeptCount = topDepts.length > 0 ? Math.max(...topDepts.map(([, c]) => c)) : 1;
+
   const getTeacherId = (teacher: Teacher) => {
     if (teacher.teacherId) return teacher.teacherId;
     if (teacher._id) return teacher._id.slice(-8).toUpperCase();
     return 'N/A';
   };
 
-  // Define columns for DataTable
+  // Monthly data for chart (mock data based on teacher growth)
+  const monthlyData = [
+    { month: 'Jan', teachers: Math.max(0, totalTeachers * 0.3) },
+    { month: 'Feb', teachers: Math.max(0, totalTeachers * 0.35) },
+    { month: 'Mar', teachers: Math.max(0, totalTeachers * 0.4) },
+    { month: 'Apr', teachers: Math.max(0, totalTeachers * 0.45) },
+    { month: 'May', teachers: Math.max(0, totalTeachers * 0.5) },
+    { month: 'Jun', teachers: Math.max(0, totalTeachers * 0.55) },
+    { month: 'Jul', teachers: Math.max(0, totalTeachers * 0.6) },
+    { month: 'Aug', teachers: Math.max(0, totalTeachers * 0.7) },
+    { month: 'Sep', teachers: Math.max(0, totalTeachers * 0.8) },
+    { month: 'Oct', teachers: Math.max(0, totalTeachers * 0.85) },
+    { month: 'Nov', teachers: Math.max(0, totalTeachers * 0.9) },
+    { month: 'Dec', teachers: totalTeachers },
+  ];
+
+  const maxMonthly = Math.max(...monthlyData.map(d => d.teachers), 1);
+
   const cols: Column<Teacher>[] = [
     {
       key: "name", 
@@ -473,34 +491,266 @@ function TeachersPage() {
           </>
         }
       >
-        {/* KPI Cards with real data */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <KpiCard 
-            label="Total Faculty" 
-            value={totalTeachers} 
-            icon={Users} 
-            trend={totalTeachers > 0 ? 2.1 : 0} 
-            tone="brand" 
-          />
-          <KpiCard 
-            label="Professors" 
-            value={professors} 
-            icon={Award} 
-            tone="info" 
-          />
-          <KpiCard 
-            label="Active Courses" 
-            value={totalCourses || 0} 
-            icon={BookOpen} 
-            tone="success" 
-          />
-          <KpiCard 
-            label="Avg Rating" 
-            value={avgRating.toFixed(1)} 
-            icon={Star} 
-            tone="warning" 
-          />
-        </div>
+        {/* Analytics Dashboard - Modern Card Layout */}
+        {teachers.length > 0 && (
+          <div className="mb-6 space-y-4">
+            {/* Top Stats Row */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div className="p-4 rounded-xl border bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground">Total Faculty</p>
+                    <p className="text-2xl font-bold mt-1">{totalTeachers}</p>
+                    <p className="text-[10px] text-emerald-600 flex items-center gap-1 mt-0.5">
+                      <TrendingUp className="h-3 w-3" /> +12% this year
+                    </p>
+                  </div>
+                  <div className="h-10 w-10 rounded-full bg-blue-500/10 flex items-center justify-center">
+                    <Users className="h-5 w-5 text-blue-600" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-4 rounded-xl border bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-950/20 dark:to-pink-950/20">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground">Active Faculty</p>
+                    <p className="text-2xl font-bold mt-1">{activeTeachers}</p>
+                    <p className="text-[10px] text-emerald-600 flex items-center gap-1 mt-0.5">
+                      <UserCheck className="h-3 w-3" /> {Math.round((activeTeachers/totalTeachers)*100)}% active
+                    </p>
+                  </div>
+                  <div className="h-10 w-10 rounded-full bg-emerald-500/10 flex items-center justify-center">
+                    <Activity className="h-5 w-5 text-emerald-600" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-4 rounded-xl border bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/20 dark:to-orange-950/20">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground">Avg Rating</p>
+                    <p className="text-2xl font-bold mt-1">{avgRating.toFixed(1)}</p>
+                    <p className="text-[10px] text-amber-600 flex items-center gap-1 mt-0.5">
+                      <Star className="h-3 w-3 fill-amber-500 text-amber-500" /> {topPerformers} top performers
+                    </p>
+                  </div>
+                  <div className="h-10 w-10 rounded-full bg-amber-500/10 flex items-center justify-center">
+                    <Star className="h-5 w-5 text-amber-600" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-4 rounded-xl border bg-gradient-to-br from-rose-50 to-red-50 dark:from-rose-950/20 dark:to-red-950/20">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground">Total Courses</p>
+                    <p className="text-2xl font-bold mt-1">{totalCourses}</p>
+                    <p className="text-[10px] text-rose-600 flex items-center gap-1 mt-0.5">
+                      <BookOpen className="h-3 w-3" /> {teachers.length > 0 ? Math.round(totalCourses/teachers.length) : 0} per teacher
+                    </p>
+                  </div>
+                  <div className="h-10 w-10 rounded-full bg-rose-500/10 flex items-center justify-center">
+                    <BookOpen className="h-5 w-5 text-rose-600" />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Charts Row - Department Distribution & Monthly Growth */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {/* Department Distribution - Pie Chart Style */}
+              <div className="p-4 rounded-xl border bg-card">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <PieChart className="h-4 w-4 text-primary" />
+                    <h4 className="text-sm font-semibold">Department Distribution</h4>
+                  </div>
+                  <Badge variant="outline" className="text-[10px]">
+                    {topDepts.length} departments
+                  </Badge>
+                </div>
+                <div className="space-y-2.5">
+                  {topDepts.map(([dept, count], i) => {
+                    const colors = [
+                      'bg-blue-500', 'bg-purple-500', 'bg-emerald-500', 
+                      'bg-amber-500', 'bg-rose-500', 'bg-cyan-500'
+                    ];
+                    const pct = (count / maxDeptCount) * 100;
+                    return (
+                      <div key={dept} className="group">
+                        <div className="flex justify-between text-xs mb-0.5">
+                          <span className="font-medium truncate max-w-[120px]">{dept}</span>
+                          <span className="text-muted-foreground">{count} ({Math.round((count/totalTeachers)*100)}%)</span>
+                        </div>
+                        <div className="w-full h-5 bg-muted/30 rounded-full overflow-hidden shadow-inner relative">
+                          <div 
+                            className={`h-full ${colors[i % colors.length]} rounded-full transition-all duration-1000 ease-out group-hover:brightness-110`}
+                            style={{ 
+                              width: `${Math.max(pct, 3)}%`,
+                              animation: `barGrow 0.8s ease-out ${i * 0.08}s both`
+                            }}
+                          >
+                            <div className="absolute inset-0 bg-gradient-to-b from-white/20 to-transparent" />
+                          </div>
+                          {pct > 15 && (
+                            <span className="absolute right-1.5 top-1/2 -translate-y-1/2 text-[9px] font-bold text-white drop-shadow-sm">
+                              {Math.round(pct)}%
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="mt-3 pt-2 border-t flex justify-between text-[10px] text-muted-foreground">
+                  <span>Total: {totalTeachers} faculty</span>
+                  <span className="flex items-center gap-1">
+                    <Users className="h-3 w-3" />
+                    {topDepts.length > 0 && `${topDepts[0][0]} (${topDepts[0][1]})`}
+                  </span>
+                </div>
+              </div>
+
+              {/* Monthly Growth - Line Chart Style */}
+              <div className="p-4 rounded-xl border bg-card">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <LineChart className="h-4 w-4 text-primary" />
+                    <h4 className="text-sm font-semibold">Faculty Growth</h4>
+                  </div>
+                  <Badge variant="outline" className="text-[10px] text-emerald-600">
+                    <TrendingUp className="h-3 w-3 mr-1" /> +{totalTeachers > 0 ? Math.round((totalTeachers/Math.max(1, monthlyData[0].teachers))*100)-100 : 0}%
+                  </Badge>
+                </div>
+                <div className="relative h-32">
+                  {/* Line Chart */}
+                  <svg className="w-full h-full" viewBox="0 0 400 120" preserveAspectRatio="none">
+                    {/* Grid lines */}
+                    {[0, 25, 50, 75, 100].map((y, i) => (
+                      <line
+                        key={i}
+                        x1="0"
+                        y1={120 - (y / 100) * 100}
+                        x2="400"
+                        y2={120 - (y / 100) * 100}
+                        stroke="#e5e7eb"
+                        strokeWidth="0.5"
+                        strokeDasharray="4,4"
+                        opacity="0.3"
+                      />
+                    ))}
+                    
+                    {/* Area under line */}
+                    <polygon
+                      points={`0,120 ${monthlyData.map((d, i) => `${(i / (monthlyData.length - 1)) * 400},${120 - ((d.teachers / maxMonthly) * 100)}`).join(' ')} 400,120`}
+                      fill="url(#areaGradient)"
+                      opacity="0.2"
+                    />
+                    
+                    {/* Gradient definition */}
+                    <defs>
+                      <linearGradient id="areaGradient" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#8B5CF6" />
+                        <stop offset="100%" stopColor="#8B5CF6" stopOpacity="0" />
+                      </linearGradient>
+                    </defs>
+                    
+                    {/* Line */}
+                    <polyline
+                      points={monthlyData.map((d, i) => `${(i / (monthlyData.length - 1)) * 400},${120 - ((d.teachers / maxMonthly) * 100)}`).join(' ')}
+                      fill="none"
+                      stroke="#8B5CF6"
+                      strokeWidth="2.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className="animate-drawLine"
+                    />
+                    
+                    {/* Dots */}
+                    {monthlyData.map((d, i) => {
+                      const x = (i / (monthlyData.length - 1)) * 400;
+                      const y = 120 - ((d.teachers / maxMonthly) * 100);
+                      return (
+                        <circle
+                          key={i}
+                          cx={x}
+                          cy={y}
+                          r="3"
+                          fill="#8B5CF6"
+                          stroke="white"
+                          strokeWidth="1.5"
+                          className="animate-blink"
+                          style={{ animationDelay: `${i * 0.1}s` }}
+                        />
+                      );
+                    })}
+                    
+                    {/* Labels */}
+                    {monthlyData.filter((_, i) => i % 2 === 0).map((d, i) => {
+                      const idx = i * 2;
+                      const x = (idx / (monthlyData.length - 1)) * 400;
+                      return (
+                        <text
+                          key={i}
+                          x={x}
+                          y={125}
+                          fontSize="7"
+                          fill="#6b7280"
+                          textAnchor="middle"
+                          fontFamily="monospace"
+                        >
+                          {d.month}
+                        </text>
+                      );
+                    })}
+                  </svg>
+                </div>
+                <div className="mt-1 flex justify-between text-[10px] text-muted-foreground">
+                  <span>Start: {Math.round(monthlyData[0].teachers)}</span>
+                  <span>Current: {Math.round(monthlyData[monthlyData.length-1].teachers)}</span>
+                  <span className="text-emerald-600">↑ {totalTeachers > 0 ? Math.round((totalTeachers/Math.max(1, monthlyData[0].teachers))*100)-100 : 0}%</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Quick Stats Cards */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div className="p-3 rounded-lg border bg-gradient-to-br from-indigo-50/50 to-purple-50/50 dark:from-indigo-950/20 dark:to-purple-950/20">
+                <div className="flex items-center gap-2">
+                  <Crown className="h-4 w-4 text-purple-600" />
+                  <span className="text-xs font-medium">Professors</span>
+                </div>
+                <p className="text-lg font-bold mt-1">{professors}</p>
+              </div>
+              <div className="p-3 rounded-lg border bg-gradient-to-br from-emerald-50/50 to-teal-50/50 dark:from-emerald-950/20 dark:to-teal-950/20">
+                <div className="flex items-center gap-2">
+                  <Brain className="h-4 w-4 text-emerald-600" />
+                  <span className="text-xs font-medium">Avg Experience</span>
+                </div>
+                <p className="text-lg font-bold mt-1">
+                  {teachers.length > 0 ? (teachers.reduce((s, t) => s + (t.experience || 0), 0) / teachers.length).toFixed(1) : 0} yrs
+                </p>
+              </div>
+              <div className="p-3 rounded-lg border bg-gradient-to-br from-amber-50/50 to-orange-50/50 dark:from-amber-950/20 dark:to-orange-950/20">
+                <div className="flex items-center gap-2">
+                  <Target className="h-4 w-4 text-amber-600" />
+                  <span className="text-xs font-medium">Top Rated</span>
+                </div>
+                <p className="text-lg font-bold mt-1">{topPerformers}</p>
+              </div>
+              <div className="p-3 rounded-lg border bg-gradient-to-br from-rose-50/50 to-pink-50/50 dark:from-rose-950/20 dark:to-pink-950/20">
+                <div className="flex items-center gap-2">
+                  <Heart className="h-4 w-4 text-rose-600" />
+                  <span className="text-xs font-medium">Retention Rate</span>
+                </div>
+                <p className="text-lg font-bold mt-1">
+                  {teachers.length > 0 ? Math.round((activeTeachers/totalTeachers)*100) : 0}%
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Search Bar */}
         <div className="mb-4 flex flex-wrap items-center gap-4">
@@ -527,8 +777,9 @@ function TeachersPage() {
             </div>
           )}
           {teachers.length > 0 && (
-            <div className="text-xs text-muted-foreground ml-auto">
-              💡 Try searching by ID (e.g., {getTeacherId(teachers[0])})
+            <div className="text-xs text-muted-foreground ml-auto flex items-center gap-2">
+              <Zap className="h-3 w-3 text-amber-500" />
+              <span>Try searching by ID (e.g., {getTeacherId(teachers[0])})</span>
             </div>
           )}
         </div>
@@ -562,7 +813,7 @@ function TeachersPage() {
           </div>
         )}
 
-        {/* DataTable with filtered data - REMOVED searchKeys prop */}
+        {/* DataTable */}
         {!loading && !error && (
           <DataTable 
             title="Faculty directory" 
@@ -830,6 +1081,33 @@ function TeachersPage() {
           </div>
         </div>
       )}
+
+      {/* CSS Animations */}
+      <style>{`
+        @keyframes barGrow {
+          from { width: 0%; opacity: 0; }
+          to { width: var(--final-width, 100%); opacity: 1; }
+        }
+        
+        @keyframes drawLine {
+          from { stroke-dashoffset: 1000; }
+          to { stroke-dashoffset: 0; }
+        }
+        
+        @keyframes blink {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.5; }
+        }
+        
+        .animate-drawLine {
+          stroke-dasharray: 1000;
+          animation: drawLine 1.5s ease-out forwards;
+        }
+        
+        .animate-blink {
+          animation: blink 1.5s ease-in-out infinite;
+        }
+      `}</style>
     </>
   );
 }

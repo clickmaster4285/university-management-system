@@ -9,6 +9,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { studentAPI, Student } from "@/lib/api/students";
 import { 
   GraduationCap, 
@@ -25,9 +26,20 @@ import {
   Loader2,
   Pencil,
   Trash2,
-  Search
+  Search,
+  BarChart3,
+  PieChart,
+  TrendingUp,
+  TrendingDown,
+  Users,
+  Smile,
+  Star,
+  Rocket,
+  Target,
+  Sparkles
 } from "lucide-react";
 import { toast } from "sonner";
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, PieChart as RePieChart, Pie, Cell, Legend, AreaChart, Area, RadialBarChart, RadialBar } from "recharts";
 
 export const Route = createFileRoute("/app/students")({
   head: () => ({
@@ -40,6 +52,9 @@ export const Route = createFileRoute("/app/students")({
   }),
   component: StudentsPage,
 });
+
+// Colors for charts
+const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#f97316'];
 
 function StudentsPage() {
   const [students, setStudents] = useState<Student[]>([]);
@@ -160,6 +175,46 @@ function StudentsPage() {
     fetchStudents();
   }, []);
 
+  // Prepare chart data
+  const getStatusDistribution = () => {
+    const statusMap = new Map();
+    students.forEach(student => {
+      const status = student.status || 'Active';
+      statusMap.set(status, (statusMap.get(status) || 0) + 1);
+    });
+    return Array.from(statusMap.entries()).map(([name, value]) => ({ name, value }));
+  };
+
+  const getProgramDistribution = () => {
+    const programMap = new Map();
+    students.forEach(student => {
+      const program = student.program || 'Other';
+      programMap.set(program, (programMap.get(program) || 0) + 1);
+    });
+    return Array.from(programMap.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 6)
+      .map(([name, value]) => ({ name, value }));
+  };
+
+  const getGPADistribution = () => {
+    const ranges = [
+      { name: '3.5-4.0', min: 3.5, max: 4.0 },
+      { name: '3.0-3.49', min: 3.0, max: 3.49 },
+      { name: '2.5-2.99', min: 2.5, max: 2.99 },
+      { name: '2.0-2.49', min: 2.0, max: 2.49 },
+      { name: 'Below 2.0', min: 0, max: 1.99 }
+    ];
+    
+    return ranges.map(range => ({
+      name: range.name,
+      value: students.filter(s => {
+        const gpa = s.gpa || 0;
+        return gpa >= range.min && gpa <= range.max;
+      }).length
+    }));
+  };
+
   // Handle search
   const handleSearch = (query: string) => {
     setSearchQuery(query);
@@ -201,17 +256,13 @@ function StudentsPage() {
     const errors: { cnic?: string; email?: string; phone?: string } = {};
     let isValid = true;
 
-    // Only validate if we have students data and at least one student exists
     if (!students || students.length === 0) {
       return true;
     }
 
-    // Check CNIC uniqueness (if provided and not empty)
     if (formData.cnic && formData.cnic.trim() !== '') {
       const cnicExists = students.some(student => {
-        // Skip if student has no cnic
         if (!student.cnic || student.cnic.trim() === '') return false;
-        // For editing, exclude the current student
         if (isEditMode && student._id === editingId) return false;
         return student.cnic.toLowerCase() === formData.cnic.toLowerCase();
       });
@@ -221,7 +272,6 @@ function StudentsPage() {
       }
     }
 
-    // Check Email uniqueness (if provided and not empty)
     if (formData.email && formData.email.trim() !== '') {
       const emailExists = students.some(student => {
         if (!student.email || student.email.trim() === '') return false;
@@ -234,7 +284,6 @@ function StudentsPage() {
       }
     }
 
-    // Check Phone uniqueness (if provided and not empty)
     if (formData.phone && formData.phone.trim() !== '') {
       const phoneExists = students.some(student => {
         if (!student.phone || student.phone.trim() === '') return false;
@@ -261,7 +310,6 @@ function StudentsPage() {
         : value
     }));
 
-    // Clear field-specific error when user types
     if (name === 'cnic' || name === 'email' || name === 'phone') {
       setFieldErrors(prev => ({
         ...prev,
@@ -270,7 +318,7 @@ function StudentsPage() {
     }
   };
 
-  // Open modal for adding new student - ALL FIELDS EMPTY
+  // Open modal for adding new student
   const openAddModal = () => {
     setIsEditMode(false);
     setEditingId(null);
@@ -336,17 +384,14 @@ function StudentsPage() {
     setIsSubmitting(true);
     
     try {
-      // Validate required fields
       if (!formData.name || !formData.program || !formData.department) {
         toast.error('Name, Program and Department are required');
         setIsSubmitting(false);
         return;
       }
 
-      // Check for duplicate CNIC, Email, Phone
       const isValid = validateUniqueness();
       if (!isValid) {
-        // Show specific error messages
         const errorMessages = Object.values(fieldErrors).filter(Boolean);
         if (errorMessages.length > 0) {
           toast.error(errorMessages[0]);
@@ -357,7 +402,6 @@ function StudentsPage() {
         return;
       }
       
-      // Prepare data for API
       const studentData = {
         ...formData,
         semester: Number(formData.semester) || 0,
@@ -368,18 +412,15 @@ function StudentsPage() {
 
       let response;
       if (isEditMode && editingId) {
-        // UPDATE existing student
         response = await studentAPI.update(editingId, studentData);
         console.log('✅ Update Response:', response);
         toast.success(`Student ${formData.name} updated successfully!`);
       } else {
-        // CREATE new student
         response = await studentAPI.create(studentData);
         console.log('✅ Create Response:', response);
         toast.success(`Student ${formData.name} created successfully!`);
       }
       
-      // Reset form - ALL FIELDS EMPTY
       setFormData({
         name: '',
         fatherName: '',
@@ -400,10 +441,7 @@ function StudentsPage() {
       });
       setFieldErrors({});
       
-      // Close modal
       closeModal();
-      
-      // Refresh student list
       await fetchStudents();
       setSearchQuery('');
       
@@ -412,7 +450,6 @@ function StudentsPage() {
       
       let errorMsg = isEditMode ? 'Failed to update student' : 'Failed to create student';
       
-      // Check if error message contains duplicate key info
       if (error.message?.includes('duplicate') || error.message?.includes('E11000')) {
         if (error.message?.includes('cnic')) {
           errorMsg = 'CNIC already exists. Please use a unique CNIC.';
@@ -470,6 +507,7 @@ function StudentsPage() {
   const graduatedStudents = students.filter(s => s.status === 'Graduated').length;
   const totalGPA = students.reduce((sum, s) => sum + (s.gpa || 0), 0);
   const avgGPA = totalStudents > 0 ? (totalGPA / totalStudents) : 0;
+  const passRate = totalStudents > 0 ? Math.round((students.filter(s => (s.gpa || 0) >= 2.0).length / totalStudents) * 100) : 0;
 
   // Define columns for DataTable
   const cols: Column<Student>[] = [
@@ -653,6 +691,147 @@ function StudentsPage() {
             icon={Award} 
             tone="info" 
           />
+        </div>
+
+        {/* Engaging Graphics Section */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+          {/* Status Distribution - Pie Chart */}
+          <Card className="glass">
+            <CardHeader className="pb-2">
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-sm font-medium">Student Status</CardTitle>
+                  <CardDescription>Status distribution</CardDescription>
+                </div>
+                <Users className="h-4 w-4 text-muted-foreground" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="h-[140px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <RePieChart>
+                    <Pie
+                      data={getStatusDistribution()}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={30}
+                      outerRadius={55}
+                      paddingAngle={3}
+                      dataKey="value"
+                    >
+                      {getStatusDistribution().map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip 
+                      contentStyle={{ 
+                        background: "var(--popover)", 
+                        border: "1px solid var(--border)", 
+                        borderRadius: 8,
+                        fontSize: 10
+                      }} 
+                    />
+                  </RePieChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="flex justify-center gap-2 mt-1 flex-wrap">
+                {getStatusDistribution().slice(0, 4).map((item, index) => (
+                  <div key={index} className="flex items-center gap-1">
+                    <div className="h-2 w-2 rounded-full" style={{ backgroundColor: COLORS[index % COLORS.length] }} />
+                    <span className="text-[10px] text-muted-foreground">{item.name}</span>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Program Distribution - Bar Chart */}
+          <Card className="glass">
+            <CardHeader className="pb-2">
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-sm font-medium">Program Distribution</CardTitle>
+                  <CardDescription>Top programs</CardDescription>
+                </div>
+                <GraduationCap className="h-4 w-4 text-muted-foreground" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="h-[140px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={getProgramDistribution()} layout="vertical">
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" horizontal={false} />
+                    <XAxis type="number" stroke="var(--muted-foreground)" fontSize={9} tickLine={false} axisLine={false} />
+                    <YAxis dataKey="name" type="category" stroke="var(--muted-foreground)" fontSize={8} tickLine={false} axisLine={false} width={50} />
+                    <Tooltip 
+                      contentStyle={{ 
+                        background: "var(--popover)", 
+                        border: "1px solid var(--border)", 
+                        borderRadius: 8,
+                        fontSize: 10
+                      }} 
+                    />
+                    <Bar dataKey="value" fill="#8b5cf6" radius={[0, 4, 4, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Pass Rate - Radial Chart */}
+          <Card className="glass">
+            <CardHeader className="pb-2">
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-sm font-medium">Pass Rate</CardTitle>
+                  <CardDescription>Students with GPA ≥ 2.0</CardDescription>
+                </div>
+                <Target className="h-4 w-4 text-muted-foreground" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="h-[140px] w-full flex items-center justify-center">
+                <ResponsiveContainer width="100%" height="100%">
+                  <RadialBarChart 
+                    cx="50%" 
+                    cy="50%" 
+                    innerRadius="40%" 
+                    outerRadius="80%" 
+                    barSize={10} 
+                    data={[{ name: 'Pass Rate', value: passRate }]}
+                    startAngle={90}
+                    endAngle={-270}
+                  >
+                    <RadialBar
+                      background
+                      dataKey="value"
+                      fill="#10b981"
+                      cornerRadius={10}
+                    />
+                    <text
+                      x="50%"
+                      y="50%"
+                      textAnchor="middle"
+                      dominantBaseline="middle"
+                      className="text-2xl font-bold"
+                      fill="currentColor"
+                    >
+                      {passRate}%
+                    </text>
+                    <Tooltip 
+                      contentStyle={{ 
+                        background: "var(--popover)", 
+                        border: "1px solid var(--border)", 
+                        borderRadius: 8,
+                        fontSize: 10
+                      }} 
+                      formatter={(value) => [`${value}%`, 'Pass Rate']}
+                    />
+                  </RadialBarChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Search Bar */}

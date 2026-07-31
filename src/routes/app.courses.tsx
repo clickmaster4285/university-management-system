@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { courseAPI, Course } from "@/lib/api/courses";
 import { departmentAPI } from "@/lib/api/departments";
 import { 
@@ -26,9 +27,23 @@ import {
   Search,
   Calendar,
   User,
-  Building2
+  Building2,
+  BarChart3,
+  PieChart,
+  TrendingUp,
+  TrendingDown,
+  Award,
+  Target,
+  Rocket,
+  Sparkles,
+  BookMarked,
+  Layers,
+  ArrowUp,
+  ArrowDown,
+  Smile
 } from "lucide-react";
 import { toast } from "sonner";
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, PieChart as RePieChart, Pie, Cell, Legend, AreaChart, Area, RadialBarChart, RadialBar } from "recharts";
 
 export const Route = createFileRoute("/app/courses")({
   head: () => ({
@@ -41,6 +56,9 @@ export const Route = createFileRoute("/app/courses")({
   }),
   component: CoursesPage,
 });
+
+// Colors for charts
+const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#f97316'];
 
 function CoursesPage() {
   const [courses, setCourses] = useState<Course[]>([]);
@@ -110,6 +128,46 @@ function CoursesPage() {
   useEffect(() => {
     fetchData();
   }, []);
+
+  // Prepare chart data
+  const getDepartmentDistribution = () => {
+    const deptMap = new Map();
+    courses.forEach(course => {
+      const dept = course.department || 'Other';
+      deptMap.set(dept, (deptMap.get(dept) || 0) + 1);
+    });
+    return Array.from(deptMap.entries()).map(([name, value]) => ({ name, value }));
+  };
+
+  const getCreditDistribution = () => {
+    const creditMap = new Map();
+    courses.forEach(course => {
+      const credits = course.credits || 0;
+      creditMap.set(credits, (creditMap.get(credits) || 0) + 1);
+    });
+    return Array.from(creditMap.entries())
+      .sort((a, b) => a[0] - b[0])
+      .map(([name, value]) => ({ name: `${name} CR`, value }));
+  };
+
+  const getEnrollmentData = () => {
+    return courses.slice(0, 6).map(course => ({
+      name: course.name?.substring(0, 15) + (course.name?.length > 15 ? '...' : ''),
+      enrolled: course.enrolledStudents || 0,
+      capacity: course.capacity || 0
+    }));
+  };
+
+  // Calculate statistics
+  const totalCourses = courses.length;
+  const activeCourses = courses.filter(c => c.status === 'Active').length;
+  const totalCapacity = courses.reduce((sum, c) => sum + (c.capacity || 0), 0);
+  const totalEnrolled = courses.reduce((sum, c) => sum + (c.enrolledStudents || 0), 0);
+  const avgCredits = totalCourses > 0 
+    ? courses.reduce((sum, c) => sum + (c.credits || 0), 0) / totalCourses 
+    : 0;
+  const uniqueDepartments = new Set(courses.map(c => c.department)).size;
+  const enrollmentRate = totalCapacity > 0 ? Math.round((totalEnrolled / totalCapacity) * 100) : 0;
 
   // Handle search
   const handleSearch = (query: string) => {
@@ -245,16 +303,6 @@ function CoursesPage() {
   const getCourseId = (course: Course) => {
     return course.courseId || course._id?.slice(-8).toUpperCase() || 'N/A';
   };
-
-  // Calculate statistics
-  const totalCourses = courses.length;
-  const activeCourses = courses.filter(c => c.status === 'Active').length;
-  const totalCapacity = courses.reduce((sum, c) => sum + (c.capacity || 0), 0);
-  const totalEnrolled = courses.reduce((sum, c) => sum + (c.enrolledStudents || 0), 0);
-  const avgCredits = totalCourses > 0 
-    ? courses.reduce((sum, c) => sum + (c.credits || 0), 0) / totalCourses 
-    : 0;
-  const uniqueDepartments = new Set(courses.map(c => c.department)).size;
 
   // Define columns for DataTable
   const cols: Column<Course>[] = [
@@ -411,6 +459,150 @@ function CoursesPage() {
             icon={GraduationCap} 
             tone="warning" 
           />
+        </div>
+
+        {/* Engaging Graphics Section */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+          {/* Department Distribution - Pie Chart */}
+          <Card className="glass">
+            <CardHeader className="pb-2">
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-sm font-medium">Department Distribution</CardTitle>
+                  <CardDescription>Courses by department</CardDescription>
+                </div>
+                <Building2 className="h-4 w-4 text-muted-foreground" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="h-[140px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <RePieChart>
+                    <Pie
+                      data={getDepartmentDistribution()}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={30}
+                      outerRadius={55}
+                      paddingAngle={3}
+                      dataKey="value"
+                    >
+                      {getDepartmentDistribution().map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip 
+                      contentStyle={{ 
+                        background: "var(--popover)", 
+                        border: "1px solid var(--border)", 
+                        borderRadius: 8,
+                        fontSize: 10
+                      }} 
+                    />
+                  </RePieChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="flex justify-center gap-2 mt-1 flex-wrap">
+                {getDepartmentDistribution().slice(0, 4).map((item, index) => (
+                  <div key={index} className="flex items-center gap-1">
+                    <div className="h-2 w-2 rounded-full" style={{ backgroundColor: COLORS[index % COLORS.length] }} />
+                    <span className="text-[10px] text-muted-foreground">{item.name}</span>
+                  </div>
+                ))}
+                {getDepartmentDistribution().length > 4 && (
+                  <span className="text-[10px] text-muted-foreground">+{getDepartmentDistribution().length - 4} more</span>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Credit Distribution - Bar Chart */}
+          <Card className="glass">
+            <CardHeader className="pb-2">
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-sm font-medium">Credit Distribution</CardTitle>
+                  <CardDescription>Courses by credit hours</CardDescription>
+                </div>
+                <Layers className="h-4 w-4 text-muted-foreground" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="h-[140px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={getCreditDistribution()}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                    <XAxis dataKey="name" stroke="var(--muted-foreground)" fontSize={9} tickLine={false} axisLine={false} />
+                    <YAxis stroke="var(--muted-foreground)" fontSize={9} tickLine={false} axisLine={false} />
+                    <Tooltip 
+                      contentStyle={{ 
+                        background: "var(--popover)", 
+                        border: "1px solid var(--border)", 
+                        borderRadius: 8,
+                        fontSize: 10
+                      }} 
+                    />
+                    <Bar dataKey="value" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Enrollment Rate - Radial Chart - FIXED */}
+          <Card className="glass">
+            <CardHeader className="pb-2">
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-sm font-medium">Enrollment Rate</CardTitle>
+                  <CardDescription>Overall capacity utilization</CardDescription>
+                </div>
+                <Target className="h-4 w-4 text-muted-foreground" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="h-[140px] w-full flex items-center justify-center">
+                <ResponsiveContainer width="100%" height="100%">
+                  <RadialBarChart 
+                    cx="50%" 
+                    cy="50%" 
+                    innerRadius="40%" 
+                    outerRadius="80%" 
+                    barSize={10} 
+                    data={[{ name: 'Enrollment', value: enrollmentRate }]}
+                    startAngle={90}
+                    endAngle={-270}
+                  >
+                    <RadialBar
+                      background
+                      dataKey="value"
+                      fill="#3b82f6"
+                      cornerRadius={10}
+                    />
+                    <text
+                      x="50%"
+                      y="50%"
+                      textAnchor="middle"
+                      dominantBaseline="middle"
+                      className="text-2xl font-bold"
+                      fill="currentColor"
+                    >
+                      {enrollmentRate}%
+                    </text>
+                    <Tooltip 
+                      contentStyle={{ 
+                        background: "var(--popover)", 
+                        border: "1px solid var(--border)", 
+                        borderRadius: 8,
+                        fontSize: 10
+                      }} 
+                      formatter={(value) => [`${value}%`, 'Enrollment Rate']}
+                    />
+                  </RadialBarChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Search Bar */}

@@ -1,3 +1,4 @@
+// src/routes/app.admissions.tsx
 import { createFileRoute } from "@tanstack/react-router";
 import { AppShell } from "@/components/app-shell";
 import { KpiCard } from "@/components/kpi-card";
@@ -26,11 +27,243 @@ import {
   Trash2,
   Search,
   Eye,
-  Database
+  Database,
+  Download,
+  GitBranch,
+  PieChart
 } from "lucide-react";
 import { toast } from "sonner";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useAuth } from "@/lib/auth";
+
+/* ============================================================
+   Inlined chart components (admissions-specific, animated)
+   ============================================================ */
+
+type FunnelStage = { label: string; count: number; color: string };
+
+function useCountUp(target: number, durationMs = 1000, trigger: unknown = target) {
+  const [value, setValue] = useState(0);
+  useEffect(() => {
+    let raf: number;
+    const start = performance.now();
+    const from = 0;
+    const tick = (now: number) => {
+      const t = Math.min(1, (now - start) / durationMs);
+      const eased = 1 - Math.pow(1 - t, 3);
+      setValue(Math.round(from + eased * (target - from)));
+      if (t < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [trigger]);
+  return value;
+}
+
+function FunnelRow({ stage, maxCount, index }: { stage: FunnelStage; maxCount: number; index: number }) {
+  const [width, setWidth] = useState(0);
+  const count = useCountUp(stage.count, 900, stage.count);
+
+  useEffect(() => {
+    const pct = maxCount > 0 ? (stage.count / maxCount) * 100 : 0;
+    const timer = setTimeout(() => setWidth(pct), 60 + index * 120);
+    return () => clearTimeout(timer);
+  }, [stage.count, maxCount, index]);
+
+  return (
+    <div className="relative">
+      <div className="flex items-center justify-between mb-1">
+        <span className="text-xs font-medium text-muted-foreground">{stage.label}</span>
+        <span className="text-xs font-semibold tabular-nums">{count}</span>
+      </div>
+      <div className="h-7 w-full rounded-lg bg-muted/50 overflow-hidden relative">
+        <div
+          className="h-full rounded-lg relative overflow-hidden transition-[width] ease-out"
+          style={{
+            width: `${width}%`,
+            backgroundColor: stage.color,
+            transitionDuration: "900ms",
+          }}
+        >
+          <div className="admissions-shimmer absolute inset-0" />
+        </div>
+      </div>
+      {index < 100 && (
+        <div className="flex justify-center h-3 relative">
+          <span
+            className="admissions-flow-dot absolute h-1.5 w-1.5 rounded-full"
+            style={{ backgroundColor: stage.color, animationDelay: `${index * 0.25}s` }}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function AnimatedAdmissionFunnel({ stages }: { stages: FunnelStage[] }) {
+  const maxCount = Math.max(1, ...stages.map((s) => s.count));
+
+  return (
+    <div className="rounded-2xl border bg-white p-5 shadow-sm">
+      <style>{`
+        @keyframes admissions-shimmer-sweep {
+          0% { transform: translateX(-100%); }
+          100% { transform: translateX(100%); }
+        }
+        .admissions-shimmer {
+          background: linear-gradient(90deg, transparent, rgba(255,255,255,0.45), transparent);
+          animation: admissions-shimmer-sweep 1.8s ease-in-out infinite;
+        }
+        @keyframes admissions-flow {
+          0% { transform: translateY(0); opacity: 0; }
+          20% { opacity: 1; }
+          80% { opacity: 1; }
+          100% { transform: translateY(10px); opacity: 0; }
+        }
+        .admissions-flow-dot {
+          top: -2px;
+          animation: admissions-flow 1.6s ease-in-out infinite;
+        }
+      `}</style>
+      <div className="flex items-center gap-2 mb-4">
+        <GitBranch className="h-4 w-4 text-primary" />
+        <h3 className="text-sm font-semibold">Admission Pipeline</h3>
+      </div>
+      <div className="space-y-3">
+        {stages.map((stage, i) => (
+          <FunnelRow key={stage.label} stage={stage} maxCount={maxCount} index={i} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+type DonutSlice = { label: string; value: number; color: string };
+
+function AnimatedStatusDonut({ data, title = "Applications by Status" }: { data: DonutSlice[]; title?: string }) {
+  const total = data.reduce((sum, d) => sum + d.value, 0);
+  const displayTotal = useCountUp(total, 1000, total);
+  const svgRef = useRef<SVGSVGElement>(null);
+  // FIXED: Use a ref for the container and manage individual refs with a Map
+  const circleRefs = useRef<Map<number, SVGCircleElement>>(new Map());
+
+  const SIZE = 180;
+  const STROKE = 22;
+  const R = (SIZE - STROKE) / 2;
+  const CIRC = 2 * Math.PI * R;
+
+  const segments = useMemo(() => {
+    let cumulative = 0;
+    return data.map((d) => {
+      const fraction = total > 0 ? d.value / total : 0;
+      const seg = { ...d, fraction, offset: cumulative };
+      cumulative += fraction;
+      return seg;
+    });
+  }, [data, total]);
+
+  useEffect(() => {
+    segments.forEach((seg, i) => {
+      const el = circleRefs.current.get(i);
+      if (!el) return;
+      const len = seg.fraction * CIRC;
+      el.style.transition = "none";
+      el.style.strokeDasharray = `${CIRC}`;
+      el.style.strokeDashoffset = `${CIRC}`;
+      el.getBoundingClientRect();
+      const delay = 120 + i * 150;
+      window.setTimeout(() => {
+        el.style.transition = "stroke-dashoffset 0.9s cubic-bezier(.4,0,.2,1)";
+        el.style.strokeDashoffset = `${CIRC - len}`;
+      }, delay);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [segments]);
+
+  const downloadSvg = () => {
+    const el = svgRef.current;
+    if (!el) return;
+    const source = new XMLSerializer().serializeToString(el);
+    const blob = new Blob([source], { type: "image/svg+xml;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${title.replace(/\s+/g, "-").toLowerCase()}.svg`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  return (
+    <div className="rounded-2xl border bg-white p-5 shadow-sm">
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <PieChart className="h-4 w-4 text-primary" />
+          <h3 className="text-sm font-semibold">{title}</h3>
+        </div>
+        <button
+          onClick={downloadSvg}
+          className="h-8 w-8 flex items-center justify-center rounded-lg border hover:bg-muted transition-colors"
+          title="Download"
+        >
+          <Download className="h-4 w-4" />
+        </button>
+      </div>
+
+      <div className="flex items-center gap-6 flex-wrap">
+        <div className="relative shrink-0" style={{ width: SIZE, height: SIZE }}>
+          <svg ref={svgRef} width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`}>
+            <circle cx={SIZE / 2} cy={SIZE / 2} r={R} fill="none" stroke="#f1f2f4" strokeWidth={STROKE} />
+            {segments.map((seg, i) => (
+              <circle
+                key={seg.label}
+                ref={(el) => {
+                  if (el) {
+                    circleRefs.current.set(i, el);
+                  } else {
+                    circleRefs.current.delete(i);
+                  }
+                }}
+                cx={SIZE / 2}
+                cy={SIZE / 2}
+                r={R}
+                fill="none"
+                stroke={seg.color}
+                strokeWidth={STROKE}
+                strokeLinecap="butt"
+                strokeDasharray={CIRC}
+                strokeDashoffset={CIRC}
+                transform={`rotate(${-90 + seg.offset * 360} ${SIZE / 2} ${SIZE / 2})`}
+              />
+            ))}
+          </svg>
+          <div className="absolute inset-0 flex flex-col items-center justify-center">
+            <span className="text-2xl font-bold tabular-nums">{displayTotal}</span>
+            <span className="text-[10px] text-muted-foreground">Total</span>
+          </div>
+        </div>
+
+        <div className="flex-1 min-w-[140px] space-y-2">
+          {segments.map((seg) => (
+            <div key={seg.label} className="flex items-center justify-between gap-3 text-xs">
+              <span className="flex items-center gap-2 text-muted-foreground">
+                <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: seg.color }} />
+                {seg.label}
+              </span>
+              <span className="font-medium tabular-nums">
+                {seg.value} <span className="text-muted-foreground">({Math.round(seg.fraction * 100)}%)</span>
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ============================================================
+   End inlined chart components
+   ============================================================ */
 
 export const Route = createFileRoute("/app/admissions")({
   head: () => ({
@@ -75,6 +308,18 @@ const campuses = [
 const statuses = ['Pending', 'Under Review', 'Shortlisted', 'Interview Scheduled', 'Accepted', 'Rejected', 'Waitlisted', 'Enrolled'];
 const genders = ['Male', 'Female', 'Other'];
 const feeStatuses = ['Pending', 'Paid', 'Waived', 'Partial'];
+
+// Colors reused from the status badge palette so the charts stay visually consistent with the table
+const STATUS_COLORS: Record<string, string> = {
+  'Pending': '#eab308',
+  'Under Review': '#3b82f6',
+  'Shortlisted': '#a855f7',
+  'Interview Scheduled': '#6366f1',
+  'Accepted': '#22c55e',
+  'Rejected': '#ef4444',
+  'Waitlisted': '#f97316',
+  'Enrolled': '#10b981',
+};
 
 function AdmissionsPage() {
   const { user } = useAuth();
@@ -581,15 +826,12 @@ function AdmissionsPage() {
       
       // Check for specific error types
       if (error.response) {
-        // The request was made and the server responded with a status code
-        // that falls out of the range of 2xx
         console.error('Response error:', error.response.data);
         
         if (error.response.status === 401) {
           errorMsg = 'Please login to continue';
         } else if (error.response.status === 400) {
           errorMsg = error.response.data?.message || 'Invalid data provided';
-          // If there are validation errors, show them
           if (error.response.data?.errors) {
             errorMsg = error.response.data.errors.join(', ');
           }
@@ -601,14 +843,11 @@ function AdmissionsPage() {
           errorMsg = error.response.data?.message || errorMsg;
         }
       } else if (error.request) {
-        // The request was made but no response was received
         errorMsg = 'Network error. Please check if backend server is running.';
       } else {
-        // Something happened in setting up the request that triggered an Error
         errorMsg = error.message || errorMsg;
       }
       
-      // Check for duplicate error in message
       if (errorMsg.toLowerCase().includes('duplicate') || 
           errorMsg.toLowerCase().includes('already exists') ||
           errorMsg.toLowerCase().includes('unique')) {
@@ -739,6 +978,32 @@ function AdmissionsPage() {
     },
   ];
 
+  // Derived data for the animated charts (grouped from real admissions, not mocked)
+  const statusCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    statuses.forEach(s => { counts[s] = 0; });
+    admissions.forEach(a => {
+      const s = a.status || 'Pending';
+      counts[s] = (counts[s] || 0) + 1;
+    });
+    return counts;
+  }, [admissions]);
+
+  const funnelStages = useMemo(() => {
+    const pipeline = ['Pending', 'Under Review', 'Shortlisted', 'Interview Scheduled', 'Accepted', 'Enrolled'];
+    return pipeline.map(label => ({
+      label,
+      count: statusCounts[label] || 0,
+      color: STATUS_COLORS[label],
+    }));
+  }, [statusCounts]);
+
+  const donutData = useMemo(() => {
+    return statuses
+      .map(label => ({ label, value: statusCounts[label] || 0, color: STATUS_COLORS[label] }))
+      .filter(d => d.value > 0);
+  }, [statusCounts]);
+
   // Show login prompt if not authenticated
   if (!isAuthenticated) {
     return (
@@ -815,6 +1080,14 @@ function AdmissionsPage() {
           tone="destructive" 
         />
       </div>
+
+      {/* Animated admissions graphics: pipeline funnel + status donut */}
+      {!loading && admissions.length > 0 && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <AnimatedAdmissionFunnel stages={funnelStages} />
+          <AnimatedStatusDonut data={donutData} title="Applications by Status" />
+        </div>
+      )}
 
       {/* Status Filter */}
       <div className="flex flex-wrap items-center gap-4 mb-4">

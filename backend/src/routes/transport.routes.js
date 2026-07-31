@@ -1,0 +1,44 @@
+import express from 'express';
+import {
+  getAllBuses,
+  getBusById,
+  createBus,
+  updateBus,
+  deleteBus,
+  getAllDrivers,
+  createDriver,
+  updateDriver,
+  deleteDriver,
+  getAllRoutes,
+  createRoute,
+  updateRoute,
+  deleteRoute,
+  getTransportStats
+} from '../controllers/transport.controller.js';
+import auth from '../middleware/auth.js';
+
+const router = express.Router();
+
+// Statistics
+router.get('/stats/summary', getTransportStats);
+
+// Bus routes
+router.get('/buses', getAllBuses);
+router.get('/buses/:id', getBusById);
+router.post('/buses', auth, createBus);
+router.put('/buses/:id', auth, updateBus);
+router.delete('/buses/:id', auth, deleteBus);
+
+// Driver routes
+router.get('/drivers', getAllDrivers);
+router.post('/drivers', auth, createDriver);
+router.put('/drivers/:id', auth, updateDriver);
+router.delete('/drivers/:id', auth, deleteDriver);
+
+// Route routes
+router.get('/routes', getAllRoutes);
+router.post('/routes', auth, createRoute);
+router.put('/routes/:id', auth, updateRoute);
+router.delete('/routes/:id', auth, deleteRoute);
+
+export default router;

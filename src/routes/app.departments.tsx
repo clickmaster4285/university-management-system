@@ -1,6 +1,6 @@
 // src/routes/app.departments.tsx
 import { createFileRoute } from "@tanstack/react-router";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { AppShell } from "@/components/app-shell";
 import { DataTable, type Column } from "@/components/data-table";
 import { KpiCard } from "@/components/kpi-card";
@@ -23,9 +23,398 @@ import {
   AlertCircle,
   Search,
   MapPin,
-  User
+  User,
+  Download,
+  ChevronDown,
+  ThumbsUp
 } from "lucide-react";
 import { toast } from "sonner";
+
+/* ============================================================
+   Inlined chart components (originally components/charts/*)
+   ============================================================ */
+
+export type TrendPoint = {
+  label: string;
+  faculty: number;
+  students: number;
+};
+
+type SortKey = "Years" | "Quarters";
+
+const DEFAULT_DATASETS: Record<SortKey, TrendPoint[]> = {
+  Years: [
+    { label: "2020", faculty: 42, students: 58 },
+    { label: "2021", faculty: 55, students: 50 },
+    { label: "2022", faculty: 48, students: 66 },
+    { label: "2023", faculty: 63, students: 54 },
+    { label: "2024", faculty: 58, students: 72 },
+    { label: "2025", faculty: 70, students: 61 },
+    { label: "2026", faculty: 65, students: 78 },
+  ],
+  Quarters: [
+    { label: "Q1", faculty: 50, students: 60 },
+    { label: "Q2", faculty: 58, students: 66 },
+    { label: "Q3", faculty: 55, students: 71 },
+    { label: "Q4", faculty: 65, students: 68 },
+  ],
+};
+
+const WIDTH = 700;
+const HEIGHT = 220;
+const PAD_X = 20;
+const PAD_Y = 24;
+
+// Catmull-Rom -> cubic Bezier smoothing
+function smoothPath(points: { x: number; y: number }[]) {
+  if (points.length < 2) return "";
+  let d = `M ${points[0].x},${points[0].y}`;
+  for (let i = 0; i < points.length - 1; i++) {
+    const p0 = points[i - 1] ?? points[i];
+    const p1 = points[i];
+    const p2 = points[i + 1];
+    const p3 = points[i + 2] ?? p2;
+    const cp1x = p1.x + (p2.x - p0.x) / 6;
+    const cp1y = p1.y + (p2.y - p0.y) / 6;
+    const cp2x = p2.x - (p3.x - p1.x) / 6;
+    const cp2y = p2.y - (p3.y - p1.y) / 6;
+    d += ` C ${cp1x},${cp1y} ${cp2x},${cp2y} ${p2.x},${p2.y}`;
+  }
+  return d;
+}
+
+// FIXED: Changed parameter type to allow null
+function useDrawIn(pathRef: React.RefObject<SVGPathElement | null>, dep: unknown) {
+  useEffect(() => {
+    const el = pathRef.current;
+    if (!el) return;
+    const len = el.getTotalLength();
+    el.style.transition = "none";
+    el.style.strokeDasharray = `${len}`;
+    el.style.strokeDashoffset = `${len}`;
+    // force reflow then animate
+    el.getBoundingClientRect();
+    el.style.transition = "stroke-dashoffset 1.1s cubic-bezier(.4,0,.2,1)";
+    el.style.strokeDashoffset = "0";
+  }, [dep]);
+}
+
+export function AnimatedTrendChart({
+  title = "Department Growth",
+  seriesALabel = "Faculty",
+  seriesBLabel = "Students",
+  datasets = DEFAULT_DATASETS,
+}: {
+  title?: string;
+  seriesALabel?: string;
+  seriesBLabel?: string;
+  datasets?: Record<SortKey, TrendPoint[]>;
+}) {
+  const [sortKey, setSortKey] = useState<SortKey>("Years");
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [hoverIdx, setHoverIdx] = useState<number | null>(null);
+  const svgRef = useRef<SVGSVGElement>(null);
+  const pathARef = useRef<SVGPathElement | null>(null);
+  const pathBRef = useRef<SVGPathElement | null>(null);
+
+  const data = datasets[sortKey];
+
+  const { pointsA, pointsB, maxVal } = useMemo(() => {
+    const max = Math.max(...data.flatMap((d) => [d.faculty, d.students])) * 1.15;
+    const step = (WIDTH - PAD_X * 2) / (data.length - 1);
+    const scaleY = (v: number) =>
+      HEIGHT - PAD_Y - (v / max) * (HEIGHT - PAD_Y * 2);
+    const pointsA = data.map((d, i) => ({ x: PAD_X + i * step, y: scaleY(d.faculty) }));
+    const pointsB = data.map((d, i) => ({ x: PAD_X + i * step, y: scaleY(d.students) }));
+    return { pointsA, pointsB, maxVal: max };
+  }, [data]);
+
+  useDrawIn(pathARef, sortKey);
+  useDrawIn(pathBRef, sortKey);
+
+  const handleMove = (e: React.MouseEvent<SVGSVGElement>) => {
+    const rect = svgRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const relX = ((e.clientX - rect.left) / rect.width) * WIDTH;
+    const step = (WIDTH - PAD_X * 2) / (data.length - 1);
+    let idx = Math.round((relX - PAD_X) / step);
+    idx = Math.max(0, Math.min(data.length - 1, idx));
+    setHoverIdx(idx);
+  };
+
+  const downloadSvg = () => {
+    const el = svgRef.current;
+    if (!el) return;
+    const serializer = new XMLSerializer();
+    const source = serializer.serializeToString(el);
+    const blob = new Blob([source], { type: "image/svg+xml;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${title.replace(/\s+/g, "-").toLowerCase()}.svg`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const hovered = hoverIdx !== null ? data[hoverIdx] : null;
+  const hoverPoint = hoverIdx !== null ? pointsA[hoverIdx] : null;
+
+  return (
+    <div className="rounded-2xl border bg-white p-5 shadow-sm">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-2">
+        <div className="relative">
+          <button
+            onClick={() => setMenuOpen((o) => !o)}
+            className="flex items-center gap-1 text-sm font-semibold text-foreground"
+          >
+            {title}
+            <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+          </button>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <span className="inline-flex items-center gap-1">
+              <span className="h-2 w-2 rounded-full bg-slate-400" /> {seriesALabel}
+            </span>
+            <span className="inline-flex items-center gap-1">
+              <span className="h-2 w-2 rounded-full bg-orange-500" /> {seriesBLabel}
+            </span>
+          </div>
+
+          <label className="text-xs text-muted-foreground">Sort by</label>
+          <select
+            value={sortKey}
+            onChange={(e) => setSortKey(e.target.value as SortKey)}
+            className="text-sm border rounded-md px-2 py-1 bg-white focus:outline-none focus:ring-2 focus:ring-primary"
+          >
+            <option value="Years">Years</option>
+            <option value="Quarters">Quarters</option>
+          </select>
+
+          <button
+            onClick={downloadSvg}
+            className="h-8 w-8 flex items-center justify-center rounded-lg border hover:bg-muted transition-colors"
+            title="Download chart"
+          >
+            <Download className="h-4 w-4" />
+          </button>
+        </div>
+      </div>
+
+      <div className="relative">
+        <svg
+          ref={svgRef}
+          viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
+          className="w-full h-auto"
+          onMouseMove={handleMove}
+          onMouseLeave={() => setHoverIdx(null)}
+        >
+          {/* gridlines */}
+          {[0, 1, 2, 3].map((i) => (
+            <line
+              key={i}
+              x1={PAD_X}
+              x2={WIDTH - PAD_X}
+              y1={PAD_Y + (i * (HEIGHT - PAD_Y * 2)) / 3}
+              y2={PAD_Y + (i * (HEIGHT - PAD_Y * 2)) / 3}
+              stroke="#eef0f3"
+              strokeWidth={1}
+            />
+          ))}
+
+          <path
+            ref={pathARef}
+            d={smoothPath(pointsA)}
+            fill="none"
+            stroke="#94a3b8"
+            strokeWidth={2.5}
+            strokeLinecap="round"
+          />
+          <path
+            ref={pathBRef}
+            d={smoothPath(pointsB)}
+            fill="none"
+            stroke="#f97316"
+            strokeWidth={2.5}
+            strokeLinecap="round"
+          />
+
+          {hoverIdx !== null && (
+            <>
+              <line
+                x1={pointsA[hoverIdx].x}
+                x2={pointsA[hoverIdx].x}
+                y1={PAD_Y}
+                y2={HEIGHT - PAD_Y}
+                stroke="#f97316"
+                strokeDasharray="3 3"
+                strokeWidth={1}
+              />
+              <circle cx={pointsB[hoverIdx].x} cy={pointsB[hoverIdx].y} r={5} fill="#f97316" className="animate-pulse" />
+              <circle cx={pointsA[hoverIdx].x} cy={pointsA[hoverIdx].y} r={4} fill="#94a3b8" />
+            </>
+          )}
+
+          {/* x labels */}
+          {data.map((d, i) => (
+            <text
+              key={d.label}
+              x={pointsA[i].x}
+              y={HEIGHT - 4}
+              fontSize={10}
+              textAnchor="middle"
+              fill="#94a3b8"
+            >
+              {d.label}
+            </text>
+          ))}
+        </svg>
+
+        {hovered && hoverPoint && (
+          <div
+            className="absolute pointer-events-none bg-white border rounded-xl shadow-lg px-3 py-2 text-xs transition-all duration-150"
+            style={{
+              left: `${(hoverPoint.x / WIDTH) * 100}%`,
+              top: 0,
+              transform: "translate(-50%, -110%)",
+            }}
+          >
+            <div className="font-semibold mb-1">{hovered.label}</div>
+            <div className="text-slate-500">
+              {seriesALabel}: <span className="font-medium text-foreground">{hovered.faculty}</span>
+            </div>
+            <div className="text-orange-500">
+              {seriesBLabel}: <span className="font-medium">{hovered.students}</span>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+const SIZE = 220;
+const STROKE = 16;
+const RADIUS = (SIZE - STROKE) / 2;
+const CIRC = Math.PI * RADIUS;
+
+export function AnimatedGauge({
+  title = "Department Health",
+  value,
+  icon: Icon = ThumbsUp,
+}: {
+  title?: string;
+  value: number;
+  icon?: React.ComponentType<{ className?: string }>;
+}) {
+  const clamped = Math.max(0, Math.min(100, value));
+  const [display, setDisplay] = useState(0);
+  const svgRef = useRef<SVGSVGElement>(null);
+  const arcRef = useRef<SVGPathElement | null>(null);
+
+  useEffect(() => {
+    const el = arcRef.current;
+    if (el) {
+      el.style.transition = "none";
+      el.style.strokeDashoffset = `${CIRC}`;
+      el.getBoundingClientRect();
+      el.style.transition = "stroke-dashoffset 1.2s cubic-bezier(.4,0,.2,1)";
+      el.style.strokeDashoffset = `${CIRC - (clamped / 100) * CIRC}`;
+    }
+
+    let raf: number;
+    const start = performance.now();
+    const duration = 1200;
+    const tick = (now: number) => {
+      const t = Math.min(1, (now - start) / duration);
+      const eased = 1 - Math.pow(1 - t, 3);
+      setDisplay(Math.round(eased * clamped));
+      if (t < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [clamped]);
+
+  const downloadSvg = () => {
+    const el = svgRef.current;
+    if (!el) return;
+    const source = new XMLSerializer().serializeToString(el);
+    const blob = new Blob([source], { type: "image/svg+xml;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${title.replace(/\s+/g, "-").toLowerCase()}.svg`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const cx = SIZE / 2;
+  const cy = SIZE / 2;
+
+  return (
+    <div className="rounded-2xl border bg-white p-5 shadow-sm flex flex-col">
+      <div className="flex items-center justify-between mb-2">
+        <h3 className="text-sm font-semibold">{title}</h3>
+        <button
+          onClick={downloadSvg}
+          className="h-8 w-8 flex items-center justify-center rounded-lg border hover:bg-muted transition-colors"
+          title="Download"
+        >
+          <Download className="h-4 w-4" />
+        </button>
+      </div>
+
+      <div className="relative mx-auto" style={{ width: SIZE, height: SIZE / 2 + 30 }}>
+        <svg ref={svgRef} width={SIZE} height={SIZE / 2 + 30} viewBox={`0 0 ${SIZE} ${SIZE / 2 + 30}`}>
+          <defs>
+            <linearGradient id="gaugeGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stopColor="#f97316" />
+              <stop offset="100%" stopColor="#fdba74" />
+            </linearGradient>
+          </defs>
+
+          {/* track */}
+          <path
+            d={`M ${cx - RADIUS} ${cy} A ${RADIUS} ${RADIUS} 0 0 1 ${cx + RADIUS} ${cy}`}
+            fill="none"
+            stroke="#f1f2f4"
+            strokeWidth={STROKE}
+            strokeLinecap="round"
+          />
+          {/* animated arc */}
+          <path
+            ref={arcRef}
+            d={`M ${cx - RADIUS} ${cy} A ${RADIUS} ${RADIUS} 0 0 1 ${cx + RADIUS} ${cy}`}
+            fill="none"
+            stroke="url(#gaugeGradient)"
+            strokeWidth={STROKE}
+            strokeLinecap="round"
+            strokeDasharray={CIRC}
+          />
+
+          <text x={cx - RADIUS} y={cy + 22} fontSize={11} fill="#94a3b8">0%</text>
+          <text x={cx + RADIUS} y={cy + 22} textAnchor="end" fontSize={11} fill="#94a3b8">100%</text>
+        </svg>
+
+        {/* center icon + number */}
+        <div
+          className="absolute left-1/2 flex flex-col items-center"
+          style={{ top: cy - 34, transform: "translateX(-50%)" }}
+        >
+          <div className="h-9 w-9 rounded-full bg-orange-50 flex items-center justify-center mb-1 animate-[pulse_2.5s_ease-in-out_infinite]">
+            <Icon className="h-4 w-4 text-orange-500" />
+          </div>
+          <div className="text-2xl font-bold text-orange-500 tabular-nums">{display}%</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ============================================================
+   End inlined chart components
+   ============================================================ */
 
 export const Route = createFileRoute("/app/departments")({
   head: () => ({
@@ -228,6 +617,7 @@ function DepartmentsPage() {
   const activeDepartments = departments.filter(d => d.status === 'Active').length;
   const totalFaculty = departments.reduce((sum, d) => sum + (d.facultyCount || 0), 0);
   const totalStudents = departments.reduce((sum, d) => sum + (d.studentCount || 0), 0);
+  const activeRate = totalDepartments > 0 ? Math.round((activeDepartments / totalDepartments) * 100) : 0;
 
   // Define columns for DataTable
   const cols: Column<Department>[] = [
@@ -362,6 +752,20 @@ function DepartmentsPage() {
             tone="warning" 
           />
         </div>
+
+        {/* Animated Graphics Row (trend chart + gauge) */}
+        {!loading && (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <div className="lg:col-span-2">
+              <AnimatedTrendChart
+                title="Department Growth"
+                seriesALabel="Faculty"
+                seriesBLabel="Students"
+              />
+            </div>
+            <AnimatedGauge title="Active Department Rate" value={activeRate} />
+          </div>
+        )}
 
         {/* Search Bar */}
         <div className="mb-4 flex flex-wrap items-center gap-4">

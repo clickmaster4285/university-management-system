@@ -1,6 +1,6 @@
 // src/lib/api/client.ts
 // ✅ Use environment variable
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000/api';
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4005/api';
 
 console.log('🔗 API Base URL:', API_BASE); // Check this in browser console
 

@@ -26,10 +26,16 @@ import {
   UserMinus,
   RefreshCw,
   TrendingUp,
-  TrendingDown
+  TrendingDown,
+  PieChart,
+  BarChart3,
+  Activity,
+  Smile,
+  Star,
+  Rocket
 } from "lucide-react";
 import { toast } from "sonner";
-import { BarChart, Bar, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from "recharts";
+import { BarChart, Bar, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend, PieChart as RePieChart, Pie, Cell, AreaChart, Area, RadialBarChart, RadialBar } from "recharts";
 
 export const Route = createFileRoute("/app/attendance")({
   head: () => ({
@@ -40,6 +46,16 @@ export const Route = createFileRoute("/app/attendance")({
   }),
   component: AttendancePage,
 });
+
+// Colors for charts
+const COLORS = ['#10b981', '#ef4444', '#f59e0b', '#3b82f6', '#8b5cf6'];
+const STATUS_COLORS = {
+  'Present': '#10b981',
+  'Absent': '#ef4444',
+  'Late': '#f59e0b',
+  'Leave': '#3b82f6',
+  'Not Marked': '#9ca3af'
+};
 
 function AttendancePage() {
   const [students, setStudents] = useState<StudentAttendance[]>([]);
@@ -103,7 +119,7 @@ function AttendancePage() {
         const late = records.filter((r: any) => r.status === 'Late').length;
         const leave = records.filter((r: any) => r.status === 'Leave').length;
         const total = records.length;
-        const notMarked = 0; // We can't know this from attendance records alone
+        const notMarked = 0;
 
         setOverallTodayStats({
           total,
@@ -205,7 +221,9 @@ function AttendancePage() {
           present: dayStats.present || 0,
           absent: dayStats.absent || 0,
           date: dateStr,
-          isToday: i === 0
+          isToday: i === 0,
+          late: dayStats.late || 0,
+          leave: dayStats.leave || 0
         });
       } else {
         chartData.push({
@@ -213,7 +231,9 @@ function AttendancePage() {
           present: 0,
           absent: 0,
           date: dateStr,
-          isToday: i === 0
+          isToday: i === 0,
+          late: 0,
+          leave: 0
         });
       }
     }
@@ -234,7 +254,9 @@ function AttendancePage() {
         day: days[date.getDay()],
         present: 0,
         absent: 0,
-        isToday: i === 0
+        isToday: i === 0,
+        late: 0,
+        leave: 0
       });
     }
     return chartData;
@@ -390,7 +412,19 @@ function AttendancePage() {
   // Calculate total present and absent from chart data
   const totalPresent = chartData.reduce((sum, day) => sum + (day.present || 0), 0);
   const totalAbsent = chartData.reduce((sum, day) => sum + (day.absent || 0), 0);
-  const totalRecords = totalPresent + totalAbsent;
+  const totalLate = chartData.reduce((sum, day) => sum + (day.late || 0), 0);
+  const totalLeave = chartData.reduce((sum, day) => sum + (day.leave || 0), 0);
+  const totalRecords = totalPresent + totalAbsent + totalLate + totalLeave;
+
+  // Get status distribution for pie chart
+  const getStatusDistribution = () => {
+    return [
+      { name: 'Present', value: overallTodayStats.present || 0 },
+      { name: 'Absent', value: overallTodayStats.absent || 0 },
+      { name: 'Late', value: overallTodayStats.late || 0 },
+      { name: 'Leave', value: overallTodayStats.leave || 0 }
+    ];
+  };
 
   return (
     <AppShell
@@ -415,7 +449,7 @@ function AttendancePage() {
         </>
       }
     >
-      {/* ✅ KPI Cards - Now showing overall stats that persist */}
+      {/* KPI Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <KpiCard 
           label="Present Today" 
@@ -442,6 +476,156 @@ function AttendancePage() {
           icon={CalendarCheck} 
           tone="info" 
         />
+      </div>
+
+      {/* Animated Graphics Section */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+        {/* Status Distribution - Pie Chart */}
+        <Card className="glass">
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-sm font-medium">Today's Attendance</CardTitle>
+                <CardDescription>Status distribution</CardDescription>
+              </div>
+              <Smile className="h-4 w-4 text-muted-foreground" />
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="h-[140px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <RePieChart>
+                  <Pie
+                    data={getStatusDistribution()}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={30}
+                    outerRadius={55}
+                    paddingAngle={3}
+                    dataKey="value"
+                  >
+                    {getStatusDistribution().map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip 
+                    contentStyle={{ 
+                      background: "var(--popover)", 
+                      border: "1px solid var(--border)", 
+                      borderRadius: 8,
+                      fontSize: 10
+                    }} 
+                  />
+                </RePieChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="flex justify-center gap-2 mt-1 flex-wrap">
+              <div className="flex items-center gap-1">
+                <div className="h-2 w-2 rounded-full bg-[#10b981]" />
+                <span className="text-[10px] text-muted-foreground">Present</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <div className="h-2 w-2 rounded-full bg-[#ef4444]" />
+                <span className="text-[10px] text-muted-foreground">Absent</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <div className="h-2 w-2 rounded-full bg-[#f59e0b]" />
+                <span className="text-[10px] text-muted-foreground">Late</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <div className="h-2 w-2 rounded-full bg-[#3b82f6]" />
+                <span className="text-[10px] text-muted-foreground">Leave</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Weekly Trend - Area Chart */}
+        <Card className="glass">
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-sm font-medium">Weekly Trend</CardTitle>
+                <CardDescription>Attendance pattern</CardDescription>
+              </div>
+              <Activity className="h-4 w-4 text-muted-foreground" />
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="h-[140px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={chartData}>
+                  <defs>
+                    <linearGradient id="colorPresent" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.8}/>
+                      <stop offset="95%" stopColor="#10b981" stopOpacity={0.1}/>
+                    </linearGradient>
+                    <linearGradient id="colorAbsent" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#ef4444" stopOpacity={0.8}/>
+                      <stop offset="95%" stopColor="#ef4444" stopOpacity={0.1}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                  <XAxis dataKey="day" stroke="var(--muted-foreground)" fontSize={9} tickLine={false} axisLine={false} />
+                  <YAxis stroke="var(--muted-foreground)" fontSize={9} tickLine={false} axisLine={false} />
+                  <Tooltip 
+                    contentStyle={{ 
+                      background: "var(--popover)", 
+                      border: "1px solid var(--border)", 
+                      borderRadius: 8,
+                      fontSize: 10
+                    }} 
+                  />
+                  <Area type="monotone" dataKey="present" stroke="#10b981" fillOpacity={1} fill="url(#colorPresent)" />
+                  <Area type="monotone" dataKey="absent" stroke="#ef4444" fillOpacity={1} fill="url(#colorAbsent)" />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="flex justify-center gap-3 mt-1">
+              <div className="flex items-center gap-1">
+                <div className="h-2 w-2 rounded-full bg-[#10b981]" />
+                <span className="text-[10px] text-muted-foreground">Present</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <div className="h-2 w-2 rounded-full bg-[#ef4444]" />
+                <span className="text-[10px] text-muted-foreground">Absent</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Quick Stats - Cute Cards */}
+        <Card className="glass">
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-sm font-medium">Quick Stats</CardTitle>
+                <CardDescription>Attendance overview</CardDescription>
+              </div>
+              <Star className="h-4 w-4 text-muted-foreground" />
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="bg-green-50 dark:bg-green-950/30 rounded-lg p-2 text-center">
+                <div className="text-2xl font-bold text-green-600">{overallTodayStats.present}</div>
+                <div className="text-[10px] text-muted-foreground">Present</div>
+              </div>
+              <div className="bg-red-50 dark:bg-red-950/30 rounded-lg p-2 text-center">
+                <div className="text-2xl font-bold text-red-600">{overallTodayStats.absent}</div>
+                <div className="text-[10px] text-muted-foreground">Absent</div>
+              </div>
+              <div className="bg-yellow-50 dark:bg-yellow-950/30 rounded-lg p-2 text-center">
+                <div className="text-2xl font-bold text-yellow-600">{overallTodayStats.late}</div>
+                <div className="text-[10px] text-muted-foreground">Late</div>
+              </div>
+              <div className="bg-blue-50 dark:bg-blue-950/30 rounded-lg p-2 text-center">
+                <div className="text-2xl font-bold text-blue-600">{overallTodayStats.leave}</div>
+                <div className="text-[10px] text-muted-foreground">Leave</div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Filter Form */}
