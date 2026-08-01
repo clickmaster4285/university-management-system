@@ -1,5 +1,6 @@
+// src/routes/app.transport.tsx
 import { createFileRoute } from "@tanstack/react-router";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { AppShell } from "@/components/app-shell";
 import { KpiCard } from "@/components/kpi-card";
 import { DataTable, type Column } from "@/components/data-table";
@@ -60,7 +61,6 @@ function TransportPage() {
   const [buses, setBuses] = useState<Bus[]>([]);
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [routes, setRoutes] = useState<TransportRoute[]>([]);
-  const [filteredItems, setFilteredItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -145,9 +145,6 @@ function TransportPage() {
       setBuses(busesData);
       setDrivers(driversData);
       setRoutes(routesData);
-      setFilteredItems(
-        activeTab === 'drivers' ? driversData : activeTab === 'routes' ? routesData : busesData
-      );
       
       if (statsRes && statsRes.success) {
         setStats(statsRes.data);
@@ -171,6 +168,73 @@ function TransportPage() {
       setLoading(false);
     }
   }, [isAuthenticated]);
+
+  // ✅ FIXED: Filter data based on search query - searches through IDs
+  const getFilteredData = useMemo(() => {
+    if (!searchQuery.trim()) {
+      if (activeTab === 'buses') return buses;
+      else if (activeTab === 'drivers') return drivers;
+      else return routes;
+    }
+    
+    const searchLower = searchQuery.toLowerCase().trim();
+    
+    if (activeTab === 'buses') {
+      return buses.filter(b => {
+        const busId = (b.busId || '').toLowerCase();
+        const busNumber = (b.busNumber || '').toLowerCase();
+        const registrationNumber = (b.registrationNumber || '').toLowerCase();
+        const model = (b.model || '').toLowerCase();
+        const make = (b.make || '').toLowerCase();
+        const driverName = (b.driverName || '').toLowerCase();
+        const routeName = (b.routeName || '').toLowerCase();
+        const status = (b.status || '').toLowerCase();
+        
+        return busId.includes(searchLower) ||
+               busNumber.includes(searchLower) ||
+               registrationNumber.includes(searchLower) ||
+               model.includes(searchLower) ||
+               make.includes(searchLower) ||
+               driverName.includes(searchLower) ||
+               routeName.includes(searchLower) ||
+               status.includes(searchLower);
+      });
+    } else if (activeTab === 'drivers') {
+      return drivers.filter(d => {
+        const driverId = (d.driverId || '').toLowerCase();
+        const name = (d.name || '').toLowerCase();
+        const email = (d.email || '').toLowerCase();
+        const phone = (d.phone || '').toLowerCase();
+        const licenseNumber = (d.licenseNumber || '').toLowerCase();
+        const assignedBusNumber = (d.assignedBusNumber || '').toLowerCase();
+        const status = (d.status || '').toLowerCase();
+        
+        return driverId.includes(searchLower) ||
+               name.includes(searchLower) ||
+               email.includes(searchLower) ||
+               phone.includes(searchLower) ||
+               licenseNumber.includes(searchLower) ||
+               assignedBusNumber.includes(searchLower) ||
+               status.includes(searchLower);
+      });
+    } else {
+      return routes.filter(r => {
+        const routeId = (r.routeId || '').toLowerCase();
+        const routeNumber = (r.routeNumber || '').toLowerCase();
+        const name = (r.name || '').toLowerCase();
+        const startPoint = (r.startPoint || '').toLowerCase();
+        const endPoint = (r.endPoint || '').toLowerCase();
+        const status = (r.status || '').toLowerCase();
+        
+        return routeId.includes(searchLower) ||
+               routeNumber.includes(searchLower) ||
+               name.includes(searchLower) ||
+               startPoint.includes(searchLower) ||
+               endPoint.includes(searchLower) ||
+               status.includes(searchLower);
+      });
+    }
+  }, [searchQuery, activeTab, buses, drivers, routes]);
 
   // Prepare chart data
   const getStatusChartData = () => {
@@ -207,51 +271,12 @@ function TransportPage() {
   // Handle search
   const handleSearch = (query: string) => {
     setSearchQuery(query);
-    
-    if (!query.trim()) {
-      if (activeTab === 'buses') setFilteredItems(buses);
-      else if (activeTab === 'drivers') setFilteredItems(drivers);
-      else setFilteredItems(routes);
-      return;
-    }
-    
-    const searchLower = query.toLowerCase().trim();
-    let items = [];
-    
-    if (activeTab === 'buses') {
-      items = buses.filter(b => 
-        b.busNumber?.toLowerCase().includes(searchLower) ||
-        b.registrationNumber?.toLowerCase().includes(searchLower) ||
-        b.model?.toLowerCase().includes(searchLower) ||
-        b.make?.toLowerCase().includes(searchLower) ||
-        b.driverName?.toLowerCase().includes(searchLower)
-      );
-    } else if (activeTab === 'drivers') {
-      items = drivers.filter(d =>
-        d.name?.toLowerCase().includes(searchLower) ||
-        d.email?.toLowerCase().includes(searchLower) ||
-        d.phone?.toLowerCase().includes(searchLower) ||
-        d.licenseNumber?.toLowerCase().includes(searchLower)
-      );
-    } else {
-      items = routes.filter(r =>
-        r.routeNumber?.toLowerCase().includes(searchLower) ||
-        r.name?.toLowerCase().includes(searchLower) ||
-        r.startPoint?.toLowerCase().includes(searchLower) ||
-        r.endPoint?.toLowerCase().includes(searchLower)
-      );
-    }
-    
-    setFilteredItems(items);
   };
 
   // Handle tab change
   const handleTabChange = (tab: 'buses' | 'drivers' | 'routes') => {
     setActiveTab(tab);
     setSearchQuery('');
-    if (tab === 'buses') setFilteredItems(buses);
-    else if (tab === 'drivers') setFilteredItems(drivers);
-    else setFilteredItems(routes);
   };
 
   // Open add modal
@@ -687,12 +712,10 @@ function TransportPage() {
     }
   };
 
-  // Get current data based on active tab
-  const getCurrentData = () => {
-    if (activeTab === 'buses') return filteredItems;
-    else if (activeTab === 'drivers') return filteredItems;
-    else return filteredItems;
-  };
+  // Get current data based on active tab and search
+  const currentData = getFilteredData;
+  const totalItems = activeTab === 'buses' ? buses.length : activeTab === 'drivers' ? drivers.length : routes.length;
+  const displayCount = currentData.length;
 
   // Get modal title
   const getModalTitle = () => {
@@ -913,7 +936,7 @@ function TransportPage() {
           }`}
           onClick={() => handleTabChange('buses')}
         >
-          <BusIcon className="h-4 w-4 inline mr-2" /> Buses
+          <BusIcon className="h-4 w-4 inline mr-2" /> Buses ({buses.length})
         </button>
         <button
           className={`px-4 py-2 text-sm font-medium transition-colors ${
@@ -923,7 +946,7 @@ function TransportPage() {
           }`}
           onClick={() => handleTabChange('drivers')}
         >
-          <User className="h-4 w-4 inline mr-2" /> Drivers
+          <User className="h-4 w-4 inline mr-2" /> Drivers ({drivers.length})
         </button>
         <button
           className={`px-4 py-2 text-sm font-medium transition-colors ${
@@ -933,24 +956,43 @@ function TransportPage() {
           }`}
           onClick={() => handleTabChange('routes')}
         >
-          <RouteIcon className="h-4 w-4 inline mr-2" /> Routes
+          <RouteIcon className="h-4 w-4 inline mr-2" /> Routes ({routes.length})
         </button>
       </div>
 
-      {/* Search */}
+      {/* ✅ SEARCH BAR - Now searches through IDs */}
       <div className="mb-4 flex flex-wrap items-center gap-4">
         <div className="relative flex-1 min-w-[200px] max-w-md">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder={`Search ${activeTab}...`}
+            placeholder={`Search by ID, Name, Number... (${totalItems} records)`}
             value={searchQuery}
             onChange={(e) => handleSearch(e.target.value)}
             className="pl-9"
           />
         </div>
         {searchQuery && (
-          <div className="text-sm text-muted-foreground">
-            Found {filteredItems.length} {activeTab}
+          <div className="text-sm text-muted-foreground flex items-center gap-2">
+            Found {displayCount} of {totalItems} {activeTab}
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => handleSearch('')}
+              className="h-7 px-2"
+            >
+              ✕ Clear
+            </Button>
+          </div>
+        )}
+        {totalItems > 0 && (
+          <div className="text-xs text-muted-foreground ml-auto flex items-center gap-2">
+            <span className="font-mono bg-muted px-2 py-0.5 rounded">
+              💡 Try searching by ID (e.g., {
+                activeTab === 'buses' ? buses[0]?.busId || buses[0]?._id?.slice(-8).toUpperCase() || 'BUS-XXXX' :
+                activeTab === 'drivers' ? drivers[0]?.driverId || drivers[0]?._id?.slice(-8).toUpperCase() || 'DRV-XXXX' :
+                routes[0]?.routeId || routes[0]?._id?.slice(-8).toUpperCase() || 'RTE-XXXX'
+              })
+            </span>
           </div>
         )}
       </div>
@@ -979,12 +1021,12 @@ function TransportPage() {
         </div>
       )}
 
-      {/* DataTable */}
-      {!loading && !error && filteredItems.length > 0 && (
+      {/* DataTable with filtered data */}
+      {!loading && !error && currentData.length > 0 && (
         <DataTable
           title={`${activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}`}
-          description={`${filteredItems.length} ${activeTab} found${searchQuery ? ` (filtered from ${activeTab === 'buses' ? buses.length : activeTab === 'drivers' ? drivers.length : routes.length})` : ''}`}
-          data={filteredItems}
+          description={`${currentData.length} ${activeTab} found${searchQuery ? ` (filtered from ${totalItems})` : ''}`}
+          data={currentData}
           columns={getColumns()}
           pageSize={10}
           addLabel={`Add ${activeTab.slice(0, -1)}`}
@@ -993,16 +1035,31 @@ function TransportPage() {
       )}
 
       {/* Empty State */}
-      {!loading && !error && filteredItems.length === 0 && (
+      {!loading && !error && currentData.length === 0 && (
         <div className="flex flex-col items-center justify-center h-64 border-2 border-dashed rounded-lg p-8">
-          <Database className="h-12 w-12 text-muted-foreground mb-4" />
-          <h3 className="text-lg font-semibold mb-2">No {activeTab} Found</h3>
-          <p className="text-sm text-muted-foreground mb-4 text-center max-w-md">
-            There are no {activeTab} in the system yet. Click the "Add {activeTab.slice(0, -1)}" button to add your first.
-          </p>
-          <Button onClick={openAddModal} className="gradient-brand text-white border-0">
-            <Plus className="h-4 w-4 mr-2" /> Add {activeTab.slice(0, -1)}
-          </Button>
+          {searchQuery ? (
+            <>
+              <Search className="h-16 w-16 text-muted-foreground mb-4" />
+              <h3 className="text-lg font-semibold mb-2">No Results Found</h3>
+              <p className="text-sm text-muted-foreground mb-4 text-center max-w-md">
+                No {activeTab} match your search: "{searchQuery}"
+              </p>
+              <Button variant="outline" onClick={() => handleSearch('')}>
+                Clear Search
+              </Button>
+            </>
+          ) : (
+            <>
+              <Database className="h-12 w-12 text-muted-foreground mb-4" />
+              <h3 className="text-lg font-semibold mb-2">No {activeTab} Found</h3>
+              <p className="text-sm text-muted-foreground mb-4 text-center max-w-md">
+                There are no {activeTab} in the system yet. Click the "Add {activeTab.slice(0, -1)}" button to add your first.
+              </p>
+              <Button onClick={openAddModal} className="gradient-brand text-white border-0">
+                <Plus className="h-4 w-4 mr-2" /> Add {activeTab.slice(0, -1)}
+              </Button>
+            </>
+          )}
         </div>
       )}
 

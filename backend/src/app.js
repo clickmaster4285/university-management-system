@@ -19,6 +19,11 @@ import eventRoutes from './routes/event.routes.js';
 import feeRoutes from './routes/fee.routes.js';
 import financeRoutes from './routes/finance.routes.js';
 import hrRoutes from './routes/hr.routes.js';
+import dashboardRoutes from './routes/dashboard.routes.js';
+import notificationRoutes from './routes/notification.routes.js';
+// backend/src/app.js - Add this import
+import settingsRoutes from './routes/settings.routes.js';
+
 // backend/src/app.js - Add this import
 import reportRoutes from './routes/report.routes.js';
 
@@ -246,6 +251,13 @@ app.use('/api/fees', feeRoutes);
 app.use('/api/finance', financeRoutes);
 app.use('/api/hr', hrRoutes);
 app.use('/api/reports', reportRoutes);
+app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/notifications', notificationRoutes);
+app.use('/api/settings', settingsRoutes);
+
+
+
 // 404 Handler - Must be after all routes
 app.use(notFoundHandler);
 

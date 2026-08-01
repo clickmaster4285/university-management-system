@@ -26,7 +26,7 @@ import {
   Database,
   RefreshCcw
 } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { toast } from "sonner";
 import { hrAPI, Employee, Leave } from "@/lib/api/hr";
 
@@ -197,10 +197,61 @@ function HRPage() {
     fetchData();
   }, []);
 
-  // Search handler
+  // Search handler - searches through ID and all fields
   const handleSearch = (query: string) => {
     setSearchQuery(query);
   };
+
+  // Filter employees based on search query
+  const filteredEmployees = useMemo(() => {
+    if (!searchQuery.trim()) return employees;
+    
+    const searchLower = searchQuery.toLowerCase().trim();
+    return employees.filter(employee => {
+      // Search by employee ID
+      const employeeId = (employee.employeeId || '').toLowerCase();
+      const mongoId = (employee._id || '').toLowerCase();
+      const shortId = mongoId.slice(-8);
+      
+      // Search by other fields
+      const firstName = (employee.firstName || '').toLowerCase();
+      const lastName = (employee.lastName || '').toLowerCase();
+      const email = (employee.email || '').toLowerCase();
+      const department = (employee.department || '').toLowerCase();
+      const designation = (employee.designation || '').toLowerCase();
+      const status = (employee.status || '').toLowerCase();
+      const phone = (employee.phone || '').toLowerCase();
+      
+      return employeeId.includes(searchLower) ||
+             mongoId.includes(searchLower) ||
+             shortId.includes(searchLower) ||
+             firstName.includes(searchLower) ||
+             lastName.includes(searchLower) ||
+             email.includes(searchLower) ||
+             department.includes(searchLower) ||
+             designation.includes(searchLower) ||
+             status.includes(searchLower) ||
+             phone.includes(searchLower);
+    });
+  }, [employees, searchQuery]);
+
+  // Filter leaves based on search query
+  const filteredLeaves = useMemo(() => {
+    if (!searchQuery.trim()) return leaves;
+    
+    const searchLower = searchQuery.toLowerCase().trim();
+    return leaves.filter(leave => {
+      const employeeName = (leave.employeeName || '').toLowerCase();
+      const type = (leave.type || '').toLowerCase();
+      const status = (leave.status || '').toLowerCase();
+      const leaveId = (leave.leaveId || '').toLowerCase();
+      
+      return employeeName.includes(searchLower) ||
+             type.includes(searchLower) ||
+             status.includes(searchLower) ||
+             leaveId.includes(searchLower);
+    });
+  }, [leaves, searchQuery]);
 
   // Employee form handlers
   const handleEmployeeInput = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -493,6 +544,13 @@ function HRPage() {
   const onLeave = employees.filter(e => e.status === 'On Leave').length;
   const pendingLeaves = leaves.filter(l => l.status === 'Pending').length;
   const approvedLeaves = leaves.filter(l => l.status === 'Approved').length;
+
+  // Get the data to display based on active tab and search
+  const displayEmployees = activeTab === 'employees' ? filteredEmployees : [];
+  const displayLeaves = activeTab === 'leaves' ? filteredLeaves : [];
+  
+  const displayCount = activeTab === 'employees' ? displayEmployees.length : displayLeaves.length;
+  const totalCount = activeTab === 'employees' ? employees.length : leaves.length;
 
   // Employee columns
   const employeeColumns: Column<Employee>[] = [
@@ -824,7 +882,7 @@ function HRPage() {
         <div className="relative flex-1 min-w-[200px] max-w-md">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder={`Search ${activeTab === 'employees' ? 'employees' : 'leaves'}...`}
+            placeholder={`Search by ID, Name, Email, Department... (${activeTab === 'employees' ? employees.length : leaves.length} records)`}
             value={searchQuery}
             onChange={(e) => handleSearch(e.target.value)}
             className="pl-9"
@@ -832,19 +890,20 @@ function HRPage() {
         </div>
         {searchQuery && (
           <div className="text-sm text-muted-foreground">
-            Found {activeTab === 'employees' 
-              ? employees.filter(e => 
-                  e.firstName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                  e.lastName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                  e.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                  e.department.toLowerCase().includes(searchQuery.toLowerCase())
-                ).length
-              : leaves.filter(l =>
-                  l.employeeName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                  l.type.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                  l.status.toLowerCase().includes(searchQuery.toLowerCase())
-                ).length
-            } results
+            Found {displayCount} of {totalCount} {activeTab === 'employees' ? 'employees' : 'leaves'}
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => handleSearch('')}
+              className="h-7 px-2 ml-2"
+            >
+              ✕ Clear
+            </Button>
+          </div>
+        )}
+        {employees.length > 0 && activeTab === 'employees' && (
+          <div className="text-xs text-muted-foreground ml-auto flex items-center gap-2">
+            <span className="font-mono bg-muted px-2 py-0.5 rounded">💡 Try searching by ID (e.g., {employees[0]?.employeeId || employees[0]?._id?.slice(-8).toUpperCase() || 'EMP-XXXX'})</span>
           </div>
         )}
       </div>
@@ -852,11 +911,11 @@ function HRPage() {
       {/* Data Tables */}
       {activeTab === 'employees' && (
         <>
-          {employees.length > 0 ? (
+          {displayEmployees.length > 0 ? (
             <DataTable
               title="Employees"
-              description={`${employees.length} total employees · ${onLeave} on leave`}
-              data={employees}
+              description={`${displayEmployees.length} employees found${searchQuery ? ` (filtered from ${employees.length})` : ''} · ${onLeave} on leave`}
+              data={displayEmployees}
               columns={employeeColumns}
               searchKeys={["firstName", "lastName", "email", "department", "designation"] as (keyof Employee)[]}
               pageSize={10}
@@ -865,14 +924,29 @@ function HRPage() {
             />
           ) : (
             <div className="flex flex-col items-center justify-center h-64 border-2 border-dashed rounded-lg p-8">
-              <Database className="h-16 w-16 text-muted-foreground mb-4" />
-              <h3 className="text-lg font-semibold mb-2">No Employees Found</h3>
-              <p className="text-sm text-muted-foreground mb-4 text-center max-w-md">
-                Start building your HR database by adding your first employee.
-              </p>
-              <Button onClick={openAddEmployee} className="gradient-brand text-white border-0">
-                <UserPlus className="h-4 w-4 mr-2" /> Add First Employee
-              </Button>
+              {searchQuery ? (
+                <>
+                  <Search className="h-16 w-16 text-muted-foreground mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">No Employees Found</h3>
+                  <p className="text-sm text-muted-foreground mb-4 text-center max-w-md">
+                    No employees match your search: "{searchQuery}"
+                  </p>
+                  <Button variant="outline" onClick={() => handleSearch('')}>
+                    Clear Search
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Database className="h-16 w-16 text-muted-foreground mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">No Employees Found</h3>
+                  <p className="text-sm text-muted-foreground mb-4 text-center max-w-md">
+                    Start building your HR database by adding your first employee.
+                  </p>
+                  <Button onClick={openAddEmployee} className="gradient-brand text-white border-0">
+                    <UserPlus className="h-4 w-4 mr-2" /> Add First Employee
+                  </Button>
+                </>
+              )}
             </div>
           )}
         </>
@@ -880,11 +954,11 @@ function HRPage() {
 
       {activeTab === 'leaves' && (
         <>
-          {leaves.length > 0 ? (
+          {displayLeaves.length > 0 ? (
             <DataTable
               title="Leave Requests"
-              description={`${leaves.length} total requests · ${pendingLeaves} pending · ${approvedLeaves} approved`}
-              data={leaves}
+              description={`${displayLeaves.length} leave requests found${searchQuery ? ` (filtered from ${leaves.length})` : ''} · ${pendingLeaves} pending · ${approvedLeaves} approved`}
+              data={displayLeaves}
               columns={leaveColumns}
               searchKeys={["employeeName", "type", "status"] as (keyof Leave)[]}
               pageSize={10}
@@ -893,17 +967,32 @@ function HRPage() {
             />
           ) : (
             <div className="flex flex-col items-center justify-center h-64 border-2 border-dashed rounded-lg p-8">
-              <Calendar className="h-16 w-16 text-muted-foreground mb-4" />
-              <h3 className="text-lg font-semibold mb-2">No Leave Requests</h3>
-              <p className="text-sm text-muted-foreground mb-4 text-center max-w-md">
-                {employees.length > 0 
-                  ? 'No leave requests have been submitted yet. Click "Request Leave" to create one.'
-                  : 'Add employees first before creating leave requests.'}
-              </p>
-              {employees.length > 0 && (
-                <Button onClick={openAddLeave} variant="outline">
-                  <Calendar className="h-4 w-4 mr-2" /> Request Leave
-                </Button>
+              {searchQuery ? (
+                <>
+                  <Search className="h-16 w-16 text-muted-foreground mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">No Leave Requests Found</h3>
+                  <p className="text-sm text-muted-foreground mb-4 text-center max-w-md">
+                    No leave requests match your search: "{searchQuery}"
+                  </p>
+                  <Button variant="outline" onClick={() => handleSearch('')}>
+                    Clear Search
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Calendar className="h-16 w-16 text-muted-foreground mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">No Leave Requests</h3>
+                  <p className="text-sm text-muted-foreground mb-4 text-center max-w-md">
+                    {employees.length > 0 
+                      ? 'No leave requests have been submitted yet. Click "Request Leave" to create one.'
+                      : 'Add employees first before creating leave requests.'}
+                  </p>
+                  {employees.length > 0 && (
+                    <Button onClick={openAddLeave} variant="outline">
+                      <Calendar className="h-4 w-4 mr-2" /> Request Leave
+                    </Button>
+                  )}
+                </>
               )}
             </div>
           )}
