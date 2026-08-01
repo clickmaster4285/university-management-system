@@ -30,14 +30,19 @@ function LoginPage() {
   const [role, setRole] = useState<Role>("Super Admin");
   const [loading, setLoading] = useState(false);
 
-  const submit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setTimeout(() => {
-      login({ name: role === "Student" ? "Aisha Khan" : "Dr. Ali Raza", email, role });
+
+    try {
+      await login({ email, password });
       toast.success("Welcome back");
       navigate({ to: "/app" });
-    }, 900);
+    } catch (error: any) {
+      toast.error(error?.message || 'Login failed');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (

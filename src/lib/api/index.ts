@@ -1,4 +1,7 @@
 // src/lib/api/index.ts
+export * from './axios';
+export * from './auth';
+export * from './settings';
 export * from './students';
 export * from './teachers';
 export * from './departments';

@@ -15,8 +15,10 @@ router.put('/preferences', settingsController.updatePreferences);
 
 // Campuses
 router.post('/campuses', settingsController.addCampus);
+router.get('/campuses/:campusId', settingsController.getCampusById);
 router.put('/campuses/:campusId', settingsController.updateCampus);
 router.delete('/campuses/:campusId', settingsController.deleteCampus);
+router.patch('/campuses/:campusId/toggle', settingsController.toggleCampusStatus);
 
 // Branding
 router.put('/branding', settingsController.updateBranding);

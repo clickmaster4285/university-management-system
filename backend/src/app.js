@@ -21,6 +21,7 @@ import financeRoutes from './routes/finance.routes.js';
 import hrRoutes from './routes/hr.routes.js';
 import dashboardRoutes from './routes/dashboard.routes.js';
 import notificationRoutes from './routes/notification.routes.js';
+import authRoutes from './routes/auth.routes.js';
 // backend/src/app.js - Add this import
 import settingsRoutes from './routes/settings.routes.js';
 
@@ -255,8 +256,7 @@ app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/settings', settingsRoutes);
-
-
+app.use('/api/auth', authRoutes);
 
 // 404 Handler - Must be after all routes
 app.use(notFoundHandler);

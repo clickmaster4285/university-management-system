@@ -8,6 +8,7 @@ export interface Campus {
   students: number;
   staff: number;
   isActive: boolean;
+  createdAt?: string;
 }
 
 export interface Preferences {
@@ -42,6 +43,8 @@ export interface Settings {
   branding: Branding;
   security: any;
   maintenance: any;
+  updatedAt?: string;
+  createdAt?: string;
 }
 
 export const settingsAPI = {

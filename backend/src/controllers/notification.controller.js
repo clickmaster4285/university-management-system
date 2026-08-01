@@ -58,7 +58,6 @@ const createTransporter = async () => {
 // Send email function with better error handling
 const sendNotificationEmail = async (to, subject, html) => {
   try {
-    // If email is not configured, try to configure it
     if (!emailConfigured || !transporter) {
       console.log('🔄 Configuring email transporter...');
       await createTransporter();
@@ -69,7 +68,10 @@ const sendNotificationEmail = async (to, subject, html) => {
     }
 
     const mailOptions = {
-      from: process.env.EMAIL_USER,
+      from: {
+        name: 'ScholarOS — Office of Student & Staff Communications',
+        address: process.env.EMAIL_USER
+      },
       to: to,
       subject: subject,
       html: html
@@ -85,39 +87,379 @@ const sendNotificationEmail = async (to, subject, html) => {
   }
 };
 
-// Generate email HTML
+// ==================== EMAIL TEMPLATE HELPERS ====================
+
+// The sender identity shown in the email. Falls back to a default office
+// name if the notification doesn't carry a specific sender.
+const getSenderName = (notification) =>
+  notification.senderName ||
+  notification.sender ||
+  notification.createdBy ||
+  'ScholarOS Administration';
+
+// ✅ Minimal Official Notification Email — shows only: From, Title, Message
+// (polished visual treatment: card shadow, monogram avatar, refined type)
 const generateEmailHTML = (notification) => {
+  const senderName = getSenderName(notification);
+  const initials = senderName
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => w[0].toUpperCase())
+    .join('') || 'SA';
+
   return `
     <!DOCTYPE html>
-    <html>
+    <html lang="en">
     <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>ScholarOS Notification</title>
       <style>
-        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-        .header { background: linear-gradient(135deg, #6366f1, #8b5cf6, #ec4899); padding: 30px; text-align: center; border-radius: 12px 12px 0 0; }
-        .header h1 { color: white; margin: 0; font-size: 26px; }
-        .content { background: #f8fafc; padding: 30px; border-radius: 0 0 12px 12px; }
-        .notification-card { background: white; padding: 24px; border-radius: 10px; border-left: 5px solid #6366f1; }
-        .priority-badge { display: inline-block; padding: 4px 14px; border-radius: 20px; font-size: 12px; font-weight: bold; background: #6366f1; color: white; }
-        .footer { margin-top: 20px; text-align: center; color: #94a3b8; font-size: 12px; border-top: 1px solid #e2e8f0; padding-top: 20px; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+          font-family: 'Helvetica Neue', Arial, sans-serif;
+          background: #e9edf3;
+          padding: 40px 16px;
+          -webkit-font-smoothing: antialiased;
+        }
+        .outer {
+          max-width: 560px;
+          margin: 0 auto;
+        }
+
+        /* ---- Top brand strip ---- */
+        .brand-strip {
+          text-align: center;
+          padding-bottom: 22px;
+        }
+        .brand-mark {
+          display: inline-flex;
+          align-items: center;
+          gap: 9px;
+        }
+        .brand-crest {
+          width: 26px;
+          height: 26px;
+          border-radius: 7px;
+          background: linear-gradient(150deg, #1f3a5f 0%, #0e2038 100%);
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+        }
+        .brand-crest span {
+          color: #ffffff;
+          font-size: 12px;
+          font-weight: 700;
+          font-family: Georgia, serif;
+        }
+        .brand-name {
+          font-size: 13px;
+          font-weight: 700;
+          letter-spacing: 1.6px;
+          color: #1f3a5f;
+          text-transform: uppercase;
+        }
+
+        /* ---- Card ---- */
+        .card {
+          background: #ffffff;
+          border-radius: 14px;
+          overflow: hidden;
+          box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04), 0 12px 32px rgba(16, 24, 40, 0.08);
+        }
+
+        .card-header {
+          background: linear-gradient(135deg, #1f3a5f 0%, #16304f 55%, #0e2038 100%);
+          padding: 30px 40px 26px;
+          position: relative;
+        }
+        .card-header::after {
+          content: '';
+          position: absolute;
+          left: 0; right: 0; bottom: -1px;
+          height: 4px;
+          background: linear-gradient(90deg, #c9a24b, #e6c877 50%, #c9a24b);
+        }
+        .header-label {
+          font-size: 10.5px;
+          font-weight: 700;
+          letter-spacing: 1.4px;
+          text-transform: uppercase;
+          color: rgba(255,255,255,0.55);
+          margin-bottom: 12px;
+        }
+        .sender-row {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+        }
+        .avatar {
+          width: 38px;
+          height: 38px;
+          border-radius: 50%;
+          background: rgba(255,255,255,0.12);
+          border: 1px solid rgba(255,255,255,0.25);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 13px;
+          font-weight: 700;
+          color: #ffffff;
+          flex-shrink: 0;
+        }
+        .sender-name {
+          font-size: 16px;
+          font-weight: 700;
+          color: #ffffff;
+          letter-spacing: 0.1px;
+        }
+        .sender-sub {
+          font-size: 11.5px;
+          color: rgba(255,255,255,0.6);
+          margin-top: 1px;
+        }
+
+        .card-body {
+          padding: 38px 40px 36px;
+        }
+        .notification-title {
+          font-family: Georgia, 'Times New Roman', serif;
+          font-size: 23px;
+          font-weight: 700;
+          color: #12213a;
+          line-height: 1.4;
+          margin-bottom: 20px;
+        }
+        .rule {
+          width: 44px;
+          height: 3px;
+          background: #c9a24b;
+          border-radius: 2px;
+          margin-bottom: 22px;
+        }
+        .notification-message {
+          font-size: 15px;
+          color: #3c4758;
+          line-height: 1.85;
+          white-space: pre-line;
+        }
+
+        .card-footer {
+          padding: 18px 40px;
+          background: #f7f8fa;
+          border-top: 1px solid #eef0f3;
+          text-align: center;
+        }
+        .card-footer p {
+          font-size: 11px;
+          color: #97a1af;
+          letter-spacing: 0.2px;
+        }
+
+        .outer-footer {
+          text-align: center;
+          padding-top: 22px;
+        }
+        .outer-footer p {
+          font-size: 11px;
+          color: #97a1af;
+        }
+
+        @media (max-width: 480px) {
+          .card-header, .card-body, .card-footer { padding-left: 24px; padding-right: 24px; }
+          .notification-title { font-size: 20px; }
+        }
+      </style>
+    </head>
+    <body>
+      <div class="outer">
+
+        <div class="brand-strip">
+          <div class="brand-mark">
+            <span class="brand-crest"><span>SO</span></span>
+            <span class="brand-name">ScholarOS</span>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <div class="header-label">Notification From</div>
+            <div class="sender-row">
+              <div class="avatar">${initials}</div>
+              <div>
+                <div class="sender-name">${senderName}</div>
+                <div class="sender-sub">ScholarOS Notification System</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card-body">
+            <h1 class="notification-title">${notification.title}</h1>
+            <div class="rule"></div>
+            <div class="notification-message">${notification.message}</div>
+          </div>
+
+          <div class="card-footer">
+            <p>This is an official notification. Please do not reply to this email.</p>
+          </div>
+        </div>
+
+        <div class="outer-footer">
+          <p>&copy; ${new Date().getFullYear()} ScholarOS. All rights reserved.</p>
+        </div>
+
+      </div>
+    </body>
+    </html>
+  `;
+};
+
+// ✅ Official-Style Test / System Verification Email
+const generateTestEmailHTML = () => {
+  return `
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>ScholarOS System Verification</title>
+      <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+          font-family: Georgia, 'Times New Roman', serif;
+          line-height: 1.65;
+          color: #1c1c1c;
+          background-color: #eef0f3;
+          padding: 24px 16px;
+        }
+        .container {
+          max-width: 600px;
+          margin: 0 auto;
+          background: #ffffff;
+          border: 1px solid #d7dbe0;
+        }
+        .letterhead {
+          border-bottom: 3px solid #1f3a5f;
+          padding: 28px 36px 20px;
+          display: flex;
+          align-items: center;
+          gap: 16px;
+        }
+        .seal {
+          width: 54px;
+          height: 54px;
+          border-radius: 50%;
+          border: 2px solid #1f3a5f;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-weight: 700;
+          font-size: 18px;
+          color: #1f3a5f;
+          flex-shrink: 0;
+        }
+        .letterhead-text .institution {
+          font-size: 19px;
+          font-weight: 700;
+          color: #1f3a5f;
+        }
+        .letterhead-text .office {
+          font-size: 12.5px;
+          color: #5b6b73;
+          margin-top: 2px;
+          text-transform: uppercase;
+          letter-spacing: 0.6px;
+        }
+        .content { padding: 32px 36px 28px; }
+        .status-line {
+          font-size: 11px;
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: 0.8px;
+          color: #1f6f4c;
+          margin-bottom: 6px;
+        }
+        h1 {
+          font-size: 20px;
+          font-weight: 700;
+          color: #1c1c1c;
+          margin-bottom: 14px;
+          border-left: 4px solid #1f6f4c;
+          padding-left: 14px;
+        }
+        p.body-text {
+          font-size: 14.5px;
+          color: #2a2a2a;
+          margin-bottom: 20px;
+        }
+        table.details-table {
+          width: 100%;
+          border-collapse: collapse;
+          font-size: 13px;
+          margin-bottom: 8px;
+        }
+        table.details-table td {
+          padding: 8px 0;
+          border-bottom: 1px solid #e2e5ea;
+        }
+        table.details-table td.label {
+          color: #5b6b73;
+          width: 160px;
+          text-transform: uppercase;
+          font-size: 11px;
+          letter-spacing: 0.4px;
+        }
+        table.details-table td.value {
+          color: #1c1c1c;
+          font-weight: 600;
+        }
+        .footer {
+          background: #f6f7f9;
+          padding: 20px 36px;
+          border-top: 1px solid #e2e5ea;
+        }
+        .footer p {
+          font-size: 11px;
+          color: #7c8790;
+          line-height: 1.6;
+        }
       </style>
     </head>
     <body>
       <div class="container">
-        <div class="header">
-          <h1>📢 ScholarOS Notification</h1>
+        <div class="letterhead">
+          <div class="seal">SO</div>
+          <div class="letterhead-text">
+            <div class="institution">ScholarOS</div>
+            <div class="office">System Administration</div>
+          </div>
         </div>
         <div class="content">
-          <div class="notification-card">
-            <span class="priority-badge">${notification.priority.toUpperCase()}</span>
-            <h2>${notification.title}</h2>
-            <p>${notification.message}</p>
-            <p><strong>Category:</strong> ${notification.category}</p>
-            <p><strong>Sent:</strong> ${new Date().toLocaleString()}</p>
-          </div>
-          <div class="footer">
-            <p>This is an automated notification from ScholarOS.</p>
-          </div>
+          <div class="status-line">System Verification</div>
+          <h1>Notification Delivery Test Successful</h1>
+          <p class="body-text">
+            This message confirms that the ScholarOS notification delivery system is
+            correctly configured and operational for this institution's mailbox.
+          </p>
+          <table class="details-table">
+            <tr>
+              <td class="label">Verified On</td>
+              <td class="value">${new Date().toLocaleString()}</td>
+            </tr>
+            <tr>
+              <td class="label">Recipient</td>
+              <td class="value">{recipient}</td>
+            </tr>
+            <tr>
+              <td class="label">System</td>
+              <td class="value">ScholarOS Notification Service</td>
+            </tr>
+          </table>
+        </div>
+        <div class="footer">
+          <p>This is an automated system verification message from ScholarOS. No action is required.</p>
+          <p style="margin-top: 4px;">&copy; ${new Date().getFullYear()} ScholarOS. All rights reserved.</p>
         </div>
       </div>
     </body>
@@ -146,7 +488,7 @@ const processNotificationEmailDelivery = async (notificationId, recipients, titl
       try {
         const result = await sendNotificationEmail(
           recipient,
-          `📢 ${title} - ScholarOS Notification`,
+          title,
           emailHTML
         );
 
@@ -270,7 +612,7 @@ export const updateNotification = async (req, res) => {
   }
 };
 
-// ✅ FIXED: Create and send notification
+// Create and send notification
 export const createNotification = async (req, res) => {
   try {
     const {
@@ -281,7 +623,8 @@ export const createNotification = async (req, res) => {
       recipients = [],
       priority = 'medium',
       category = 'general',
-      sendEmail: shouldSendEmail = true
+      sendEmail: shouldSendEmail = true,
+      senderName = req.user?.name || 'ScholarOS Administration'
     } = req.body;
 
     const normalizedRecipients = Array.isArray(recipients)
@@ -292,7 +635,6 @@ export const createNotification = async (req, res) => {
 
     console.log('📝 Creating notification:', { title, message, normalizedRecipients, shouldSendEmail });
 
-    // Create notification - always save first
     const notification = new Notification({
       title,
       message,
@@ -302,6 +644,7 @@ export const createNotification = async (req, res) => {
       recipientCount: normalizedRecipients.length || 1,
       priority,
       category,
+      senderName,
       status: 'pending'
     });
 
@@ -311,7 +654,6 @@ export const createNotification = async (req, res) => {
     let emailResult = null;
     let emailError = null;
 
-    // Queue email delivery in the background so the request returns immediately
     if (shouldSendEmail && (channel === 'email' || channel === 'all')) {
       const emailRecipients = normalizedRecipients.length > 0
         ? normalizedRecipients
@@ -335,7 +677,6 @@ export const createNotification = async (req, res) => {
       console.log('✅ Notification marked as sent (email not sent)');
     }
 
-    // ✅ Always return success quickly, even if email delivery is still processing
     res.status(201).json({
       success: true,
       data: notification,
@@ -461,7 +802,6 @@ export const sendTestEmail = async (req, res) => {
 
     console.log(`📧 Sending test email to: ${testEmail}`);
 
-    // Configure email if not already
     if (!emailConfigured || !transporter) {
       await createTransporter();
     }
@@ -474,22 +814,20 @@ export const sendTestEmail = async (req, res) => {
       });
     }
 
+    // Replace recipient placeholder in template
+    let emailHTML = generateTestEmailHTML();
+    emailHTML = emailHTML.replace(/\{recipient\}/g, testEmail);
+
     const result = await sendNotificationEmail(
       testEmail,
-      '✅ ScholarOS Test Email',
-      `
-        <h1>✅ Test Email</h1>
-        <p>This is a test email from ScholarOS.</p>
-        <p><strong>Time:</strong> ${new Date().toLocaleString()}</p>
-        <p><strong>To:</strong> ${testEmail}</p>
-        <p>If you received this, your email is working!</p>
-      `
+      'ScholarOS — Notification System Verification',
+      emailHTML
     );
 
     if (result.success) {
       res.status(200).json({
         success: true,
-        message: `Test email sent to ${testEmail}`
+        message: `Test email sent successfully to ${testEmail}`
       });
     } else {
       res.status(500).json({

@@ -5,6 +5,10 @@ import Settings from '../models/Settings.js';
 export const getSettings = async (req, res) => {
   try {
     const settings = await Settings.getSettings();
+    console.log('📊 Settings fetched:', {
+      universityName: settings.universityName,
+      campusesCount: settings.campuses?.length || 0
+    });
     res.status(200).json({
       success: true,
       data: settings
@@ -37,6 +41,8 @@ export const updateProfile = async (req, res) => {
     settings.updatedAt = new Date();
 
     await settings.save();
+
+    console.log('✅ Profile updated successfully');
 
     res.status(200).json({
       success: true,
@@ -87,39 +93,62 @@ export const updatePreferences = async (req, res) => {
   }
 };
 
-// Add campus
+// ✅ FIXED: Add campus with proper debugging
 export const addCampus = async (req, res) => {
   try {
+    console.log('📝 Adding campus with data:', req.body);
+    
     const settings = await Settings.getSettings();
     const { name, location, students, staff } = req.body;
 
-    if (!name) {
+    // Validate required fields
+    if (!name || name.trim() === '') {
       return res.status(400).json({
         success: false,
         message: 'Campus name is required'
       });
     }
 
-    settings.campuses.push({
-      name,
-      location: location || '',
-      students: students || 0,
-      staff: staff || 0,
-      isActive: true
-    });
+    // Check for duplicate campus name
+    const duplicateCampus = settings.campuses.find(
+      c => c.name.toLowerCase() === name.trim().toLowerCase()
+    );
+    
+    if (duplicateCampus) {
+      return res.status(409).json({
+        success: false,
+        message: `Campus "${name}" already exists. Please use a different name.`
+      });
+    }
 
+    // Create new campus
+    const newCampus = {
+      name: name.trim(),
+      location: location?.trim() || '',
+      students: Number(students) || 0,
+      staff: Number(staff) || 0,
+      isActive: true,
+      createdAt: new Date()
+    };
+
+    // ✅ Push to campuses array
+    settings.campuses.push(newCampus);
     settings.lastUpdatedBy = req.user?.id || null;
     settings.updatedAt = new Date();
 
+    // ✅ Save the settings document
     await settings.save();
+
+    console.log(`✅ Campus "${name}" added successfully`);
+    console.log('📊 Total campuses now:', settings.campuses.length);
 
     res.status(201).json({
       success: true,
       data: settings,
-      message: 'Campus added successfully'
+      message: `Campus "${name}" added successfully`
     });
   } catch (error) {
-    console.error('Error adding campus:', error);
+    console.error('❌ Error adding campus:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to add campus',
@@ -128,13 +157,14 @@ export const addCampus = async (req, res) => {
   }
 };
 
-// Update campus
+// ✅ FIXED: Update campus
 export const updateCampus = async (req, res) => {
   try {
     const settings = await Settings.getSettings();
     const { campusId } = req.params;
     const { name, location, students, staff, isActive } = req.body;
 
+    // Find campus by _id
     const campusIndex = settings.campuses.findIndex(c => c._id.toString() === campusId);
     if (campusIndex === -1) {
       return res.status(404).json({
@@ -143,10 +173,25 @@ export const updateCampus = async (req, res) => {
       });
     }
 
-    if (name) settings.campuses[campusIndex].name = name;
-    if (location !== undefined) settings.campuses[campusIndex].location = location;
-    if (students !== undefined) settings.campuses[campusIndex].students = students;
-    if (staff !== undefined) settings.campuses[campusIndex].staff = staff;
+    // Check for duplicate name (excluding the current campus)
+    if (name && name.trim() !== '') {
+      const duplicateCampus = settings.campuses.find(
+        c => c.name.toLowerCase() === name.trim().toLowerCase() && 
+             c._id.toString() !== campusId
+      );
+      if (duplicateCampus) {
+        return res.status(409).json({
+          success: false,
+          message: `Campus "${name}" already exists. Please use a different name.`
+        });
+      }
+      settings.campuses[campusIndex].name = name.trim();
+    }
+
+    // Update fields if provided
+    if (location !== undefined) settings.campuses[campusIndex].location = location?.trim() || '';
+    if (students !== undefined) settings.campuses[campusIndex].students = Number(students) || 0;
+    if (staff !== undefined) settings.campuses[campusIndex].staff = Number(staff) || 0;
     if (isActive !== undefined) settings.campuses[campusIndex].isActive = isActive;
 
     settings.lastUpdatedBy = req.user?.id || null;
@@ -154,10 +199,12 @@ export const updateCampus = async (req, res) => {
 
     await settings.save();
 
+    console.log(`✅ Campus "${settings.campuses[campusIndex].name}" updated successfully`);
+
     res.status(200).json({
       success: true,
       data: settings,
-      message: 'Campus updated successfully'
+      message: `Campus updated successfully`
     });
   } catch (error) {
     console.error('Error updating campus:', error);
@@ -183,22 +230,91 @@ export const deleteCampus = async (req, res) => {
       });
     }
 
+    const campusName = settings.campuses[campusIndex].name;
     settings.campuses.splice(campusIndex, 1);
     settings.lastUpdatedBy = req.user?.id || null;
     settings.updatedAt = new Date();
 
     await settings.save();
 
+    console.log(`🗑️ Campus "${campusName}" deleted successfully`);
+
     res.status(200).json({
       success: true,
       data: settings,
-      message: 'Campus deleted successfully'
+      message: `Campus "${campusName}" deleted successfully`
     });
   } catch (error) {
     console.error('Error deleting campus:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to delete campus',
+      error: error.message
+    });
+  }
+};
+
+// Get single campus by ID
+export const getCampusById = async (req, res) => {
+  try {
+    const settings = await Settings.getSettings();
+    const { campusId } = req.params;
+
+    const campus = settings.campuses.find(c => c._id.toString() === campusId);
+    if (!campus) {
+      return res.status(404).json({
+        success: false,
+        message: 'Campus not found'
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: campus
+    });
+  } catch (error) {
+    console.error('Error fetching campus:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch campus',
+      error: error.message
+    });
+  }
+};
+
+// Toggle campus active status
+export const toggleCampusStatus = async (req, res) => {
+  try {
+    const settings = await Settings.getSettings();
+    const { campusId } = req.params;
+
+    const campusIndex = settings.campuses.findIndex(c => c._id.toString() === campusId);
+    if (campusIndex === -1) {
+      return res.status(404).json({
+        success: false,
+        message: 'Campus not found'
+      });
+    }
+
+    settings.campuses[campusIndex].isActive = !settings.campuses[campusIndex].isActive;
+    settings.lastUpdatedBy = req.user?.id || null;
+    settings.updatedAt = new Date();
+
+    await settings.save();
+
+    const status = settings.campuses[campusIndex].isActive ? 'activated' : 'deactivated';
+    console.log(`✅ Campus "${settings.campuses[campusIndex].name}" ${status}`);
+
+    res.status(200).json({
+      success: true,
+      data: settings,
+      message: `Campus ${status} successfully`
+    });
+  } catch (error) {
+    console.error('Error toggling campus status:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to toggle campus status',
       error: error.message
     });
   }

@@ -44,51 +44,43 @@ const settingsSchema = new mongoose.Schema({
 
   // Preferences
   preferences: {
-    darkMode: {
-      type: Boolean,
-      default: false
-    },
-    emailDigests: {
-      type: Boolean,
-      default: true
-    },
-    publicPortal: {
-      type: Boolean,
-      default: false
-    },
-    aiInsights: {
-      type: Boolean,
-      default: true
-    },
-    faceRecognitionAttendance: {
-      type: Boolean,
-      default: false
-    }
+    darkMode: { type: Boolean, default: false },
+    emailDigests: { type: Boolean, default: true },
+    publicPortal: { type: Boolean, default: false },
+    aiInsights: { type: Boolean, default: true },
+    faceRecognitionAttendance: { type: Boolean, default: false }
   },
 
-  // Campuses
-  campuses: [{
-    name: {
-      type: String,
-      required: true
-    },
-    location: {
-      type: String,
-      default: ''
-    },
-    students: {
-      type: Number,
-      default: 0
-    },
-    staff: {
-      type: Number,
-      default: 0
-    },
-    isActive: {
-      type: Boolean,
-      default: true
-    }
-  }],
+  // ✅ Campuses - Make sure this is defined correctly
+  campuses: {
+    type: [{
+      name: {
+        type: String,
+        required: true
+      },
+      location: {
+        type: String,
+        default: ''
+      },
+      students: {
+        type: Number,
+        default: 0
+      },
+      staff: {
+        type: Number,
+        default: 0
+      },
+      isActive: {
+        type: Boolean,
+        default: true
+      },
+      createdAt: {
+        type: Date,
+        default: Date.now
+      }
+    }],
+    default: []
+  },
 
   // Integrations
   integrations: {
@@ -132,38 +124,17 @@ const settingsSchema = new mongoose.Schema({
 
   // Branding
   branding: {
-    primaryColor: {
-      type: String,
-      default: '#6366f1'
-    },
-    secondaryColor: {
-      type: String,
-      default: '#8b5cf6'
-    },
-    accentColor: {
-      type: String,
-      default: '#ec4899'
-    },
-    fontFamily: {
-      type: String,
-      default: 'Inter'
-    }
+    primaryColor: { type: String, default: '#6366f1' },
+    secondaryColor: { type: String, default: '#8b5cf6' },
+    accentColor: { type: String, default: '#ec4899' },
+    fontFamily: { type: String, default: 'Inter' }
   },
 
   // Security
   security: {
-    sessionTimeout: {
-      type: Number,
-      default: 60
-    },
-    maxLoginAttempts: {
-      type: Number,
-      default: 5
-    },
-    twoFactorAuth: {
-      type: Boolean,
-      default: false
-    },
+    sessionTimeout: { type: Number, default: 60 },
+    maxLoginAttempts: { type: Number, default: 5 },
+    twoFactorAuth: { type: Boolean, default: false },
     passwordPolicy: {
       type: Object,
       default: {
@@ -178,17 +149,9 @@ const settingsSchema = new mongoose.Schema({
 
   // Maintenance
   maintenance: {
-    isEnabled: {
-      type: Boolean,
-      default: false
-    },
-    message: {
-      type: String,
-      default: 'We are currently performing maintenance. Please check back later.'
-    },
-    scheduledAt: {
-      type: Date
-    }
+    isEnabled: { type: Boolean, default: false },
+    message: { type: String, default: 'We are currently performing maintenance. Please check back later.' },
+    scheduledAt: { type: Date }
   },
 
   // Audit

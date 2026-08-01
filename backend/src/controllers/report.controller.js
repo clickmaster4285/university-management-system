@@ -9,6 +9,34 @@ import Employee from '../models/Employee.js';
 import Leave from '../models/Leave.js';
 import mongoose from 'mongoose';
 
+// Helper: derive a readable name from an email local-part
+const deriveNameFromEmail = (email) => {
+  if (!email || typeof email !== 'string') return 'N/A';
+  const local = email.split('@')[0] || '';
+  if (!local) return 'N/A';
+  const pretty = local.replace(/[._\-]+/g, ' ').split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+  return pretty || 'N/A';
+};
+
+// Helper: get display name for a person-like object (student/employee/teacher)
+const getDisplayNameForRecord = (rec) => {
+  if (!rec) return 'N/A';
+  // Prefer explicit name fields
+  if (rec.name && typeof rec.name === 'string' && rec.name.trim() && rec.name !== 'N/A' && rec.name !== 'undefined undefined' && rec.name !== 'undefined') {
+    return rec.name.trim();
+  }
+  // Employee model uses firstName/lastName
+  if (rec.firstName || rec.lastName) {
+    const first = (rec.firstName || '').trim();
+    const last = (rec.lastName || '').trim();
+    const combined = `${first} ${last}`.trim();
+    if (combined) return combined;
+  }
+  // Try email-derived fallback
+  if (rec.email) return deriveNameFromEmail(rec.email);
+  return 'N/A';
+};
+
 // ==================== REPORT GENERATION FUNCTIONS ====================
 
 // Helper: Generate student report - FIXED for your Student model
@@ -289,7 +317,7 @@ const generateHRReport = async (params = {}) => {
     },
     employees: employees.map(e => ({
       id: e._id,
-      name: e.name || 'N/A',
+      name: getDisplayNameForRecord(e),
       department: e.department || '',
       designation: e.designation || '',
       status: e.status || '',
@@ -569,11 +597,30 @@ export const exportCSV = async (req, res) => {
     const data = report.data;
     
     if (data && data.students && data.students.length > 0) {
-      // Student report - using 'name' field
+      // Student report - prefer valid 'name', fallback to email-derived name
       const headers = ['Name', 'Email', 'Department', 'Program', 'Status'];
       csvData = headers.join(',') + '\n';
+
+      const deriveNameFromEmail = (email) => {
+        if (!email || typeof email !== 'string') return 'N/A';
+        const local = email.split('@')[0] || '';
+        if (!local) return 'N/A';
+        const pretty = local.replace(/[._\-]+/g, ' ').split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+        return pretty || 'N/A';
+      };
+
       data.students.forEach((s) => {
-        const name = s.name || 'N/A';
+        let name = 'N/A';
+        if (s.name && typeof s.name === 'string') {
+          const n = s.name.trim();
+          if (n && n !== 'N/A' && n !== 'undefined undefined' && n !== 'undefined') {
+            name = n;
+          }
+        }
+        if (name === 'N/A') {
+          name = deriveNameFromEmail(s.email);
+        }
+
         csvData += `"${name}","${s.email || ''}","${s.department || ''}","${s.program || ''}","${s.status || ''}"\n`;
       });
     } else if (data && data.teachers && data.teachers.length > 0) {
@@ -598,8 +645,10 @@ export const exportCSV = async (req, res) => {
       const headers = ['Name', 'Department', 'Designation', 'Status', 'Salary'];
       csvData = headers.join(',') + '\n';
       data.employees.forEach((e) => {
-        csvData += `"${e.name || 'N/A'}","${e.department || ''}","${e.designation || ''}","${e.status || ''}","${e.salary || 0}"\n`;
-      });
+          // e may be a plain object coming from stored report.data; try to use firstName/lastName/email fallbacks
+          const name = getDisplayNameForRecord(e);
+          csvData += `"${name}","${e.department || ''}","${e.designation || ''}","${e.status || ''}","${e.salary || 0}"\n`;
+        });
     } else {
       return res.status(400).json({
         success: false,

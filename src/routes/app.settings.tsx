@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { 
   QrCode, 
@@ -22,11 +23,24 @@ import {
   X,
   Save,
   Pencil,
-  Trash2
+  Trash2,
+  // ✅ Remove User from here since it conflicts with the type
+  // User,  // ← REMOVE THIS
+  Mail,
+  Phone,
+  MapPin,
+  Building2,
+  UserCog,
+  Shield,
+  Key,
+  Camera,
+  User as UserIcon  // ✅ Import User as UserIcon
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { settingsAPI, Settings, Campus } from "@/lib/api/settings";
+// ✅ Import User type from auth API
+import { authAPI, User } from "@/lib/api/auth";
 
 export const Route = createFileRoute("/app/settings")({
   head: () => ({
@@ -42,6 +56,7 @@ export const Route = createFileRoute("/app/settings")({
 
 function SettingsPage() {
   const [settings, setSettings] = useState<Settings | null>(null);
+  const [adminProfile, setAdminProfile] = useState<User | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState<boolean>(false);
@@ -56,16 +71,23 @@ function SettingsPage() {
     staff: 0
   });
 
-  // Profile form state
-  const [profileForm, setProfileForm] = useState({
-    universityName: '',
-    shortCode: '',
-    contactEmail: '',
+  // Admin Profile form state
+  const [adminForm, setAdminForm] = useState({
+    name: '',
+    email: '',
     phone: '',
-    currency: 'PKR',
-    language: 'en',
-    address: '',
-    website: ''
+    department: '',
+    designation: '',
+    bio: '',
+    location: '',
+    profileImage: ''
+  });
+
+  // Password change state
+  const [passwordForm, setPasswordForm] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
   });
 
   // Preferences state
@@ -82,23 +104,16 @@ function SettingsPage() {
       setLoading(true);
       setError(null);
       
-      const response = await settingsAPI.getAll();
-      if (response.success) {
-        setSettings(response.data);
+      const [settingsRes, adminRes] = await Promise.all([
+        settingsAPI.getAll(),
+        authAPI.getProfile()
+      ]);
+
+      if (settingsRes.success) {
+        setSettings(settingsRes.data);
         
         // Update form states
-        const data = response.data;
-        setProfileForm({
-          universityName: data.universityName || '',
-          shortCode: data.shortCode || '',
-          contactEmail: data.contactEmail || '',
-          phone: data.phone || '',
-          currency: data.currency || 'PKR',
-          language: data.language || 'en',
-          address: data.address || '',
-          website: data.website || ''
-        });
-        
+        const data = settingsRes.data;
         setPreferences({
           darkMode: data.preferences?.darkMode || false,
           emailDigests: data.preferences?.emailDigests || true,
@@ -107,10 +122,25 @@ function SettingsPage() {
           faceRecognitionAttendance: data.preferences?.faceRecognitionAttendance || false
         });
       }
+
+      if (adminRes.success) {
+        setAdminProfile(adminRes.data);
+        const admin = adminRes.data;
+        setAdminForm({
+          name: admin.name || '',
+          email: admin.email || '',
+          phone: admin.phone || '',
+          department: admin.department || '',
+          designation: admin.designation || '',
+          bio: admin.bio || '',
+          location: admin.location || '',
+          profileImage: admin.profileImage || ''
+        });
+      }
     } catch (error: any) {
-      console.error('Failed to fetch settings:', error);
-      setError(error.message || 'Failed to load settings');
-      toast.error('Failed to load settings');
+      console.error('Failed to fetch data:', error);
+      setError(error.message || 'Failed to load data');
+      toast.error('Failed to load data');
     } finally {
       setLoading(false);
     }
@@ -120,15 +150,21 @@ function SettingsPage() {
     fetchSettings();
   }, []);
 
-  // Handle profile input change
-  const handleProfileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Handle admin profile input change
+  const handleAdminInput = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setProfileForm(prev => ({ ...prev, [name]: value }));
+    setAdminForm(prev => ({ ...prev, [name]: value }));
+  };
+
+  // Handle password input change
+  const handlePasswordInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setPasswordForm(prev => ({ ...prev, [name]: value }));
   };
 
   // Handle profile select change
   const handleProfileSelectChange = (name: string, value: string) => {
-    setProfileForm(prev => ({ ...prev, [name]: value }));
+    setAdminForm(prev => ({ ...prev, [name]: value }));
   };
 
   // Handle preference toggle
@@ -145,17 +181,51 @@ function SettingsPage() {
     }));
   };
 
-  // Save profile
-  const saveProfile = async () => {
+  // Save admin profile
+  const saveAdminProfile = async () => {
     try {
       setSaving(true);
-      const response = await settingsAPI.updateProfile(profileForm);
+      const response = await authAPI.updateProfile(adminForm);
       if (response.success) {
         toast.success('Profile updated successfully!');
         await fetchSettings();
       }
     } catch (error: any) {
       toast.error(error.message || 'Failed to update profile');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Change password
+  const changePassword = async () => {
+    try {
+      if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+        toast.error('New passwords do not match');
+        return;
+      }
+
+      if (passwordForm.newPassword.length < 6) {
+        toast.error('Password must be at least 6 characters');
+        return;
+      }
+
+      setSaving(true);
+      const response = await authAPI.changePassword({
+        currentPassword: passwordForm.currentPassword,
+        newPassword: passwordForm.newPassword
+      });
+      
+      if (response.success) {
+        toast.success('Password changed successfully!');
+        setPasswordForm({
+          currentPassword: '',
+          newPassword: '',
+          confirmPassword: ''
+        });
+      }
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to change password');
     } finally {
       setSaving(false);
     }
@@ -245,6 +315,12 @@ function SettingsPage() {
   // ✅ Get campuses with fallback to empty array
   const campuses = settings?.campuses || [];
 
+  // Get initials for avatar
+  const getInitials = (name: string) => {
+    if (!name) return 'A';
+    return name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
+  };
+
   if (loading) {
     return (
       <AppShell title="Settings" subtitle="Loading settings...">
@@ -276,7 +352,7 @@ function SettingsPage() {
   return (
     <AppShell 
       title="Settings" 
-      subtitle="Configure your university operating system"
+      subtitle="Manage your profile and system settings"
       actions={
         <Button variant="outline" onClick={fetchSettings} disabled={loading}>
           <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
@@ -284,100 +360,156 @@ function SettingsPage() {
       }
     >
       <div className="grid lg:grid-cols-3 gap-4">
-        {/* University Profile */}
+        {/* Admin Profile */}
         <Card className="glass lg:col-span-2">
           <CardHeader>
-            <CardTitle>University profile</CardTitle>
-            <CardDescription>Basic information shown across all portals</CardDescription>
+            <div className="flex items-center gap-4">
+              <Avatar className="h-16 w-16">
+                <AvatarImage src={adminForm.profileImage} />
+                <AvatarFallback className="text-lg gradient-brand text-white">
+                  {getInitials(adminForm.name)}
+                </AvatarFallback>
+              </Avatar>
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <UserCog className="h-5 w-5 text-primary" />
+                  Admin Profile
+                </CardTitle>
+                <CardDescription>Manage your personal information and account settings</CardDescription>
+              </div>
+            </div>
           </CardHeader>
-          <CardContent className="grid md:grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <Label>University name</Label>
-              <Input 
-                name="universityName"
-                value={profileForm.universityName} 
-                onChange={handleProfileChange}
-              />
+          <CardContent className="space-y-4">
+            <div className="grid md:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label>Full Name *</Label>
+                <Input 
+                  name="name"
+                  value={adminForm.name} 
+                  onChange={handleAdminInput}
+                  placeholder="Enter your full name"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Email *</Label>
+                <Input 
+                  name="email"
+                  type="email"
+                  value={adminForm.email} 
+                  onChange={handleAdminInput}
+                  placeholder="admin@scholaros.edu"
+                  disabled
+                />
+                <p className="text-xs text-muted-foreground">Email cannot be changed</p>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Phone</Label>
+                <Input 
+                  name="phone"
+                  value={adminForm.phone} 
+                  onChange={handleAdminInput}
+                  placeholder="+92 300 1234567"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Department</Label>
+                <Input 
+                  name="department"
+                  value={adminForm.department} 
+                  onChange={handleAdminInput}
+                  placeholder="e.g., Administration"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Designation</Label>
+                <Input 
+                  name="designation"
+                  value={adminForm.designation} 
+                  onChange={handleAdminInput}
+                  placeholder="e.g., System Administrator"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Location</Label>
+                <Input 
+                  name="location"
+                  value={adminForm.location} 
+                  onChange={handleAdminInput}
+                  placeholder="e.g., Islamabad, Pakistan"
+                />
+              </div>
+              <div className="md:col-span-2 space-y-1.5">
+                <Label>Bio</Label>
+                <textarea
+                  name="bio"
+                  value={adminForm.bio}
+                  onChange={handleAdminInput}
+                  className="w-full border rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary min-h-[80px]"
+                  placeholder="Tell us about yourself..."
+                />
+              </div>
             </div>
-            <div className="space-y-1.5">
-              <Label>Short code</Label>
-              <Input 
-                name="shortCode"
-                value={profileForm.shortCode} 
-                onChange={handleProfileChange}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Contact email</Label>
-              <Input 
-                name="contactEmail"
-                type="email"
-                value={profileForm.contactEmail} 
-                onChange={handleProfileChange}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Phone</Label>
-              <Input 
-                name="phone"
-                value={profileForm.phone} 
-                onChange={handleProfileChange}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Address</Label>
-              <Input 
-                name="address"
-                value={profileForm.address} 
-                onChange={handleProfileChange}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Website</Label>
-              <Input 
-                name="website"
-                value={profileForm.website} 
-                onChange={handleProfileChange}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Currency</Label>
-              <Select 
-                value={profileForm.currency} 
-                onValueChange={(val) => handleProfileSelectChange('currency', val)}
-              >
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="PKR">PKR — Pakistani Rupee</SelectItem>
-                  <SelectItem value="USD">USD — US Dollar</SelectItem>
-                  <SelectItem value="GBP">GBP — Pound Sterling</SelectItem>
-                  <SelectItem value="EUR">EUR — Euro</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
-              <Label>Language</Label>
-              <Select 
-                value={profileForm.language} 
-                onValueChange={(val) => handleProfileSelectChange('language', val)}
-              >
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="en">English</SelectItem>
-                  <SelectItem value="ur">اردو (Urdu)</SelectItem>
-                  <SelectItem value="ar">العربية (Arabic)</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="md:col-span-2 flex justify-end gap-2">
+            <div className="flex justify-end">
               <Button 
                 className="gradient-brand text-white border-0" 
-                onClick={saveProfile}
+                onClick={saveAdminProfile}
                 disabled={saving}
               >
                 {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
-                Save changes
+                Update Profile
               </Button>
+            </div>
+
+            <Separator />
+
+            {/* Change Password Section */}
+            <div>
+              <h3 className="text-sm font-semibold flex items-center gap-2 mb-3">
+                <Key className="h-4 w-4 text-primary" />
+                Change Password
+              </h3>
+              <div className="grid md:grid-cols-3 gap-4">
+                <div className="space-y-1.5">
+                  <Label>Current Password</Label>
+                  <Input 
+                    name="currentPassword"
+                    type="password"
+                    value={passwordForm.currentPassword} 
+                    onChange={handlePasswordInput}
+                    placeholder="Enter current password"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>New Password</Label>
+                  <Input 
+                    name="newPassword"
+                    type="password"
+                    value={passwordForm.newPassword} 
+                    onChange={handlePasswordInput}
+                    placeholder="Enter new password"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Confirm Password</Label>
+                  <Input 
+                    name="confirmPassword"
+                    type="password"
+                    value={passwordForm.confirmPassword} 
+                    onChange={handlePasswordInput}
+                    placeholder="Confirm new password"
+                  />
+                </div>
+              </div>
+              <div className="flex justify-end mt-3">
+                <Button 
+                  variant="outline" 
+                  onClick={changePassword}
+                  disabled={saving || !passwordForm.currentPassword || !passwordForm.newPassword}
+                >
+                  {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Key className="h-4 w-4 mr-2" />}
+                  Change Password
+                </Button>
+              </div>
             </div>
           </CardContent>
         </Card>

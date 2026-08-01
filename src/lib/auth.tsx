@@ -1,219 +1,211 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+// src/lib/auth.tsx
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { authAPI, User } from './api/auth';
+import { toast } from 'sonner';
 
-export type Role =
-  | "Super Admin" | "University Admin" | "Principal" | "Vice Chancellor"
-  | "Dean" | "Head of Department" | "Teacher" | "Student" | "Receptionist"
-  | "Admission Officer" | "Finance Officer" | "HR" | "Library Staff"
-  | "Transport Manager" | "Hostel Manager" | "Parents";
+export type Role = 'Super Admin' | 'Admin' | 'Teacher' | 'Student' | 'Student Affairs' | 'Finance' | 'Transport' | 'Library' | 'HR';
 
-export const ROLES: Role[] = [
-  "Super Admin","University Admin","Principal","Vice Chancellor","Dean",
-  "Head of Department","Teacher","Student","Receptionist","Admission Officer",
-  "Finance Officer","HR","Library Staff","Transport Manager","Hostel Manager","Parents",
-];
+export const ROLES: Role[] = ['Super Admin', 'Admin', 'Teacher', 'Student', 'Student Affairs', 'Finance', 'Transport', 'Library', 'HR'];
 
-// Updated User interface with multiple id fields for compatibility
-export interface User {
-  id?: string;
-  _id?: string;
-  userId?: string;
-  name: string;
+interface LoginPayload {
   email: string;
-  role: Role;
-  token?: string;
-  avatar?: string;
-  phone?: string;
-  department?: string;
+  password?: string;
+  name?: string;
+  role?: Role;
 }
 
-interface AuthCtx {
+interface AuthContextType {
   user: User | null;
-  login: (userData: User | { name: string; email: string; role: Role; token?: string }) => void;
-  logout: () => void;
+  loading: boolean;
   ready: boolean;
-  updateUser: (data: Partial<User>) => void;
+  login: (credentials: LoginPayload) => Promise<void>;
+  logout: () => Promise<void>;
+  register: (data: Partial<User> & { password: string }) => Promise<void>;
+  updateProfile: (data: Partial<User>) => Promise<void>;
+  changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
+  isAuthenticated: boolean;
 }
 
-const Ctx = createContext<AuthCtx | null>(null);
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Storage keys
-const STORAGE_KEYS = {
-  USER: "uni-erp-user",
-  TOKEN: "uni-erp-token",
-  THEME: "uni-erp-theme"
-} as const;
+interface AuthProviderProps {
+  children: ReactNode;
+}
 
-export function AuthProvider({ children }: { children: ReactNode }) {
+export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [ready, setReady] = useState(false);
+  const [loading, setLoading] = useState<boolean>(true);
 
+  // Check if user is authenticated on mount
   useEffect(() => {
-    try {
-      // Try to get user from localStorage
-      const raw = localStorage.getItem(STORAGE_KEYS.USER);
-      if (raw) {
-        const parsedUser = JSON.parse(raw);
-        // Ensure user has all required fields
-        if (parsedUser && parsedUser.name && parsedUser.email && parsedUser.role) {
-          setUser(parsedUser);
-        } else {
-          // If user data is invalid, clear it
-          localStorage.removeItem(STORAGE_KEYS.USER);
-          localStorage.removeItem(STORAGE_KEYS.TOKEN);
+    const checkAuth = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        if (token) {
+          const response = await authAPI.getProfile();
+          if (response.success) {
+            setUser(response.data);
+          } else {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+          }
         }
+      } catch (error) {
+        console.error('Auth check failed:', error);
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+      } finally {
+        setLoading(false);
       }
-    } catch (error) {
-      console.error('Failed to load user from localStorage:', error);
-      localStorage.removeItem(STORAGE_KEYS.USER);
-      localStorage.removeItem(STORAGE_KEYS.TOKEN);
-    }
-    setReady(true);
+    };
+
+    checkAuth();
   }, []);
 
-  const login = (userData: User | { name: string; email: string; role: Role; token?: string }) => {
+  const login = async (credentials: LoginPayload) => {
     try {
-      // Ensure user data has all required fields
-      const userObject: User = {
-        id: 'id' in userData ? userData.id : undefined,
-        _id: '_id' in userData ? userData._id : undefined,
-        userId: 'userId' in userData ? userData.userId : undefined,
-        name: userData.name,
-        email: userData.email,
-        role: userData.role,
-        token: userData.token || 'mock-token-123',
-        ...(userData as Partial<User>)
-      };
+      if (credentials.password) {
+        const response = await authAPI.login(credentials.email, credentials.password);
+        if (response.success) {
+          const { user, token } = response.data;
+          localStorage.setItem('token', token);
+          localStorage.setItem('user', JSON.stringify(user));
+          setUser(user);
+          toast.success('Login successful!');
+          return;
+        }
 
-      // Save to localStorage
-      localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(userObject));
-      if (userData.token) {
-        localStorage.setItem(STORAGE_KEYS.TOKEN, userData.token);
+        toast.error(response.message || 'Login failed');
+        throw new Error(response.message || 'Login failed');
       }
-      
-      setUser(userObject);
-      console.log('✅ User logged in:', userObject.name, userObject.role);
-    } catch (error) {
-      console.error('Failed to login:', error);
-      throw new Error('Failed to login. Please try again.');
+
+      if (credentials.name && credentials.role) {
+        const user: User = {
+          _id: credentials.email,
+          id: credentials.email,
+          email: credentials.email,
+          name: credentials.name,
+          role: credentials.role,
+        };
+        setUser(user);
+        localStorage.setItem('user', JSON.stringify(user));
+        toast.success('Login successful!');
+        return;
+      }
+
+      throw new Error('Invalid login credentials');
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || error.message || 'Login failed');
+      throw error;
     }
   };
 
-  const logout = () => {
+  const logout = async () => {
     try {
-      localStorage.removeItem(STORAGE_KEYS.USER);
-      localStorage.removeItem(STORAGE_KEYS.TOKEN);
+      await authAPI.logout();
+    } catch (error) {
+      console.error('Logout error:', error);
+    } finally {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
       setUser(null);
-      console.log('✅ User logged out');
-    } catch (error) {
-      console.error('Failed to logout:', error);
+      toast.success('Logged out successfully');
     }
   };
 
-  const updateUser = (data: Partial<User>) => {
-    if (!user) return;
+  const register = async (data: Partial<User> & { password: string }) => {
     try {
-      const updatedUser = { ...user, ...data };
-      localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(updatedUser));
-      setUser(updatedUser);
-      console.log('✅ User updated:', updatedUser.name);
-    } catch (error) {
-      console.error('Failed to update user:', error);
+      const response = await authAPI.register(data);
+      if (response.success) {
+        const { user, token } = response.data;
+        localStorage.setItem('token', token);
+        localStorage.setItem('user', JSON.stringify(user));
+        setUser(user);
+        toast.success('Registration successful!');
+      } else {
+        toast.error(response.message || 'Registration failed');
+        throw new Error(response.message || 'Registration failed');
+      }
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Registration failed');
+      throw error;
     }
+  };
+
+  const updateProfile = async (data: Partial<User>) => {
+    try {
+      const response = await authAPI.updateProfile(data);
+      if (response.success) {
+        setUser(response.data);
+        localStorage.setItem('user', JSON.stringify(response.data));
+        toast.success('Profile updated successfully!');
+      } else {
+        toast.error(response.message || 'Profile update failed');
+        throw new Error(response.message || 'Profile update failed');
+      }
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Profile update failed');
+      throw error;
+    }
+  };
+
+  const changePassword = async (currentPassword: string, newPassword: string) => {
+    try {
+      const response = await authAPI.changePassword({ currentPassword, newPassword });
+      if (response.success) {
+        toast.success('Password changed successfully!');
+      } else {
+        toast.error(response.message || 'Password change failed');
+        throw new Error(response.message || 'Password change failed');
+      }
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Password change failed');
+      throw error;
+    }
+  };
+
+  const value: AuthContextType = {
+    user,
+    loading,
+    ready: !loading,
+    login,
+    logout,
+    register,
+    updateProfile,
+    changePassword,
+    isAuthenticated: !!user,
   };
 
   return (
-    <Ctx.Provider value={{ user, login, logout, ready, updateUser }}>
+    <AuthContext.Provider value={value}>
       {children}
-    </Ctx.Provider>
+    </AuthContext.Provider>
   );
-}
+};
 
-export function useAuth() {
-  const context = useContext(Ctx);
-  if (!context) {
-    throw new Error("useAuth must be used within an AuthProvider");
+// Custom hook to use auth context
+export const useAuth = (): AuthContextType => {
+  const context = useContext(AuthContext);
+  if (context === undefined) {
+    throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
-}
+};
 
-export function useTheme() {
-  const [dark, setDark] = useState(false);
+export const useTheme = () => {
+  const [dark, setDark] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    return localStorage.getItem('theme') === 'dark';
+  });
 
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEYS.THEME);
-      const isDark = saved === "dark";
-      setDark(isDark);
-      document.documentElement.classList.toggle("dark", isDark);
-    } catch (error) {
-      console.error('Failed to load theme:', error);
-    }
-  }, []);
+    const theme = dark ? 'dark' : 'light';
+    document.documentElement.classList.toggle('dark', dark);
+    localStorage.setItem('theme', theme);
+  }, [dark]);
 
-  const toggle = () => {
-    try {
-      const next = !dark;
-      setDark(next);
-      localStorage.setItem(STORAGE_KEYS.THEME, next ? "dark" : "light");
-      document.documentElement.classList.toggle("dark", next);
-    } catch (error) {
-      console.error('Failed to toggle theme:', error);
-    }
-  };
-
+  const toggle = () => setDark((prev) => !prev);
   return { dark, toggle };
-}
+};
 
-// Helper function to get user ID from user object
-export function getUserId(user: User | null): string | null {
-  if (!user) return null;
-  return user.id || user._id || user.userId || null;
-}
-
-// Helper function to get user role
-export function getUserRole(user: User | null): Role | null {
-  if (!user) return null;
-  return user.role || null;
-}
-
-// Helper function to check if user has a specific role
-export function hasRole(user: User | null, role: Role | Role[]): boolean {
-  if (!user) return false;
-  const roles = Array.isArray(role) ? role : [role];
-  return roles.includes(user.role);
-}
-
-// Helper function to check if user is authenticated
-export function isAuthenticated(user: User | null): user is User {
-  return user !== null && !!user.name && !!user.email && !!user.role;
-}
-
-// Helper function to get user display name
-export function getUserDisplayName(user: User | null): string {
-  if (!user) return 'Guest';
-  return user.name || user.email || 'User';
-}
-
-// Helper function to get user initials
-export function getUserInitials(user: User | null): string {
-  if (!user) return 'G';
-  if (user.name) {
-    const parts = user.name.split(' ');
-    if (parts.length >= 2) {
-      return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-    }
-    return user.name.substring(0, 2).toUpperCase();
-  }
-  return user.email?.substring(0, 2).toUpperCase() || 'U';
-}
-
-// Helper function to get user avatar color
-export function getUserAvatarColor(user: User | null): string {
-  if (!user) return '#6b7280';
-  const colors = [
-    '#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b', 
-    '#10b981', '#ef4444', '#06b6d4', '#f97316'
-  ];
-  const index = (user.name || user.email || '').length % colors.length;
-  return colors[index];
-}
+export default AuthContext;

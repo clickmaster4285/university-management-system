@@ -203,38 +203,44 @@ function ReportsPage() {
     return <Badge className={info.className}>{info.label}</Badge>;
   };
 
-  // ✅ FIXED: Helper function to get display name - Prioritizes 'name' field
+  // ✅ FIXED: Helper to get the best available display name with proper typing
   const getDisplayName = (item: any): string => {
     if (!item) return 'N/A';
-    
-    // 🔥 Your Student model uses 'name' field - check it FIRST
-    if (item.name && item.name !== 'N/A' && item.name !== 'undefined undefined' && item.name !== '') {
-      return item.name;
-    }
-    
-    // For models that use firstName/lastName (fallback)
-    if (item.firstName || item.lastName) {
-      const fullName = `${item.firstName || ''} ${item.lastName || ''}`.trim();
-      if (fullName && fullName !== '' && fullName !== 'undefined undefined') {
-        return fullName;
+
+    const candidateNames = [
+      item.name,
+      item.fullName,
+      item.studentName,
+      item.student?.name,
+      item.student?.fullName,
+      item.firstName && item.lastName ? `${item.firstName} ${item.lastName}` : item.firstName || item.lastName,
+      item.displayName,
+      item.label,
+    ];
+
+    for (const value of candidateNames) {
+      if (typeof value === 'string' && value.trim()) {
+        const normalized = value.trim();
+        if (normalized !== 'N/A' && normalized !== 'undefined undefined' && normalized !== 'undefined') {
+          return normalized;
+        }
       }
     }
-    
-    // Try fullName (virtual field)
-    if (item.fullName && item.fullName !== '') {
-      return item.fullName;
+
+    // Fallback: derive a readable name from the email local-part if available
+    if (item.email && typeof item.email === 'string') {
+      const local = item.email.split('@')[0] || '';
+      if (local) {
+        // ✅ FIXED: Added proper type annotation for the parameter 'w'
+        const pretty = local
+          .replace(/[._\-]+/g, ' ')
+          .split(' ')
+          .map((w: string) => w.charAt(0).toUpperCase() + w.slice(1))
+          .join(' ');
+        if (pretty && pretty !== '') return pretty;
+      }
     }
-    
-    // Try firstName only
-    if (item.firstName && item.firstName !== '') {
-      return item.firstName;
-    }
-    
-    // Try lastName only
-    if (item.lastName && item.lastName !== '') {
-      return item.lastName;
-    }
-    
+
     return 'N/A';
   };
 
