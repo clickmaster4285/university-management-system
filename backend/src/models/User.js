@@ -1,9 +1,14 @@
 import mongoose from 'mongoose';
 
 const userSchema = new mongoose.Schema({
-  name: {
+  firstName: {
     type: String,
-    required: [true, 'Name is required'],
+    required: [true, 'First name is required'],
+    trim: true
+  },
+  lastName: {
+    type: String,
+    required: [true, 'Last name is required'],
     trim: true
   },
   email: {
@@ -17,20 +22,23 @@ const userSchema = new mongoose.Schema({
     type: String,
     required: [true, 'Password is required']
   },
+  universityId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'University'
+  },
   role: {
     type: String,
-    enum: ['admin', 'teacher', 'student', 'staff'],
-    default: 'student'
+    enum: ['Super Admin', 'Admin', 'Teacher', 'Student', 'Staff'],
+    default: 'Student'
   },
   status: {
     type: String,
-    enum: ['active', 'inactive'],
-    default: 'active'
+    enum: ['Active', 'Inactive', 'Suspended'],
+    default: 'Active'
   }
 }, {
   timestamps: true
 });
 
 const User = mongoose.models.User || mongoose.model('User', userSchema);
-
 export default User;

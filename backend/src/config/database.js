@@ -5,16 +5,22 @@ dotenv.config();
 
 const connectDB = async () => {
   try {
-    const conn = await mongoose.connect(process.env.MONGODB_URI, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
+    const mongoUri = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/scholars';
+
+    if (!mongoUri) {
+      throw new Error('MONGODB_URI is not configured');
+    }
+
+    const conn = await mongoose.connect(mongoUri, {
+      serverSelectionTimeoutMS: 5000,
     });
-    
+
     console.log(`✅ MongoDB Connected: ${conn.connection.host}`);
     console.log(`📚 Database: ${conn.connection.name}`);
+    return conn;
   } catch (error) {
-    console.warn(`⚠️ MongoDB Connection Error: ${error.message}`);
-    console.warn('⚠️ Continuing without database so the API can serve fallback data.');
+    console.error('❌ MongoDB Connection Error:', error.message);
+    throw error;
   }
 };
 

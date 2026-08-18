@@ -1,10 +1,12 @@
+// src/components/app-shell.tsx
 import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
 import { useAuth, useTheme } from "@/lib/auth";
 import {
   LayoutDashboard, Users, GraduationCap, Building2, BookOpen, CalendarCheck,
   QrCode, Library, Home, Bus, DollarSign, FileText, ClipboardCheck, ClipboardList,
   Video, Sparkles, Bell, BarChart3, Settings, LogOut, Sun, Moon, Search,
-  UserPlus, Calendar, Briefcase, Wallet, Menu, ChevronDown, Command,
+  UserPlus, Calendar, Briefcase, Wallet, Menu, ChevronDown, Command, Layers,
+  University, School, // ✅ School is now imported here
 } from "lucide-react";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
@@ -27,6 +29,8 @@ const nav = [
     label: "Overview",
     items: [
       { to: "/app", label: "Dashboard", icon: LayoutDashboard, exact: true },
+      { to: "/app/university", label: "University", icon: University },
+      { to: "/app/campuses", label: "Campuses", icon: School }, // ✅ Now works
       { to: "/app/ai", label: "AI Assistant", icon: Sparkles },
       { to: "/app/notifications", label: "Notifications", icon: Bell },
     ],
@@ -43,6 +47,9 @@ const nav = [
       { to: "/app/assignments", label: "Assignments", icon: ClipboardList },
       { to: "/app/exams", label: "Exam Grades", icon: ClipboardCheck },
       { to: "/app/online-classes", label: "Online Classes", icon: Video },
+      { to: "/app/academic-sessions", label: "Sessions", icon: Calendar },
+      { to: "/app/semesters", label: "Semesters", icon: Layers },
+      { to: "/app/batches", label: "Batches", icon: Users },
     ],
   },
   {

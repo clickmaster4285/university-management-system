@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { departmentAPI, Department } from "@/lib/api/departments";
 import { 
   Building2, 
@@ -26,7 +27,13 @@ import {
   User,
   Download,
   ChevronDown,
-  ThumbsUp
+  ThumbsUp,
+  Eye,
+  Mail,
+  Phone,
+  Calendar,
+  FileText,
+  ChevronLeft
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -41,6 +48,21 @@ export type TrendPoint = {
 };
 
 type SortKey = "Years" | "Quarters";
+
+type DepartmentStatus = "Active" | "Inactive";
+
+type DepartmentFormData = {
+  name: string;
+  code: string;
+  description: string;
+  head: string;
+  status: DepartmentStatus;
+  location: string;
+  email: string;
+  phone: string;
+  establishedDate: string;
+  faculty: string;
+};
 
 const DEFAULT_DATASETS: Record<SortKey, TrendPoint[]> = {
   Years: [
@@ -83,7 +105,6 @@ function smoothPath(points: { x: number; y: number }[]) {
   return d;
 }
 
-// FIXED: Changed parameter type to allow null
 function useDrawIn(pathRef: React.RefObject<SVGPathElement | null>, dep: unknown) {
   useEffect(() => {
     const el = pathRef.current;
@@ -92,7 +113,6 @@ function useDrawIn(pathRef: React.RefObject<SVGPathElement | null>, dep: unknown
     el.style.transition = "none";
     el.style.strokeDasharray = `${len}`;
     el.style.strokeDashoffset = `${len}`;
-    // force reflow then animate
     el.getBoundingClientRect();
     el.style.transition = "stroke-dashoffset 1.1s cubic-bezier(.4,0,.2,1)";
     el.style.strokeDashoffset = "0";
@@ -428,26 +448,54 @@ export const Route = createFileRoute("/app/departments")({
   component: DepartmentsPage,
 });
 
+// Faculty options
+const faculties = [
+  'Faculty of Computing',
+  'Faculty of Engineering',
+  'Faculty of Business Administration',
+  'Faculty of Sciences',
+  'Faculty of Arts & Humanities',
+  'Faculty of Social Sciences',
+  'Faculty of Law',
+  'Faculty of Medicine'
+];
+
+// HOD options
+const hodOptions = [
+  'Dr. Ahmad Khan',
+  'Dr. Sarah Ahmed',
+  'Dr. Muhammad Ali',
+  'Dr. Fatima Noor',
+  'Dr. Usman Malik',
+  'Dr. Ayesha Siddiqui',
+  'Dr. Hassan Raza',
+  'Prof. Imran Ali'
+];
+
 function DepartmentsPage() {
   const [departments, setDepartments] = useState<Department[]>([]);
   const [filteredDepartments, setFilteredDepartments] = useState<Department[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [viewingDepartment, setViewingDepartment] = useState<Department | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<DepartmentFormData>({
     name: '',
     code: '',
     description: '',
     head: '',
-    facultyCount: 0,
-    studentCount: 0,
     status: 'Active',
-    location: ''
+    location: '',
+    email: '',
+    phone: '',
+    establishedDate: '',
+    faculty: ''
   });
 
   const statusOptions = ['Active', 'Inactive'];
@@ -503,17 +551,14 @@ function DepartmentsPage() {
       return idMatch || nameMatch || codeMatch || headMatch || locationMatch;
     });
     setFilteredDepartments(filtered);
-    console.log(`🔍 Search results: ${filtered.length} departments found`);
   };
 
   // Handle form input change
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: name === 'facultyCount' || name === 'studentCount' 
-        ? parseInt(value) || 0 
-        : value
+      [name]: value
     }));
   };
 
@@ -526,10 +571,12 @@ function DepartmentsPage() {
       code: '',
       description: '',
       head: '',
-      facultyCount: 0,
-      studentCount: 0,
       status: 'Active',
-      location: ''
+      location: '',
+      email: '',
+      phone: '',
+      establishedDate: '',
+      faculty: ''
     });
     setIsModalOpen(true);
   };
@@ -537,18 +584,26 @@ function DepartmentsPage() {
   // Open modal for editing department
   const openEditModal = (dept: Department) => {
     setIsEditMode(true);
-    setEditingId(dept.departmentId || null);
+    setEditingId(dept.departmentId || dept._id || null);
     setFormData({
       name: dept.name || '',
       code: dept.code || '',
       description: dept.description || '',
       head: dept.head || '',
-      facultyCount: dept.facultyCount || 0,
-      studentCount: dept.studentCount || 0,
       status: dept.status || 'Active',
-      location: dept.location || ''
+      location: dept.location || '',
+      email: dept.email || '',
+      phone: dept.phone || '',
+      establishedDate: dept.establishedDate || '',
+      faculty: dept.faculty || ''
     });
     setIsModalOpen(true);
+  };
+
+  // Open view modal
+  const openViewModal = (dept: Department) => {
+    setViewingDepartment(dept);
+    setIsViewModalOpen(true);
   };
 
   // Close modal
@@ -556,6 +611,12 @@ function DepartmentsPage() {
     setIsModalOpen(false);
     setIsEditMode(false);
     setEditingId(null);
+  };
+
+  // Close view modal
+  const closeViewModal = () => {
+    setIsViewModalOpen(false);
+    setViewingDepartment(null);
   };
 
   // Handle form submit (Create or Update)
@@ -615,8 +676,6 @@ function DepartmentsPage() {
   // Calculate statistics
   const totalDepartments = departments.length;
   const activeDepartments = departments.filter(d => d.status === 'Active').length;
-  const totalFaculty = departments.reduce((sum, d) => sum + (d.facultyCount || 0), 0);
-  const totalStudents = departments.reduce((sum, d) => sum + (d.studentCount || 0), 0);
   const activeRate = totalDepartments > 0 ? Math.round((activeDepartments / totalDepartments) * 100) : 0;
 
   // Define columns for DataTable
@@ -649,22 +708,22 @@ function DepartmentsPage() {
       ) 
     },
     { 
-      key: "facultyCount", 
-      header: "Faculty", 
-      cell: (r) => <span className="tabular-nums font-medium">{r.facultyCount || 0}</span> 
-    },
-    { 
-      key: "studentCount", 
-      header: "Students", 
-      cell: (r) => <span className="tabular-nums font-medium">{r.studentCount || 0}</span> 
-    },
-    { 
       key: "location", 
       header: "Location", 
       cell: (r) => (
         <div className="flex items-center gap-1">
           <MapPin className="h-3 w-3 text-muted-foreground" />
           <span className="text-sm">{r.location || '—'}</span>
+        </div>
+      ) 
+    },
+    { 
+      key: "email", 
+      header: "Email", 
+      cell: (r) => (
+        <div className="flex items-center gap-1">
+          <Mail className="h-3 w-3 text-muted-foreground" />
+          <span className="text-sm">{r.email || '—'}</span>
         </div>
       ) 
     },
@@ -685,6 +744,14 @@ function DepartmentsPage() {
           <Button 
             variant="outline" 
             size="sm"
+            onClick={() => openViewModal(r)}
+            className="hover:bg-blue-50"
+          >
+            <Eye className="h-3 w-3 mr-1" /> View
+          </Button>
+          <Button 
+            variant="outline" 
+            size="sm"
             onClick={() => openEditModal(r)}
             className="hover:bg-blue-50"
           >
@@ -693,7 +760,7 @@ function DepartmentsPage() {
           <Button 
             variant="destructive" 
             size="sm"
-            onClick={() => r.departmentId && handleDelete(r.departmentId, r.name)}
+            onClick={() => handleDelete(r.departmentId || r._id || '', r.name)}
           >
             <Trash2 className="h-3 w-3 mr-1" /> Delete
           </Button>
@@ -706,7 +773,7 @@ function DepartmentsPage() {
     <>
       <AppShell
         title="Departments"
-        subtitle={`${totalDepartments} departments · ${activeDepartments} active · ${totalFaculty} faculty · ${totalStudents} students`}
+        subtitle={`${totalDepartments} departments · ${activeDepartments} active`}
         actions={
           <>
             <Button 
@@ -725,8 +792,8 @@ function DepartmentsPage() {
           </>
         }
       >
-        {/* KPI Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {/* KPI Cards - Removed faculty and student stats */}
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
           <KpiCard 
             label="Total Departments" 
             value={totalDepartments} 
@@ -734,21 +801,15 @@ function DepartmentsPage() {
             tone="brand" 
           />
           <KpiCard 
-            label="Faculty" 
-            value={totalFaculty} 
-            icon={Users} 
-            tone="info" 
-          />
-          <KpiCard 
-            label="Students" 
-            value={totalStudents} 
-            icon={GraduationCap} 
+            label="Active Departments" 
+            value={activeDepartments} 
+            icon={Building2} 
             tone="success" 
           />
           <KpiCard 
-            label="Active" 
-            value={activeDepartments} 
-            icon={Building2} 
+            label="Active Rate" 
+            value={`${activeRate}%`} 
+            icon={ThumbsUp} 
             tone="warning" 
           />
         </div>
@@ -791,11 +852,6 @@ function DepartmentsPage() {
               </Button>
             </div>
           )}
-          {departments.length > 0 && (
-            <div className="text-xs text-muted-foreground ml-auto">
-              💡 Try searching by ID (e.g., {getDepartmentId(departments[0])})
-            </div>
-          )}
         </div>
 
         {/* Error Message */}
@@ -827,10 +883,9 @@ function DepartmentsPage() {
           </div>
         )}
 
-        {/* DataTable - with hideSearch prop if supported */}
+        {/* DataTable */}
         {!loading && !error && (
           <div className="relative">
-            {/* Hide DataTable's internal search via CSS */}
             <style>
               {`
                 .data-table .data-table-search-wrapper,
@@ -886,12 +941,17 @@ function DepartmentsPage() {
             }
           }}
         >
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
             {/* Modal Header */}
             <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between">
-              <h2 className="text-xl font-bold">
-                {isEditMode ? 'Edit Department' : 'Add New Department'}
-              </h2>
+              <div>
+                <h2 className="text-xl font-bold">
+                  {isEditMode ? 'Edit Department' : 'Create Department'}
+                </h2>
+                <p className="text-sm text-muted-foreground">
+                  {isEditMode ? 'Update department information' : 'Add a new academic department'}
+                </p>
+              </div>
               <Button 
                 variant="ghost" 
                 size="sm"
@@ -903,100 +963,160 @@ function DepartmentsPage() {
             </div>
 
             {/* Modal Body */}
-            <form onSubmit={handleSubmit} className="p-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="name">Department Name *</Label>
-                  <Input
-                    id="name"
-                    name="name"
-                    value={formData.name}
-                    onChange={handleInputChange}
-                    placeholder="Computer Science"
-                    required
-                  />
+            <form onSubmit={handleSubmit} className="p-6 space-y-6">
+              {/* BASIC INFORMATION */}
+              <div>
+                <h3 className="text-sm font-semibold text-primary flex items-center gap-2 mb-4">
+                  <Building2 className="h-4 w-4" />
+                  Basic Information
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="name">Department Name *</Label>
+                    <Input
+                      id="name"
+                      name="name"
+                      value={formData.name}
+                      onChange={handleInputChange}
+                      placeholder="Department of Computer Science"
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="code">Department Code *</Label>
+                    <Input
+                      id="code"
+                      name="code"
+                      value={formData.code}
+                      onChange={handleInputChange}
+                      placeholder="CS"
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="faculty">Faculty / School *</Label>
+                    <select
+                      id="faculty"
+                      name="faculty"
+                      value={formData.faculty}
+                      onChange={handleInputChange}
+                      className="w-full border rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-primary"
+                      required
+                    >
+                      <option value="">Select Faculty</option>
+                      {faculties.map(f => (
+                        <option key={f} value={f}>{f}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="head">Head of Department *</Label>
+                    <select
+                      id="head"
+                      name="head"
+                      value={formData.head}
+                      onChange={handleInputChange}
+                      className="w-full border rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-primary"
+                      required
+                    >
+                      <option value="">Select HOD</option>
+                      {hodOptions.map(h => (
+                        <option key={h} value={h}>{h}</option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="code">Department Code *</Label>
-                  <Input
-                    id="code"
-                    name="code"
-                    value={formData.code}
-                    onChange={handleInputChange}
-                    placeholder="CS"
-                    required
-                  />
+              </div>
+
+              {/* CONTACT INFORMATION */}
+              <div>
+                <h3 className="text-sm font-semibold text-primary flex items-center gap-2 mb-4">
+                  <Mail className="h-4 w-4" />
+                  Contact Information
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="email">Department Email *</Label>
+                    <Input
+                      id="email"
+                      name="email"
+                      type="email"
+                      value={formData.email}
+                      onChange={handleInputChange}
+                      placeholder="cs@university.edu.pk"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="phone">Phone Number</Label>
+                    <Input
+                      id="phone"
+                      name="phone"
+                      value={formData.phone}
+                      onChange={handleInputChange}
+                      placeholder="051-1234567"
+                    />
+                  </div>
+                  <div className="space-y-2 md:col-span-2">
+                    <Label htmlFor="location">Office Location</Label>
+                    <Input
+                      id="location"
+                      name="location"
+                      value={formData.location}
+                      onChange={handleInputChange}
+                      placeholder="Block A - Room 201"
+                    />
+                  </div>
                 </div>
-                <div className="space-y-2 md:col-span-2">
-                  <Label htmlFor="description">Description</Label>
-                  <Input
-                    id="description"
-                    name="description"
-                    value={formData.description}
-                    onChange={handleInputChange}
-                    placeholder="Department description..."
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="head">Head of Department</Label>
-                  <Input
-                    id="head"
-                    name="head"
-                    value={formData.head}
-                    onChange={handleInputChange}
-                    placeholder="Dr. John Doe"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="location">Location</Label>
-                  <Input
-                    id="location"
-                    name="location"
-                    value={formData.location}
-                    onChange={handleInputChange}
-                    placeholder="Building A, Floor 3"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="facultyCount">Faculty Count</Label>
-                  <Input
-                    id="facultyCount"
-                    name="facultyCount"
-                    type="number"
-                    min="0"
-                    value={formData.facultyCount}
-                    onChange={handleInputChange}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="studentCount">Student Count</Label>
-                  <Input
-                    id="studentCount"
-                    name="studentCount"
-                    type="number"
-                    min="0"
-                    value={formData.studentCount}
-                    onChange={handleInputChange}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="status">Status</Label>
-                  <select
-                    id="status"
-                    name="status"
-                    value={formData.status}
-                    onChange={handleInputChange}
-                    className="w-full border rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-primary"
-                  >
-                    {statusOptions.map(s => (
-                      <option key={s} value={s}>{s}</option>
-                    ))}
-                  </select>
+              </div>
+
+              {/* ADDITIONAL INFORMATION */}
+              <div>
+                <h3 className="text-sm font-semibold text-primary flex items-center gap-2 mb-4">
+                  <FileText className="h-4 w-4" />
+                  Additional Information
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="establishedDate">Established Date</Label>
+                    <Input
+                      id="establishedDate"
+                      name="establishedDate"
+                      type="date"
+                      value={formData.establishedDate}
+                      onChange={handleInputChange}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="status">Status *</Label>
+                    <select
+                      id="status"
+                      name="status"
+                      value={formData.status}
+                      onChange={handleInputChange}
+                      className="w-full border rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-primary"
+                      required
+                    >
+                      {statusOptions.map(s => (
+                        <option key={s} value={s}>{s}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="space-y-2 md:col-span-2">
+                    <Label htmlFor="description">Description</Label>
+                    <Textarea
+                      id="description"
+                      name="description"
+                      value={formData.description}
+                      onChange={handleInputChange}
+                      placeholder="Department description..."
+                      className="min-h-[80px]"
+                    />
+                  </div>
                 </div>
               </div>
 
               {/* Modal Footer */}
-              <div className="flex justify-end gap-3 mt-6 pt-4 border-t">
+              <div className="flex justify-end gap-3 pt-4 border-t">
                 <Button 
                   type="button" 
                   variant="outline"
@@ -1026,6 +1146,163 @@ function DepartmentsPage() {
           </div>
         </div>
       )}
+
+      {/* View Department Modal */}
+      {isViewModalOpen && viewingDepartment && (
+        <div 
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              closeViewModal();
+            }
+          }}
+        >
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+            {/* Modal Header */}
+            <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-bold flex items-center gap-2">
+                  <Building2 className="h-5 w-5 text-primary" />
+                  Department Details
+                </h2>
+                <p className="text-sm text-muted-foreground">
+                  Viewing department information
+                </p>
+              </div>
+              <Button 
+                variant="ghost" 
+                size="sm"
+                onClick={closeViewModal}
+                className="h-8 w-8 p-0 rounded-full hover:bg-gray-100"
+              >
+                <X className="h-5 w-5" />
+              </Button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 space-y-6">
+              {/* Basic Information */}
+              <div>
+                <h3 className="text-sm font-semibold text-primary flex items-center gap-2 mb-4">
+                  <Building2 className="h-4 w-4" />
+                  Basic Information
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-muted-foreground">Department Name</Label>
+                    <p className="font-medium">{viewingDepartment.name}</p>
+                  </div>
+                  <div>
+                    <Label className="text-muted-foreground">Department Code</Label>
+                    <Badge variant="secondary" className="mt-1">{viewingDepartment.code}</Badge>
+                  </div>
+                  <div>
+                    <Label className="text-muted-foreground">Faculty / School</Label>
+                    <p>{viewingDepartment.faculty || '—'}</p>
+                  </div>
+                  <div>
+                    <Label className="text-muted-foreground">Head of Department</Label>
+                    <div className="flex items-center gap-2 mt-1">
+                      <User className="h-4 w-4 text-muted-foreground" />
+                      <p className="font-medium">{viewingDepartment.head || '—'}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Contact Information */}
+              <div>
+                <h3 className="text-sm font-semibold text-primary flex items-center gap-2 mb-4">
+                  <Mail className="h-4 w-4" />
+                  Contact Information
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-muted-foreground">Email</Label>
+                    <div className="flex items-center gap-2 mt-1">
+                      <Mail className="h-4 w-4 text-muted-foreground" />
+                      <p>{viewingDepartment.email || '—'}</p>
+                    </div>
+                  </div>
+                  <div>
+                    <Label className="text-muted-foreground">Phone</Label>
+                    <div className="flex items-center gap-2 mt-1">
+                      <Phone className="h-4 w-4 text-muted-foreground" />
+                      <p>{viewingDepartment.phone || '—'}</p>
+                    </div>
+                  </div>
+                  <div className="md:col-span-2">
+                    <Label className="text-muted-foreground">Office Location</Label>
+                    <div className="flex items-center gap-2 mt-1">
+                      <MapPin className="h-4 w-4 text-muted-foreground" />
+                      <p>{viewingDepartment.location || '—'}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Additional Information */}
+              <div>
+                <h3 className="text-sm font-semibold text-primary flex items-center gap-2 mb-4">
+                  <FileText className="h-4 w-4" />
+                  Additional Information
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-muted-foreground">Established Date</Label>
+                    <div className="flex items-center gap-2 mt-1">
+                      <Calendar className="h-4 w-4 text-muted-foreground" />
+                      <p>{viewingDepartment.establishedDate ? new Date(viewingDepartment.establishedDate).toLocaleDateString() : '—'}</p>
+                    </div>
+                  </div>
+                  <div>
+                    <Label className="text-muted-foreground">Status</Label>
+                    <div className="mt-1">
+                      <Badge variant={viewingDepartment.status === 'Active' ? 'default' : 'outline'}>
+                        {viewingDepartment.status || 'Active'}
+                      </Badge>
+                    </div>
+                  </div>
+                  <div className="md:col-span-2">
+                    <Label className="text-muted-foreground">Description</Label>
+                    <p className="mt-1 text-sm bg-gray-50 p-3 rounded-lg border">
+                      {viewingDepartment.description || 'No description provided.'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Department ID */}
+              <div className="bg-gray-50 rounded-lg p-3 border">
+                <Label className="text-muted-foreground">Department ID</Label>
+                <p className="font-mono text-sm">{getDepartmentId(viewingDepartment)}</p>
+              </div>
+
+              {/* Modal Footer */}
+              <div className="flex justify-end gap-3 pt-4 border-t">
+                <Button 
+                  variant="outline"
+                  onClick={closeViewModal}
+                >
+                  Close
+                </Button>
+                <Button 
+                  variant="outline"
+                  onClick={() => {
+                    closeViewModal();
+                    openEditModal(viewingDepartment);
+                  }}
+                >
+                  <Pencil className="h-4 w-4 mr-2" />
+                  Edit Department
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
+
+export default DepartmentsPage;

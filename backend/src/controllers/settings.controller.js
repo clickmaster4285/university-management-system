@@ -152,7 +152,8 @@ export const addCampus = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to add campus',
-      error: error.message
+      error: error.message,
+      hint: 'Make sure MongoDB is running and reachable before saving settings.'
     });
   }
 };

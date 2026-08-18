@@ -24,8 +24,6 @@ import {
   Save,
   Pencil,
   Trash2,
-  // ✅ Remove User from here since it conflicts with the type
-  // User,  // ← REMOVE THIS
   Mail,
   Phone,
   MapPin,
@@ -34,12 +32,11 @@ import {
   Shield,
   Key,
   Camera,
-  User as UserIcon  // ✅ Import User as UserIcon
+  User as UserIcon
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
-import { settingsAPI, Settings, Campus } from "@/lib/api/settings";
-// ✅ Import User type from auth API
+import { settingsAPI, Settings, Campus, AddCampusData, UpdateCampusData } from "@/lib/api/settings";
 import { authAPI, User } from "@/lib/api/auth";
 
 export const Route = createFileRoute("/app/settings")({
@@ -64,7 +61,7 @@ function SettingsPage() {
   const [editingCampus, setEditingCampus] = useState<Campus | null>(null);
   
   // Campus form state
-  const [campusForm, setCampusForm] = useState({
+  const [campusForm, setCampusForm] = useState<AddCampusData>({
     name: '',
     location: '',
     students: 0,
@@ -99,21 +96,27 @@ function SettingsPage() {
     faceRecognitionAttendance: false
   });
 
+  const syncCampuses = (campuses: Campus[]) => {
+    setSettings((prev) => prev ? { ...prev, campuses } : prev);
+  };
+
   const fetchSettings = async () => {
     try {
       setLoading(true);
       setError(null);
       
-      const [settingsRes, adminRes] = await Promise.all([
+      console.log('🔄 Fetching settings and profile...');
+      
+      const [settingsResult, profileResult] = await Promise.allSettled([
         settingsAPI.getAll(),
         authAPI.getProfile()
       ]);
 
-      if (settingsRes.success) {
-        setSettings(settingsRes.data);
+      if (settingsResult.status === 'fulfilled' && settingsResult.value.success) {
+        const data = settingsResult.value.data;
+        setSettings(data);
         
         // Update form states
-        const data = settingsRes.data;
         setPreferences({
           darkMode: data.preferences?.darkMode || false,
           emailDigests: data.preferences?.emailDigests || true,
@@ -121,11 +124,13 @@ function SettingsPage() {
           aiInsights: data.preferences?.aiInsights || true,
           faceRecognitionAttendance: data.preferences?.faceRecognitionAttendance || false
         });
+      } else if (settingsResult.status === 'rejected') {
+        throw settingsResult.reason;
       }
 
-      if (adminRes.success) {
-        setAdminProfile(adminRes.data);
-        const admin = adminRes.data;
+      if (profileResult.status === 'fulfilled' && profileResult.value.success) {
+        setAdminProfile(profileResult.value.data);
+        const admin = profileResult.value.data;
         setAdminForm({
           name: admin.name || '',
           email: admin.email || '',
@@ -136,9 +141,11 @@ function SettingsPage() {
           location: admin.location || '',
           profileImage: admin.profileImage || ''
         });
+      } else if (profileResult.status === 'rejected') {
+        console.warn('Profile refresh failed, continuing with settings view:', profileResult.reason);
       }
     } catch (error: any) {
-      console.error('Failed to fetch data:', error);
+      console.error('❌ Failed to fetch data:', error);
       setError(error.message || 'Failed to load data');
       toast.error('Failed to load data');
     } finally {
@@ -185,12 +192,14 @@ function SettingsPage() {
   const saveAdminProfile = async () => {
     try {
       setSaving(true);
+      console.log('📤 Saving admin profile:', adminForm);
       const response = await authAPI.updateProfile(adminForm);
       if (response.success) {
         toast.success('Profile updated successfully!');
         await fetchSettings();
       }
     } catch (error: any) {
+      console.error('❌ Error saving profile:', error);
       toast.error(error.message || 'Failed to update profile');
     } finally {
       setSaving(false);
@@ -210,7 +219,13 @@ function SettingsPage() {
         return;
       }
 
+      if (!passwordForm.currentPassword) {
+        toast.error('Current password is required');
+        return;
+      }
+
       setSaving(true);
+      console.log('📤 Changing password...');
       const response = await authAPI.changePassword({
         currentPassword: passwordForm.currentPassword,
         newPassword: passwordForm.newPassword
@@ -225,6 +240,7 @@ function SettingsPage() {
         });
       }
     } catch (error: any) {
+      console.error('❌ Error changing password:', error);
       toast.error(error.message || 'Failed to change password');
     } finally {
       setSaving(false);
@@ -235,44 +251,85 @@ function SettingsPage() {
   const savePreferences = async () => {
     try {
       setSaving(true);
+      console.log('📤 Saving preferences:', preferences);
       const response = await settingsAPI.updatePreferences(preferences);
       if (response.success) {
         toast.success('Preferences updated successfully!');
         await fetchSettings();
       }
     } catch (error: any) {
+      console.error('❌ Error saving preferences:', error);
       toast.error(error.message || 'Failed to update preferences');
     } finally {
       setSaving(false);
     }
   };
 
-  // Add/Update campus
+  // ✅ FIXED: Add/Update campus with proper data handling
   const handleCampusSubmit = async () => {
     try {
-      if (!campusForm.name) {
+      // Validate required fields
+      if (!campusForm.name || campusForm.name.trim() === '') {
         toast.error('Campus name is required');
         return;
       }
 
+      // Prepare the data
+      const campusData: AddCampusData = {
+        name: campusForm.name.trim(),
+        location: campusForm.location?.trim() || '',
+        students: Number(campusForm.students) || 0,
+        staff: Number(campusForm.staff) || 0
+      };
+
+      console.log('📝 Submitting campus data:', campusData);
+      console.log('📝 Editing campus:', editingCampus);
+
       setSaving(true);
+      
       let response;
       
       if (editingCampus) {
-        response = await settingsAPI.updateCampus(editingCampus._id!, campusForm);
+        // Update existing campus
+        console.log(`📤 Updating campus ${editingCampus._id}`);
+        response = await settingsAPI.updateCampus(editingCampus._id!, campusData);
       } else {
-        response = await settingsAPI.addCampus(campusForm);
+        // Add new campus
+        console.log('📤 Adding new campus');
+        response = await settingsAPI.addCampus(campusData);
       }
       
+      console.log('📥 Server response:', response);
+      
       if (response.success) {
+        const nextCampuses = response.data?.campuses || [];
+        syncCampuses(nextCampuses);
         toast.success(editingCampus ? 'Campus updated successfully!' : 'Campus added successfully!');
         setIsCampusModalOpen(false);
         setEditingCampus(null);
         setCampusForm({ name: '', location: '', students: 0, staff: 0 });
+        // Refresh the data in the background
         await fetchSettings();
+      } else {
+        toast.error(response.message || 'Failed to save campus');
       }
     } catch (error: any) {
-      toast.error(error.message || 'Failed to save campus');
+      console.error('❌ Error saving campus:', error);
+      
+      // Handle specific error cases
+      if (error.response?.status === 409) {
+        toast.error(error.response?.data?.message || 'Campus name already exists');
+      } else if (error.response?.status === 400) {
+        const errors = error.response?.data?.errors;
+        if (errors && Array.isArray(errors)) {
+          const errorMessages = errors.map((err: any) => err.message).join(', ');
+          toast.error(`Validation error: ${errorMessages}`);
+        } else {
+          toast.error(error.response?.data?.message || 'Invalid data provided');
+        }
+      } else {
+        toast.error(error.message || 'Failed to save campus');
+      }
     } finally {
       setSaving(false);
     }
@@ -283,13 +340,34 @@ function SettingsPage() {
     if (!confirm(`Are you sure you want to delete "${name}"?`)) return;
     
     try {
+      console.log(`🗑️ Deleting campus ${campusId}: ${name}`);
       const response = await settingsAPI.deleteCampus(campusId);
       if (response.success) {
+        const nextCampuses = response.data?.campuses || [];
+        syncCampuses(nextCampuses);
         toast.success('Campus deleted successfully!');
         await fetchSettings();
       }
     } catch (error: any) {
+      console.error('❌ Error deleting campus:', error);
       toast.error(error.message || 'Failed to delete campus');
+    }
+  };
+
+  // Toggle campus status
+  const toggleCampusStatus = async (campusId: string, currentStatus: boolean) => {
+    try {
+      console.log(`🔄 Toggling campus ${campusId} status from ${currentStatus} to ${!currentStatus}`);
+      const response = await settingsAPI.toggleCampusStatus(campusId);
+      if (response.success) {
+        const nextCampuses = response.data?.campuses || [];
+        syncCampuses(nextCampuses);
+        toast.success(`Campus ${currentStatus ? 'deactivated' : 'activated'} successfully!`);
+        await fetchSettings();
+      }
+    } catch (error: any) {
+      console.error('❌ Error toggling campus status:', error);
+      toast.error(error.message || 'Failed to toggle campus status');
     }
   };
 
@@ -312,7 +390,7 @@ function SettingsPage() {
     setIsCampusModalOpen(true);
   };
 
-  // ✅ Get campuses with fallback to empty array
+  // Get campuses with fallback to empty array
   const campuses = settings?.campuses || [];
 
   // Get initials for avatar
@@ -569,11 +647,23 @@ function SettingsPage() {
         <CardContent className="grid md:grid-cols-2 lg:grid-cols-4 gap-3">
           {campuses.length > 0 ? (
             campuses.map((campus) => (
-              <div key={campus._id} className="rounded-xl border p-4 bg-card/50 card-hover relative group">
+              <div 
+                key={campus._id} 
+                className={`rounded-xl border p-4 bg-card/50 card-hover relative group ${
+                  !campus.isActive ? 'opacity-60' : ''
+                }`}
+              >
                 <div className="h-10 w-10 rounded-xl gradient-brand flex items-center justify-center mb-3">
                   <Globe className="h-5 w-5 text-white" />
                 </div>
-                <div className="font-semibold text-sm">{campus.name}</div>
+                <div className="font-semibold text-sm flex items-center gap-2">
+                  {campus.name}
+                  {!campus.isActive && (
+                    <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded">
+                      Inactive
+                    </span>
+                  )}
+                </div>
                 <div className="text-xs text-muted-foreground mt-1">
                   {campus.students} students · {campus.staff} staff
                 </div>
@@ -596,6 +686,16 @@ function SettingsPage() {
                     onClick={() => deleteCampus(campus._id!, campus.name)}
                   >
                     <Trash2 className="h-3 w-3 mr-1" /> Delete
+                  </Button>
+                </div>
+                <div className="mt-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="w-full text-xs"
+                    onClick={() => toggleCampusStatus(campus._id!, campus.isActive)}
+                  >
+                    {campus.isActive ? 'Deactivate' : 'Activate'}
                   </Button>
                 </div>
               </div>

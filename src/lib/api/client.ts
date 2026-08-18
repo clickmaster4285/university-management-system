@@ -1,87 +1,118 @@
 // src/lib/api/client.ts
-// ✅ Use environment variable
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4005/api';
+import axios from 'axios';
 
-console.log('🔗 API Base URL:', API_BASE); // Check this in browser console
+const normalizeApiBase = (value?: string) => {
+  const fallback = 'http://localhost:4006/api';
+  if (!value) return fallback;
 
-export const apiClient = {
-  get: async (endpoint: string) => {
-    const url = `${API_BASE}${endpoint}`;
-    console.log('📤 GET Request:', url);
-    
-    try {
-      const response = await fetch(url, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        // ✅ Add this to send cookies if needed
-        credentials: 'include',
-      });
-      
-      console.log('📥 Response Status:', response.status);
-      console.log('📥 Response OK:', response.ok);
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('❌ Error Response:', errorText);
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-      
-      const data = await response.json();
-      console.log('✅ Response Data:', data);
-      return data;
-    } catch (error) {
-      console.error('❌ Fetch Error:', error);
-      throw error;
-    }
+  const trimmed = value.trim();
+  if (!trimmed) return fallback;
+
+  const withoutTrailingSlash = trimmed.replace(/\/+$/, '');
+  return withoutTrailingSlash.endsWith('/api') ? withoutTrailingSlash : `${withoutTrailingSlash}/api`;
+};
+
+const API_BASE_URL = normalizeApiBase(import.meta.env.VITE_API_URL);
+
+console.log('🔗 API Base URL:', API_BASE_URL);
+
+// Create axios instance with proper configuration
+export const apiClient = axios.create({
+  baseURL: API_BASE_URL,
+  headers: {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
   },
-  
-  post: async (endpoint: string, data: any) => {
-    const url = `${API_BASE}${endpoint}`;
-    console.log('📤 POST Request:', url, data);
-    
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify(data)
-    });
-    
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.message || 'Network response was not ok');
-    }
-    return response.json();
+  withCredentials: true,
+  timeout: 30000,
+});
+
+// Request interceptor for logging
+apiClient.interceptors.request.use(
+  (config) => {
+    console.log(`📤 ${config.method?.toUpperCase()} ${config.url}`);
+    return config;
   },
-  
-  put: async (endpoint: string, data: any) => {
-    const url = `${API_BASE}${endpoint}`;
-    const response = await fetch(url, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify(data)
-    });
-    
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.message || 'Network response was not ok');
-    }
-    return response.json();
+  (error) => {
+    console.error('❌ Request Error:', error);
+    return Promise.reject(error);
+  }
+);
+
+// Response interceptor for logging and error handling
+apiClient.interceptors.response.use(
+  (response) => {
+    console.log(`📥 ${response.status} ${response.config.url}`);
+    return response;
   },
-  
-  delete: async (endpoint: string) => {
-    const url = `${API_BASE}${endpoint}`;
-    const response = await fetch(url, {
-      method: 'DELETE',
-      credentials: 'include'
-    });
+  (error) => {
+    console.error('❌ Response Error:', error);
     
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.message || 'Network response was not ok');
+    if (error.response) {
+      // The request was made and the server responded with a status code
+      // that falls out of the range of 2xx
+      console.error('Error Data:', error.response.data);
+      console.error('Error Status:', error.response.status);
+      console.error('Error Headers:', error.response.headers);
+      
+      // Enhance error message
+      const message = error.response.data?.message || 
+                     error.response.data?.error || 
+                     `Server error: ${error.response.status}`;
+      error.message = message;
+    } else if (error.request) {
+      // The request was made but no response was received
+      console.error('No response received:', error.request);
+      error.message = 'Cannot connect to server. Please check if backend is running.';
+    } else {
+      // Something happened in setting up the request that triggered an Error
+      console.error('Request setup error:', error.message);
     }
-    return response.json();
+    
+    return Promise.reject(error);
+  }
+);
+
+// Helper function for making API calls (backward compatibility)
+const makeRequest = async (method: string, endpoint: string, body?: any) => {
+  try {
+    // Ensure endpoint starts with /api
+    const normalizedEndpoint = endpoint.startsWith('/api') 
+      ? endpoint 
+      : `/api${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
+    
+    let response;
+    switch (method.toUpperCase()) {
+      case 'GET':
+        response = await apiClient.get(normalizedEndpoint);
+        break;
+      case 'POST':
+        response = await apiClient.post(normalizedEndpoint, body);
+        break;
+      case 'PUT':
+        response = await apiClient.put(normalizedEndpoint, body);
+        break;
+      case 'DELETE':
+        response = await apiClient.delete(normalizedEndpoint);
+        break;
+      default:
+        throw new Error(`Unsupported method: ${method}`);
+    }
+    
+    return response.data;
+  } catch (error: any) {
+    console.error(`❌ API ${method} ${endpoint} failed:`, error.message);
+    throw error;
   }
 };
+
+// Export individual methods for convenience
+export const api = {
+  get: (endpoint: string) => makeRequest('GET', endpoint),
+  post: (endpoint: string, data: any) => makeRequest('POST', endpoint, data),
+  put: (endpoint: string, data: any) => makeRequest('PUT', endpoint, data),
+  delete: (endpoint: string) => makeRequest('DELETE', endpoint),
+};
+
+// Also keep the original apiClient for backward compatibility
+export default apiClient;

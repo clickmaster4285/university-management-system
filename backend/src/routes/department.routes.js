@@ -1,3 +1,4 @@
+// backend/src/routes/department.routes.js
 import { Router } from "express";
 import {
   getDepartments,

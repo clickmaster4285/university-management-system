@@ -15,10 +15,13 @@ import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as OtpRouteImport } from './routes/otp'
 import { Route as AppIndexRouteImport } from './routes/app.index'
+import { Route as AppAcademicSessionsRouteImport } from './routes/app.academic-sessions'
 import { Route as AppAdmissionsRouteImport } from './routes/app.admissions'
 import { Route as AppAiRouteImport } from './routes/app.ai'
 import { Route as AppAssignmentsRouteImport } from './routes/app.assignments'
 import { Route as AppAttendanceRouteImport } from './routes/app.attendance'
+import { Route as AppBatchesRouteImport } from './routes/app.batches'
+import { Route as AppCampusesRouteImport } from './routes/app.campuses'
 import { Route as AppCoursesRouteImport } from './routes/app.courses'
 import { Route as AppDepartmentsRouteImport } from './routes/app.departments'
 import { Route as AppEventsRouteImport } from './routes/app.events'
@@ -32,10 +35,12 @@ import { Route as AppNotificationsRouteImport } from './routes/app.notifications
 import { Route as AppOnlineClassesRouteImport } from './routes/app.online-classes'
 import { Route as AppQrRouteImport } from './routes/app.qr'
 import { Route as AppReportsRouteImport } from './routes/app.reports'
+import { Route as AppSemestersRouteImport } from './routes/app.semesters'
 import { Route as AppSettingsRouteImport } from './routes/app.settings'
 import { Route as AppStudentsRouteImport } from './routes/app.students'
 import { Route as AppTeachersRouteImport } from './routes/app.teachers'
 import { Route as AppTransportRouteImport } from './routes/app.transport'
+import { Route as AppUniversityRouteImport } from './routes/app.university'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -67,6 +72,11 @@ const AppIndexRoute = AppIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AppRoute,
 } as any)
+const AppAcademicSessionsRoute = AppAcademicSessionsRouteImport.update({
+  id: '/academic-sessions',
+  path: '/academic-sessions',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppAdmissionsRoute = AppAdmissionsRouteImport.update({
   id: '/admissions',
   path: '/admissions',
@@ -85,6 +95,16 @@ const AppAssignmentsRoute = AppAssignmentsRouteImport.update({
 const AppAttendanceRoute = AppAttendanceRouteImport.update({
   id: '/attendance',
   path: '/attendance',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppBatchesRoute = AppBatchesRouteImport.update({
+  id: '/batches',
+  path: '/batches',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppCampusesRoute = AppCampusesRouteImport.update({
+  id: '/campuses',
+  path: '/campuses',
   getParentRoute: () => AppRoute,
 } as any)
 const AppCoursesRoute = AppCoursesRouteImport.update({
@@ -152,6 +172,11 @@ const AppReportsRoute = AppReportsRouteImport.update({
   path: '/reports',
   getParentRoute: () => AppRoute,
 } as any)
+const AppSemestersRoute = AppSemestersRouteImport.update({
+  id: '/semesters',
+  path: '/semesters',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppSettingsRoute = AppSettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
@@ -172,6 +197,11 @@ const AppTransportRoute = AppTransportRouteImport.update({
   path: '/transport',
   getParentRoute: () => AppRoute,
 } as any)
+const AppUniversityRoute = AppUniversityRouteImport.update({
+  id: '/university',
+  path: '/university',
+  getParentRoute: () => AppRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -179,10 +209,13 @@ export interface FileRoutesByFullPath {
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
   '/otp': typeof OtpRoute
+  '/app/academic-sessions': typeof AppAcademicSessionsRoute
   '/app/admissions': typeof AppAdmissionsRoute
   '/app/ai': typeof AppAiRoute
   '/app/assignments': typeof AppAssignmentsRoute
   '/app/attendance': typeof AppAttendanceRoute
+  '/app/batches': typeof AppBatchesRoute
+  '/app/campuses': typeof AppCampusesRoute
   '/app/courses': typeof AppCoursesRoute
   '/app/departments': typeof AppDepartmentsRoute
   '/app/events': typeof AppEventsRoute
@@ -196,10 +229,12 @@ export interface FileRoutesByFullPath {
   '/app/online-classes': typeof AppOnlineClassesRoute
   '/app/qr': typeof AppQrRoute
   '/app/reports': typeof AppReportsRoute
+  '/app/semesters': typeof AppSemestersRoute
   '/app/settings': typeof AppSettingsRoute
   '/app/students': typeof AppStudentsRoute
   '/app/teachers': typeof AppTeachersRoute
   '/app/transport': typeof AppTransportRoute
+  '/app/university': typeof AppUniversityRoute
   '/app/': typeof AppIndexRoute
 }
 export interface FileRoutesByTo {
@@ -207,10 +242,13 @@ export interface FileRoutesByTo {
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
   '/otp': typeof OtpRoute
+  '/app/academic-sessions': typeof AppAcademicSessionsRoute
   '/app/admissions': typeof AppAdmissionsRoute
   '/app/ai': typeof AppAiRoute
   '/app/assignments': typeof AppAssignmentsRoute
   '/app/attendance': typeof AppAttendanceRoute
+  '/app/batches': typeof AppBatchesRoute
+  '/app/campuses': typeof AppCampusesRoute
   '/app/courses': typeof AppCoursesRoute
   '/app/departments': typeof AppDepartmentsRoute
   '/app/events': typeof AppEventsRoute
@@ -224,10 +262,12 @@ export interface FileRoutesByTo {
   '/app/online-classes': typeof AppOnlineClassesRoute
   '/app/qr': typeof AppQrRoute
   '/app/reports': typeof AppReportsRoute
+  '/app/semesters': typeof AppSemestersRoute
   '/app/settings': typeof AppSettingsRoute
   '/app/students': typeof AppStudentsRoute
   '/app/teachers': typeof AppTeachersRoute
   '/app/transport': typeof AppTransportRoute
+  '/app/university': typeof AppUniversityRoute
   '/app': typeof AppIndexRoute
 }
 export interface FileRoutesById {
@@ -237,10 +277,13 @@ export interface FileRoutesById {
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
   '/otp': typeof OtpRoute
+  '/app/academic-sessions': typeof AppAcademicSessionsRoute
   '/app/admissions': typeof AppAdmissionsRoute
   '/app/ai': typeof AppAiRoute
   '/app/assignments': typeof AppAssignmentsRoute
   '/app/attendance': typeof AppAttendanceRoute
+  '/app/batches': typeof AppBatchesRoute
+  '/app/campuses': typeof AppCampusesRoute
   '/app/courses': typeof AppCoursesRoute
   '/app/departments': typeof AppDepartmentsRoute
   '/app/events': typeof AppEventsRoute
@@ -254,10 +297,12 @@ export interface FileRoutesById {
   '/app/online-classes': typeof AppOnlineClassesRoute
   '/app/qr': typeof AppQrRoute
   '/app/reports': typeof AppReportsRoute
+  '/app/semesters': typeof AppSemestersRoute
   '/app/settings': typeof AppSettingsRoute
   '/app/students': typeof AppStudentsRoute
   '/app/teachers': typeof AppTeachersRoute
   '/app/transport': typeof AppTransportRoute
+  '/app/university': typeof AppUniversityRoute
   '/app/': typeof AppIndexRoute
 }
 export interface FileRouteTypes {
@@ -268,10 +313,13 @@ export interface FileRouteTypes {
     | '/forgot-password'
     | '/login'
     | '/otp'
+    | '/app/academic-sessions'
     | '/app/admissions'
     | '/app/ai'
     | '/app/assignments'
     | '/app/attendance'
+    | '/app/batches'
+    | '/app/campuses'
     | '/app/courses'
     | '/app/departments'
     | '/app/events'
@@ -285,10 +333,12 @@ export interface FileRouteTypes {
     | '/app/online-classes'
     | '/app/qr'
     | '/app/reports'
+    | '/app/semesters'
     | '/app/settings'
     | '/app/students'
     | '/app/teachers'
     | '/app/transport'
+    | '/app/university'
     | '/app/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -296,10 +346,13 @@ export interface FileRouteTypes {
     | '/forgot-password'
     | '/login'
     | '/otp'
+    | '/app/academic-sessions'
     | '/app/admissions'
     | '/app/ai'
     | '/app/assignments'
     | '/app/attendance'
+    | '/app/batches'
+    | '/app/campuses'
     | '/app/courses'
     | '/app/departments'
     | '/app/events'
@@ -313,10 +366,12 @@ export interface FileRouteTypes {
     | '/app/online-classes'
     | '/app/qr'
     | '/app/reports'
+    | '/app/semesters'
     | '/app/settings'
     | '/app/students'
     | '/app/teachers'
     | '/app/transport'
+    | '/app/university'
     | '/app'
   id:
     | '__root__'
@@ -325,10 +380,13 @@ export interface FileRouteTypes {
     | '/forgot-password'
     | '/login'
     | '/otp'
+    | '/app/academic-sessions'
     | '/app/admissions'
     | '/app/ai'
     | '/app/assignments'
     | '/app/attendance'
+    | '/app/batches'
+    | '/app/campuses'
     | '/app/courses'
     | '/app/departments'
     | '/app/events'
@@ -342,10 +400,12 @@ export interface FileRouteTypes {
     | '/app/online-classes'
     | '/app/qr'
     | '/app/reports'
+    | '/app/semesters'
     | '/app/settings'
     | '/app/students'
     | '/app/teachers'
     | '/app/transport'
+    | '/app/university'
     | '/app/'
   fileRoutesById: FileRoutesById
 }
@@ -401,6 +461,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppIndexRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/academic-sessions': {
+      id: '/app/academic-sessions'
+      path: '/academic-sessions'
+      fullPath: '/app/academic-sessions'
+      preLoaderRoute: typeof AppAcademicSessionsRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/admissions': {
       id: '/app/admissions'
       path: '/admissions'
@@ -427,6 +494,20 @@ declare module '@tanstack/react-router' {
       path: '/attendance'
       fullPath: '/app/attendance'
       preLoaderRoute: typeof AppAttendanceRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/batches': {
+      id: '/app/batches'
+      path: '/batches'
+      fullPath: '/app/batches'
+      preLoaderRoute: typeof AppBatchesRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/campuses': {
+      id: '/app/campuses'
+      path: '/campuses'
+      fullPath: '/app/campuses'
+      preLoaderRoute: typeof AppCampusesRouteImport
       parentRoute: typeof AppRoute
     }
     '/app/courses': {
@@ -520,6 +601,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppReportsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/semesters': {
+      id: '/app/semesters'
+      path: '/semesters'
+      fullPath: '/app/semesters'
+      preLoaderRoute: typeof AppSemestersRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/settings': {
       id: '/app/settings'
       path: '/settings'
@@ -548,14 +636,24 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppTransportRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/university': {
+      id: '/app/university'
+      path: '/university'
+      fullPath: '/app/university'
+      preLoaderRoute: typeof AppUniversityRouteImport
+      parentRoute: typeof AppRoute
+    }
   }
 }
 
 interface AppRouteChildren {
+  AppAcademicSessionsRoute: typeof AppAcademicSessionsRoute
   AppAdmissionsRoute: typeof AppAdmissionsRoute
   AppAiRoute: typeof AppAiRoute
   AppAssignmentsRoute: typeof AppAssignmentsRoute
   AppAttendanceRoute: typeof AppAttendanceRoute
+  AppBatchesRoute: typeof AppBatchesRoute
+  AppCampusesRoute: typeof AppCampusesRoute
   AppCoursesRoute: typeof AppCoursesRoute
   AppDepartmentsRoute: typeof AppDepartmentsRoute
   AppEventsRoute: typeof AppEventsRoute
@@ -569,18 +667,23 @@ interface AppRouteChildren {
   AppOnlineClassesRoute: typeof AppOnlineClassesRoute
   AppQrRoute: typeof AppQrRoute
   AppReportsRoute: typeof AppReportsRoute
+  AppSemestersRoute: typeof AppSemestersRoute
   AppSettingsRoute: typeof AppSettingsRoute
   AppStudentsRoute: typeof AppStudentsRoute
   AppTeachersRoute: typeof AppTeachersRoute
   AppTransportRoute: typeof AppTransportRoute
+  AppUniversityRoute: typeof AppUniversityRoute
   AppIndexRoute: typeof AppIndexRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
+  AppAcademicSessionsRoute: AppAcademicSessionsRoute,
   AppAdmissionsRoute: AppAdmissionsRoute,
   AppAiRoute: AppAiRoute,
   AppAssignmentsRoute: AppAssignmentsRoute,
   AppAttendanceRoute: AppAttendanceRoute,
+  AppBatchesRoute: AppBatchesRoute,
+  AppCampusesRoute: AppCampusesRoute,
   AppCoursesRoute: AppCoursesRoute,
   AppDepartmentsRoute: AppDepartmentsRoute,
   AppEventsRoute: AppEventsRoute,
@@ -594,10 +697,12 @@ const AppRouteChildren: AppRouteChildren = {
   AppOnlineClassesRoute: AppOnlineClassesRoute,
   AppQrRoute: AppQrRoute,
   AppReportsRoute: AppReportsRoute,
+  AppSemestersRoute: AppSemestersRoute,
   AppSettingsRoute: AppSettingsRoute,
   AppStudentsRoute: AppStudentsRoute,
   AppTeachersRoute: AppTeachersRoute,
   AppTransportRoute: AppTransportRoute,
+  AppUniversityRoute: AppUniversityRoute,
   AppIndexRoute: AppIndexRoute,
 }
 

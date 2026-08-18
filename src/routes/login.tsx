@@ -27,7 +27,6 @@ function LoginPage() {
   const navigate = useNavigate();
   const [email, setEmail] = useState("admin@scholaros.edu");
   const [password, setPassword] = useState("demo1234");
-  const [role, setRole] = useState<Role>("Super Admin");
   const [loading, setLoading] = useState(false);
 
   const submit = async (e: React.FormEvent) => {
@@ -111,15 +110,6 @@ function LoginPage() {
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="pl-9" required />
                 </div>
-              </div>
-              <div className="space-y-1.5">
-                <Label>Sign in as</Label>
-                <Select value={role} onValueChange={(v) => setRole(v as Role)}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent className="max-h-64">
-                    {ROLES.map((r) => <SelectItem key={r} value={r}>{r}</SelectItem>)}
-                  </SelectContent>
-                </Select>
               </div>
               <div className="flex items-center gap-2">
                 <Checkbox id="rem" defaultChecked /><Label htmlFor="rem" className="text-xs font-normal">Remember me for 30 days</Label>

@@ -24,6 +24,7 @@ interface AuthContextType {
   updateProfile: (data: Partial<User>) => Promise<void>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
   isAuthenticated: boolean;
+  setUser: (user: User | null) => void; // Add setUser function
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -36,24 +37,63 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
 
+  // Helper function to set user and update localStorage
+  const updateUser = (userData: User | null) => {
+    setUser(userData);
+    if (userData) {
+      localStorage.setItem('user', JSON.stringify(userData));
+      // Also store universityId separately for easy access
+      if ((userData as any).universityId) {
+        localStorage.setItem('universityId', (userData as any).universityId);
+      }
+    } else {
+      localStorage.removeItem('user');
+      localStorage.removeItem('universityId');
+    }
+  };
+
   // Check if user is authenticated on mount
   useEffect(() => {
     const checkAuth = async () => {
       try {
+        const legacyToken = localStorage.getItem('auth_token');
+        if (legacyToken && !localStorage.getItem('token')) {
+          localStorage.setItem('token', legacyToken);
+        }
+        if (!legacyToken && localStorage.getItem('token')) {
+          localStorage.removeItem('auth_token');
+        }
+
         const token = localStorage.getItem('token');
-        if (token) {
-          const response = await authAPI.getProfile();
-          if (response.success) {
-            setUser(response.data);
-          } else {
+        const storedUser = localStorage.getItem('user');
+        
+        if (token && storedUser) {
+          try {
+            const parsedUser = JSON.parse(storedUser);
+            setUser(parsedUser);
+            console.log("✅ User loaded from storage:", parsedUser);
+            
+            // Also check for universityId
+            const storedUnivId = localStorage.getItem('universityId');
+            if (storedUnivId && !parsedUser.universityId) {
+              (parsedUser as any).universityId = storedUnivId;
+              localStorage.setItem('user', JSON.stringify(parsedUser));
+              setUser(parsedUser);
+            }
+          } catch (error) {
+            console.error("Failed to parse stored user:", error);
             localStorage.removeItem('token');
+            localStorage.removeItem('auth_token');
             localStorage.removeItem('user');
+            localStorage.removeItem('universityId');
           }
         }
       } catch (error) {
         console.error('Auth check failed:', error);
         localStorage.removeItem('token');
+        localStorage.removeItem('auth_token');
         localStorage.removeItem('user');
+        localStorage.removeItem('universityId');
       } finally {
         setLoading(false);
       }
@@ -69,8 +109,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         if (response.success) {
           const { user, token } = response.data;
           localStorage.setItem('token', token);
-          localStorage.setItem('user', JSON.stringify(user));
-          setUser(user);
+          updateUser(user);
           toast.success('Login successful!');
           return;
         }
@@ -87,8 +126,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           name: credentials.name,
           role: credentials.role,
         };
-        setUser(user);
-        localStorage.setItem('user', JSON.stringify(user));
+        updateUser(user);
         toast.success('Login successful!');
         return;
       }
@@ -107,7 +145,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       console.error('Logout error:', error);
     } finally {
       localStorage.removeItem('token');
+      localStorage.removeItem('auth_token');
       localStorage.removeItem('user');
+      localStorage.removeItem('universityId');
       setUser(null);
       toast.success('Logged out successfully');
     }
@@ -119,8 +159,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (response.success) {
         const { user, token } = response.data;
         localStorage.setItem('token', token);
-        localStorage.setItem('user', JSON.stringify(user));
-        setUser(user);
+        updateUser(user);
         toast.success('Registration successful!');
       } else {
         toast.error(response.message || 'Registration failed');
@@ -136,8 +175,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       const response = await authAPI.updateProfile(data);
       if (response.success) {
-        setUser(response.data);
-        localStorage.setItem('user', JSON.stringify(response.data));
+        updateUser(response.data);
         toast.success('Profile updated successfully!');
       } else {
         toast.error(response.message || 'Profile update failed');
@@ -174,6 +212,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     updateProfile,
     changePassword,
     isAuthenticated: !!user,
+    setUser: updateUser, // Expose setUser function
   };
 
   return (

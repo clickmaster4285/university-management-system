@@ -1,3 +1,4 @@
+// backend/src/models/Department.js
 import mongoose from 'mongoose';
 
 const departmentSchema = new mongoose.Schema({
@@ -26,13 +27,22 @@ const departmentSchema = new mongoose.Schema({
     type: String,
     trim: true
   },
-  facultyCount: {
-    type: Number,
-    default: 0
+  faculty: {
+    type: String,
+    trim: true
   },
-  studentCount: {
-    type: Number,
-    default: 0
+  email: {
+    type: String,
+    trim: true,
+    lowercase: true,
+    match: [/^\S+@\S+\.\S+$/, 'Please enter a valid email address']
+  },
+  phone: {
+    type: String,
+    trim: true
+  },
+  establishedDate: {
+    type: Date
   },
   status: {
     type: String,

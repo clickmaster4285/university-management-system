@@ -17,18 +17,19 @@ import bookRoutes from './routes/book.routes.js';
 import transportRoutes from './routes/transport.routes.js';
 import eventRoutes from './routes/event.routes.js';
 import feeRoutes from './routes/fee.routes.js';
+import feeStructureRoutes from './routes/feeStructure.routes.js';
 import financeRoutes from './routes/finance.routes.js';
 import hrRoutes from './routes/hr.routes.js';
 import dashboardRoutes from './routes/dashboard.routes.js';
 import notificationRoutes from './routes/notification.routes.js';
 import authRoutes from './routes/auth.routes.js';
-// backend/src/app.js - Add this import
+import academicSessionRoutes from './routes/academicSession.routes.js';
+import semesterRoutes from './routes/semester.routes.js';
+import batchRoutes from './routes/batch.routes.js';
+import universityRoutes from "./routes/university.routes.js"; // Fixed: Added routes/ prefix
 import settingsRoutes from './routes/settings.routes.js';
-
-// backend/src/app.js - Add this import
 import reportRoutes from './routes/report.routes.js';
-
-
+import campusRoutes from "./routes/campus.routes.js";
 dotenv.config();
 
 const app = express();
@@ -94,6 +95,10 @@ app.get("/", (req, res) => {
     database: process.env.MONGODB_URI ? 'MongoDB Connected' : 'MongoDB Not Connected',
     allowedOrigins: allowedOrigins,
     endpoints: {
+      universities: {
+        base: "/api/universities",
+        methods: ["POST", "GET", "GET/:id", "GET/code/:code", "GET/:id/stats", "PUT/:id", "DELETE/:id", "GET/check-code/:code"]
+      },
       students: {
         base: "/api/students",
         methods: ["GET", "POST", "GET/:id", "PUT/:id", "DELETE/:id", "POST/bulk", "GET/stats"]
@@ -142,6 +147,10 @@ app.get("/", (req, res) => {
         base: "/api/fees",
         methods: ["GET", "POST", "GET/:id", "PUT/:id", "DELETE/:id"]
       },
+      "fee-structures": {
+        base: "/api/fee-structures",
+        methods: ["GET", "POST", "GET/:id", "PUT/:id", "DELETE/:id"]
+      },
       finance: {
         base: "/api/finance",
         methods: ["GET", "GET/summary", "PUT/monthly", "POST/invoices", "PUT/invoices/:invoiceId", "DELETE/invoices/:invoiceId", "PUT/budget"]
@@ -154,6 +163,38 @@ app.get("/", (req, res) => {
           payroll: ["GET", "GET/stats", "POST", "PUT/:id", "DELETE/:id"],
           recruitment: ["GET", "GET/stats", "POST", "PUT/:id", "DELETE/:id"]
         }
+      },
+      auth: {
+        base: "/api/auth",
+        methods: ["POST/login", "POST/register", "POST/logout", "POST/refresh-token", "POST/forgot-password", "POST/reset-password"]
+      },
+      "academic-sessions": {
+        base: "/api/academic-sessions",
+        methods: ["GET", "POST", "GET/:id", "PUT/:id", "DELETE/:id"]
+      },
+      semesters: {
+        base: "/api/semesters",
+        methods: ["GET", "POST", "GET/:id", "PUT/:id", "DELETE/:id"]
+      },
+      batches: {
+        base: "/api/batches",
+        methods: ["GET", "POST", "GET/:id", "PUT/:id", "DELETE/:id"]
+      },
+      settings: {
+        base: "/api/settings",
+        methods: ["GET", "PUT"]
+      },
+      reports: {
+        base: "/api/reports",
+        methods: ["GET", "POST", "GET/:id", "PUT/:id", "DELETE/:id"]
+      },
+      dashboard: {
+        base: "/api/dashboard",
+        methods: ["GET"]
+      },
+      notifications: {
+        base: "/api/notifications",
+        methods: ["GET", "POST", "GET/:id", "PUT/:id/read", "DELETE/:id"]
       }
     },
     docs: "Use Postman to test the API endpoints"
@@ -191,6 +232,7 @@ app.get("/health", async (req, res) => {
         allowedOrigins: allowedOrigins
       },
       endpoints: {
+        universities: "/api/universities",
         admissions: "/api/admissions",
         students: "/api/students",
         teachers: "/api/teachers",
@@ -203,8 +245,17 @@ app.get("/health", async (req, res) => {
         transport: "/api/transport",
         events: "/api/events",
         fees: "/api/fees",
+        "fee-structures": "/api/fee-structures",
         finance: "/api/finance",
-        hr: "/api/hr"
+        hr: "/api/hr",
+        auth: "/api/auth",
+        "academic-sessions": "/api/academic-sessions",
+        semesters: "/api/semesters",
+        batches: "/api/batches",
+        settings: "/api/settings",
+        reports: "/api/reports",
+        dashboard: "/api/dashboard",
+        notifications: "/api/notifications"
       }
     });
   } catch (error) {
@@ -249,15 +300,19 @@ app.use('/api/books', bookRoutes);
 app.use('/api/transport', transportRoutes);
 app.use('/api/events', eventRoutes);
 app.use('/api/fees', feeRoutes);
+app.use('/api/fee-structures', feeStructureRoutes);
 app.use('/api/finance', financeRoutes);
 app.use('/api/hr', hrRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/dashboard', dashboardRoutes);
-app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/auth', authRoutes);
-
+app.use('/api/academic-sessions', academicSessionRoutes);
+app.use('/api/semesters', semesterRoutes);
+app.use('/api/batches', batchRoutes);
+app.use("/api/universities", universityRoutes); 
+app.use("/api/campuses", campusRoutes);
 // 404 Handler - Must be after all routes
 app.use(notFoundHandler);
 
