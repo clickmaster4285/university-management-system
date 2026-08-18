@@ -1,7 +1,7 @@
 [
   {
     "id": "FAC-1000",
-    "name": "Dr. Bilal Ahmed",
+    "name": "Bilal Ahmed",
     "department": "Computer Science",
     "designation": "Associate Professor",
     "experience": 12,
@@ -20,7 +20,7 @@
     "courses": 2,
     "rating": 4.0,
     "salary": 180000,
-    "email": "sana.malik@uni.edu.pk",
+    "email": "sana@uni.edu.pk",
     "status": "Active"
   }
 ]
