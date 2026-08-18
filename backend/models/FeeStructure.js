@@ -282,7 +282,6 @@ feeStructureSchema.index({ department: 1 });
 feeStructureSchema.index({ program: 1 });
 feeStructureSchema.index({ semester: 1 });
 feeStructureSchema.index({ status: 1 });
-feeStructureSchema.index({ structureId: 1 });
 feeStructureSchema.index({ isActive: 1 });
 feeStructureSchema.index({ createdAt: -1 });
 feeStructureSchema.index({ department: 1, program: 1, semester: 1 });

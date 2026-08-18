@@ -1,6 +1,6 @@
 // src/routes/app.hr.tsx
-import { AppShell } from "@/components/app-shell";
-import { KpiCard } from "@/components/kpi-card";
+import { AppShell } from "@/layouts";
+import { KpiCard } from "@/components/dashboard/kpi-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -27,7 +27,7 @@ import {
 } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
 import { toast } from "sonner";
-import { hrAPI, Employee, Leave } from "@/lib/api/hr";
+import { hrAPI, Employee, Leave } from "@/features/hr";
 
 
 export function HrPage() {

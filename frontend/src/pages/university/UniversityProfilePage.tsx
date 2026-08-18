@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { useAuth } from "@/lib/auth";
-import { AppShell } from "@/components/app-shell";
+import { AppShell } from "@/layouts";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -24,7 +24,7 @@ import {
   EyeOff,
   ArrowLeft
 } from "lucide-react";
-import { createUniversity } from "@/lib/api/university";
+import { createUniversity } from "@/features/university";
 
 
 export function UniversityProfilePage() {

@@ -1,6 +1,6 @@
 // src/routes/app.finance.tsx
-import { AppShell } from "@/components/app-shell";
-import { KpiCard } from "@/components/kpi-card";
+import { AppShell } from "@/layouts";
+import { KpiCard } from "@/components/dashboard/kpi-card";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,7 +25,7 @@ import {
 import { AreaChart, Area, ResponsiveContainer, CartesianGrid, XAxis, YAxis, Tooltip } from "recharts";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
-import { financeAPI, Finance, Invoice, BudgetAllocation } from "@/lib/api/finance";
+import { financeAPI, Finance, Invoice, BudgetAllocation } from "@/features/finance";
 
 
 export function FinancePage() {

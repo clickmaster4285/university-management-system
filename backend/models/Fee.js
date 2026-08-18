@@ -468,12 +468,11 @@ const feeSchema = new mongoose.Schema({
 });
 
 // ==================== INDEXES ====================
-feeSchema.index({ studentId: 1 });
+
 feeSchema.index({ studentName: 1 });
 feeSchema.index({ studentEmail: 1 });
 feeSchema.index({ paymentStatus: 1 });
 feeSchema.index({ dueDate: 1 });
-feeSchema.index({ feeId: 1 });
 feeSchema.index({ feeStructureId: 1 });
 feeSchema.index({ program: 1 });
 feeSchema.index({ semester: 1 });

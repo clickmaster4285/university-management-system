@@ -150,13 +150,9 @@ const admissionSchema = new mongoose.Schema({
 });
 
 // Indexes for better query performance
-admissionSchema.index({ email: 1 });
-admissionSchema.index({ cnic: 1 });
-admissionSchema.index({ phone: 1 });
 admissionSchema.index({ status: 1 });
 admissionSchema.index({ program: 1 });
 admissionSchema.index({ applicationDate: -1 });
-admissionSchema.index({ admissionId: 1 });
 
 const Admission = mongoose.model('Admission', admissionSchema);
 export default Admission;

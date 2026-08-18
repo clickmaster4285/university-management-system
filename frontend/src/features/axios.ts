@@ -1,25 +1,24 @@
 // src/lib/api/axios.ts
 import axios from 'axios';
 import { toast } from 'sonner';
+const API_URL = import.meta.env.VITE_API_URL;
+// const normalizeBaseURL = (value?: string) => {
+//   if (!value) {
+//     return 'http://localhost:4006/api';
+//   }
 
-const normalizeBaseURL = (value?: string) => {
-  if (!value) {
-    return 'http://localhost:4006/api';
-  }
+//   const trimmed = value.trim();
+//   if (!trimmed) {
+//     return 'http://localhost:4006/api';
+//   }
 
-  const trimmed = value.trim();
-  if (!trimmed) {
-    return 'http://localhost:4006/api';
-  }
-
-  return trimmed.endsWith('/api') ? trimmed : `${trimmed.replace(/\/$/, '')}/api`;
-};
+//   return trimmed.endsWith('/api') ? trimmed : `${trimmed.replace(/\/$/, '')}/api`;
+// };
 
 const api = axios.create({
-  baseURL: normalizeBaseURL(import.meta.env.VITE_API_URL),
+  baseURL:API_URL,
   headers: {
     'Content-Type': 'application/json',
-    'Accept': 'application/json',
   },
   timeout: 60000,
   withCredentials: true,
@@ -28,7 +27,7 @@ const api = axios.create({
 // Request interceptor to add auth token
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token') || localStorage.getItem('auth_token');
+    const token = localStorage.getItem('token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     } else {
@@ -74,11 +73,10 @@ api.interceptors.response.use(
     if (status === 401) {
       const isAuthEndpoint = error.config?.url?.includes('/auth/login') ||
         error.config?.url?.includes('/auth/register');
-      const hasToken = !!(localStorage.getItem('token') || localStorage.getItem('auth_token'));
+      const hasToken = !!(localStorage.getItem('token'));
 
       if (!isAuthEndpoint && hasToken) {
         localStorage.removeItem('token');
-        localStorage.removeItem('auth_token');
         localStorage.removeItem('user');
 
         if (!window.location.pathname.includes('/login') &&

@@ -1,14 +1,14 @@
 // src/routes/app.departments.tsx
 import { useState, useEffect, useMemo, useRef } from "react";
-import { AppShell } from "@/components/app-shell";
+import { AppShell } from "@/layouts";
 import { DataTable, type Column } from "@/components/data-table";
-import { KpiCard } from "@/components/kpi-card";
+import { KpiCard } from "@/components/dashboard/kpi-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { departmentAPI, Department } from "@/lib/api/departments";
+import { departmentAPI, Department } from "@/features/departments";
 import { 
   Building2, 
   Users, 

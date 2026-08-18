@@ -118,7 +118,7 @@ borrowingSchema.index({ bookId: 1 });
 borrowingSchema.index({ userId: 1 });
 borrowingSchema.index({ status: 1 });
 borrowingSchema.index({ dueDate: 1 });
-borrowingSchema.index({ borrowingId: 1 });
+
 
 // Pre-save middleware to generate borrowing ID
 borrowingSchema.pre('save', async function(next) {

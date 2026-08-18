@@ -1,5 +1,5 @@
-import { AppShell } from "@/components/app-shell";
-import { KpiCard } from "@/components/kpi-card";
+import { AppShell } from "@/layouts";
+import { KpiCard } from "@/components/dashboard/kpi-card";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";

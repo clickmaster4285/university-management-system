@@ -192,9 +192,7 @@ const bookSchema = new mongoose.Schema({
 
 // Indexes
 bookSchema.index({ title: 'text', authors: 'text', isbn: 'text', category: 'text', tags: 'text' });
-bookSchema.index({ isbn: 1 });
-bookSchema.index({ bookId: 1 });
-bookSchema.index({ category: 1 });
+
 bookSchema.index({ status: 1 });
 bookSchema.index({ location: 1 });
 

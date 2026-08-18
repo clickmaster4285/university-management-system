@@ -158,8 +158,6 @@ const busSchema = new mongoose.Schema({
 });
 
 // Indexes
-busSchema.index({ busNumber: 1 });
-busSchema.index({ registrationNumber: 1 });
 busSchema.index({ status: 1 });
 busSchema.index({ routeId: 1 });
 

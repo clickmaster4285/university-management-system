@@ -105,7 +105,7 @@ const studentSchema = new mongoose.Schema({
 });
 
 // Index for better search performance
-studentSchema.index({ name: 'text', email: 'text' });
+studentSchema.index({ name: 'text'});
 
 // Virtual field for full name
 studentSchema.virtual('fullName').get(function() {
