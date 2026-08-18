@@ -53,26 +53,15 @@ const generateStudentReport = async (params = {}) => {
     if (endDate) query.createdAt.$lte = new Date(endDate);
   }
   
-  console.log('📊 Student query:', JSON.stringify(query, null, 2));
   
   // Get all students matching the query - using your Student model
   const students = await Student.find(query).sort({ createdAt: -1 });
   
-  console.log(`📊 Found ${students.length} students for report`);
   
   // Log sample student data for debugging
   if (students.length > 0) {
-    console.log('📊 Sample student data:', {
-      name: students[0].name,
-      email: students[0].email,
-      department: students[0].department,
-      program: students[0].program,
-      status: students[0].status
-    });
   } else {
-    console.log('⚠️ No students found! Check your database.');
     const total = await Student.countDocuments();
-    console.log(`📊 Total students in database: ${total}`);
   }
   
   const totalStudents = students.length;
@@ -102,7 +91,6 @@ const generateStudentReport = async (params = {}) => {
   
   // Log first student data to verify
   if (studentData.length > 0) {
-    console.log('📊 First student in report:', JSON.stringify(studentData[0], null, 2));
   }
   
   return {

@@ -22,14 +22,12 @@ const updateEmployeeStatus = async (employeeId) => {
       if (employee.status !== 'On Leave') {
         employee.status = 'On Leave';
         await employee.save();
-        console.log(`✅ Employee ${employee.firstName} ${employee.lastName} status updated to: On Leave`);
       }
     } else {
       if (employee.status !== 'Resigned' && employee.status !== 'Terminated') {
         if (employee.status !== 'Active') {
           employee.status = 'Active';
           await employee.save();
-          console.log(`✅ Employee ${employee.firstName} ${employee.lastName} status updated to: Active`);
         }
       }
     }
@@ -71,7 +69,6 @@ export const updateAllEmployeeStatuses = async () => {
       }
     }
     
-    console.log(`✅ Updated ${updatedCount} employee statuses based on leave dates`);
     return updatedCount;
   } catch (error) {
     console.error('Error updating all employee statuses:', error);
@@ -81,9 +78,7 @@ export const updateAllEmployeeStatuses = async () => {
 
 export const getAllLeaves = async (req, res) => {
   try {
-    console.log('📊 Fetching all leaves...');
     const leaves = await Leave.find().sort({ createdAt: -1 });
-    console.log(`✅ Found ${leaves.length} leaves`);
     
     res.status(200).json({
       success: true,
@@ -124,10 +119,8 @@ export const getLeaveById = async (req, res) => {
 
 export const createLeave = async (req, res) => {
   try {
-    console.log('📝 Creating new leave:', req.body);
     const leave = new Leave(req.body);
     await leave.save();
-    console.log('✅ Leave created:', leave.leaveId);
     
     if (leave.status === 'Approved') {
       await updateEmployeeStatus(leave.employee);
@@ -151,8 +144,6 @@ export const createLeave = async (req, res) => {
 export const updateLeave = async (req, res) => {
   try {
     const { id } = req.params;
-    console.log('🔄 Updating leave:', id);
-    console.log('📝 Update data:', req.body);
     
     const leave = await Leave.findByIdAndUpdate(
       id,
@@ -173,7 +164,6 @@ export const updateLeave = async (req, res) => {
       await updateEmployeeStatus(leave.employee);
     }
     
-    console.log('✅ Leave updated successfully');
     
     res.status(200).json({
       success: true,
@@ -195,7 +185,6 @@ export const updateLeaveStatus = async (req, res) => {
     const { id } = req.params;
     const { status } = req.body;
     
-    console.log(`🔄 Updating leave status to ${status}:`, id);
     
     const leave = await Leave.findByIdAndUpdate(
       id,
@@ -219,7 +208,6 @@ export const updateLeaveStatus = async (req, res) => {
       await updateEmployeeStatus(leave.employee);
     }
     
-    console.log(`✅ Leave ${status.toLowerCase()} successfully`);
     
     res.status(200).json({
       success: true,

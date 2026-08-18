@@ -42,7 +42,7 @@ app.use(helmet({
 }));
 
 // CORS configuration
-const allowedOrigins = process.env.FRONTEND_URL?.split(',') || ['http://localhost:5173', 'http://localhost:3000'];
+const allowedOrigins = process.env.FRONTEND_URL;
 
 app.use(cors({
   origin: function (origin, callback) {
@@ -51,22 +51,15 @@ app.use(cors({
     if (allowedOrigins.indexOf(origin) !== -1) {
       callback(null, true);
     } else {
-      console.log('❌ Blocked by CORS:', origin);
+      console.error('❌ Blocked by CORS:', origin);
       callback(null, true);
     }
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
-  exposedHeaders: ['Content-Range', 'X-Content-Range'],
   maxAge: 86400
 }));
-
-// CORS debug middleware
-app.use((req, res, next) => {
-  console.log(`🌐 ${req.method} ${req.url} from ${req.headers.origin || 'unknown'}`);
-  next();
-});
 
 // Logging middleware
 app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));

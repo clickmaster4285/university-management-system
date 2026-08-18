@@ -71,7 +71,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           try {
             const parsedUser = JSON.parse(storedUser);
             setUser(parsedUser);
-            console.log("✅ User loaded from storage:", parsedUser);
             
             // Also check for universityId
             const storedUnivId = localStorage.getItem('universityId');

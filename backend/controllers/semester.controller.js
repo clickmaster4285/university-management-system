@@ -140,7 +140,6 @@ export async function createSemester(req, res, next) {
       description
     } = req.body;
     
-    console.log('📥 Creating semester with data:', req.body);
     
     // Validate required fields
     if (!academicSessionId || !name || !startDate || !endDate) {
@@ -188,7 +187,6 @@ export async function createSemester(req, res, next) {
     
     await semester.save();
     
-    console.log('✅ Semester created:', semester.name);
     
     res.status(201).json({
       success: true,
@@ -227,18 +225,6 @@ export async function updateSemester(req, res, next) {
       description
     } = req.body;
     
-    console.log('📥 Updating semester:', { 
-      id, 
-      name,
-      number,
-      type,
-      startDate,
-      endDate,
-      registrationStart,
-      registrationEnd,
-      status,
-      description
-    });
     
     // Find the semester
     const semester = await findSemesterByIdentifier(id);
@@ -318,7 +304,6 @@ export async function updateSemester(req, res, next) {
     // Save the semester
     await semester.save();
     
-    console.log('✅ Semester updated:', semester.name);
     
     res.json({
       success: true,
@@ -345,7 +330,6 @@ export async function deleteSemester(req, res, next) {
   try {
     const { id } = req.params;
     
-    console.log('🗑️ Deleting semester:', id);
     
     const semester = await findSemesterByIdentifier(id);
     if (!semester) {
@@ -357,7 +341,6 @@ export async function deleteSemester(req, res, next) {
     
     await semester.deleteOne();
     
-    console.log('✅ Semester deleted:', semester.name);
     
     res.json({
       success: true,

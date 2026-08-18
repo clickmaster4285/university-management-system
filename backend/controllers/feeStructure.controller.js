@@ -83,7 +83,6 @@ export const getFeeStructureById = async (req, res) => {
 // Create fee structure
 export const createFeeStructure = async (req, res) => {
   try {
-    console.log('📝 Creating fee structure:', req.body);
     
     const requiredFields = ['name', 'department', 'program', 'semester', 'academicYear'];
     const missingFields = requiredFields.filter(field => !req.body[field]);
@@ -119,7 +118,6 @@ export const createFeeStructure = async (req, res) => {
     const structure = new FeeStructure(structureData);
     await structure.save();
 
-    console.log('✅ Fee structure created:', structure.structureId);
 
     res.status(201).json({
       success: true,
@@ -150,8 +148,6 @@ export const createFeeStructure = async (req, res) => {
 export const updateFeeStructure = async (req, res) => {
   try {
     const { id } = req.params;
-    console.log('📝 Updating fee structure:', id);
-    console.log('📝 Update data:', req.body);
     
     const structure = await FeeStructure.findById(id);
     if (!structure) {
@@ -239,7 +235,6 @@ export const updateFeeStructure = async (req, res) => {
     structure.updatedBy = req.user?.id || null;
     await structure.save();
 
-    console.log('✅ Fee structure updated:', structure.structureId);
 
     res.json({
       success: true,
@@ -270,7 +265,6 @@ export const updateFeeStructure = async (req, res) => {
 export const deleteFeeStructure = async (req, res) => {
   try {
     const { id } = req.params;
-    console.log('🗑️ Deleting fee structure:', id);
     
     const structure = await FeeStructure.findById(id);
     if (!structure) {

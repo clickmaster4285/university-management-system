@@ -383,12 +383,10 @@ export function AdmissionsPage() {
       if (response && response.success) {
         setAdmissions(response.data || []);
         setFilteredAdmissions(response.data || []);
-        console.log(`✅ Loaded ${response.data?.length || 0} admissions`);
       } else {
         setAdmissions([]);
         setFilteredAdmissions([]);
         if (response?.message) {
-          console.log('Info:', response.message);
         }
       }
       
@@ -745,7 +743,6 @@ export function AdmissionsPage() {
         feeStatus: formData.feeStatus || 'Pending'
       };
 
-      console.log('📤 Sending admission data:', admissionData);
 
       let response;
       if (isEditMode && editingId) {

@@ -110,7 +110,6 @@ export function EventsPage() {
       setError(null);
       
       const response = await eventAPI.getAll({ limit: 100 });
-      console.log('📥 Event Response:', response);
       
       let data: Event[] = [];
       if (response && response.success) {
@@ -119,7 +118,6 @@ export function EventsPage() {
         data = response.data || [];
       }
       
-      console.log('✅ Loaded events:', data.length);
       setEvents(data);
       setFilteredEvents(data);
       
@@ -143,7 +141,6 @@ export function EventsPage() {
   const fetchStats = async () => {
     try {
       const response = await eventAPI.getStats();
-      console.log('📊 Stats Response:', response);
       
       if (response && response.success) {
         setStats(response.data);
@@ -384,7 +381,6 @@ export function EventsPage() {
         parkingInfo: formData.parkingInfo.trim()
       };
 
-      console.log('📤 Sending event data:', eventData);
 
       let response;
       if (isEditMode && editingId) {

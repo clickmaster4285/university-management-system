@@ -84,12 +84,9 @@ class DepartmentAPI {
 
   async update(id: string, data: Partial<Department>) {
     try {
-      console.log('🔄 Updating department with ID:', id);
-      console.log('📦 Update data:', data);
       
       const response = await api.put(`${this.baseUrl}/${id}`, data);
       
-      console.log('✅ Update response:', response.data);
       
       // Ensure we return the data in a consistent format
       if (response.data && response.data.success !== undefined) {
@@ -117,9 +114,7 @@ class DepartmentAPI {
 
   async delete(id: string) {
     try {
-      console.log('🗑️ Deleting department with ID:', id);
       const response = await api.delete(`${this.baseUrl}/${id}`);
-      console.log('✅ Delete response:', response.data);
       return response.data;
     } catch (error) {
       console.error('Error deleting department:', error);

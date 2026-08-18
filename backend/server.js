@@ -4,7 +4,7 @@ import connectDB from './config/database.js';
 import './jobs/statusUpdate.js';
 dotenv.config();
 
-const DEFAULT_PORT = Number(process.env.PORT || 4005);
+const DEFAULT_PORT = Number(process.env.PORT);
 
 const startServer = async (port = DEFAULT_PORT) => {
   try {
@@ -13,8 +13,6 @@ const startServer = async (port = DEFAULT_PORT) => {
     await new Promise((resolve, reject) => {
       const server = app.listen(port, () => {
         console.log(`\n🚀 Server running on http://localhost:${port}`);
-     console.log(`\n🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
-        console.log(`📊 Database: MongoDB Connected ✅`);
         resolve(server);
       });
 
@@ -34,17 +32,5 @@ const startServer = async (port = DEFAULT_PORT) => {
     process.exit(1);
   }
 };
-
-// Handle uncaught exceptions
-process.on('uncaughtException', (error) => {
-  console.error('❌ Uncaught Exception:', error);
-  process.exit(1);
-});
-
-// Handle unhandled rejections
-process.on('unhandledRejection', (error) => {
-  console.error('❌ Unhandled Rejection:', error);
-  process.exit(1);
-});
 
 startServer();

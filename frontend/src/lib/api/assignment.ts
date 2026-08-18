@@ -79,10 +79,8 @@ class AssignmentAPI {
         });
       }
       const url = queryParams.toString() ? `${this.baseUrl}?${queryParams}` : this.baseUrl;
-      console.log('📤 Fetching assignments from:', url);
       
       const response = await api.get(url);
-      console.log('📥 Raw API Response:', response.data);
       
       // Try to extract data from various response formats
       let data = [];
@@ -124,7 +122,6 @@ class AssignmentAPI {
         }
       }
       
-      console.log(`✅ Extracted ${data.length} assignments from response`);
       
       return {
         success: true,
@@ -162,9 +159,7 @@ class AssignmentAPI {
 
   async create(data: any) {
     try {
-      console.log('📤 Creating assignment:', data);
       const response = await api.post(this.baseUrl, data);
-      console.log('📥 Create response:', response.data);
       
       return {
         success: true,
@@ -221,7 +216,6 @@ class AssignmentAPI {
   async getStats() {
     try {
       const response = await api.get(`${this.baseUrl}/stats/summary`);
-      console.log('📊 Stats response:', response.data);
       
       let statsData = {
         total: 0,

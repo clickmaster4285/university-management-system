@@ -120,25 +120,22 @@ export function StudentsPage() {
     try {
       setLoading(true);
       setError(null);
-      
+
       const response = await studentAPI.getAll();
-      
-      if (response && response.data) {
-        setStudents(response.data);
-        setFilteredStudents(response.data);
-        console.log(`✅ Loaded ${response.data.length} students from database`);
-        if (response.data.length > 0) {
-          console.log('📋 Sample student:', response.data[0]);
-        }
+      const studentList = Array.isArray(response) ? response : [];
+
+      if (studentList.length > 0) {
+        setStudents(studentList);
+        setFilteredStudents(studentList);
       } else {
         setStudents([]);
         setFilteredStudents([]);
         setError('No data received from server');
       }
-      
+
     } catch (error: any) {
       console.error('❌ Failed to fetch students:', error);
-      
+
       let errorMsg = 'Failed to load students from database';
       
       if (error.message?.includes('Failed to fetch') || error.message?.includes('NetworkError')) {
@@ -401,11 +398,9 @@ export function StudentsPage() {
       let response;
       if (isEditMode && editingId) {
         response = await studentAPI.update(editingId, studentData);
-        console.log('✅ Update Response:', response);
         toast.success(`Student ${formData.name} updated successfully!`);
       } else {
         response = await studentAPI.create(studentData);
-        console.log('✅ Create Response:', response);
         toast.success(`Student ${formData.name} created successfully!`);
       }
       

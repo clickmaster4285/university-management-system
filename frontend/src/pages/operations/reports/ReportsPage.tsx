@@ -89,7 +89,6 @@ export function ReportsPage() {
         setCategories(categoriesRes.data || []);
       }
       
-      console.log('✅ Reports data loaded successfully');
     } catch (error: any) {
       console.error('❌ Failed to fetch reports:', error);
       setError(error.message || 'Failed to load reports');

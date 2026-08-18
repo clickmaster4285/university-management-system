@@ -118,8 +118,6 @@ export async function createAcademicSession(req, res, next) {
       description 
     } = req.body;
     
-    console.log('📥 Creating academic session with data:', req.body);
-    
     // Validate required fields
     if (!name || !code || !startDate || !endDate) {
       return res.status(400).json({
@@ -152,8 +150,6 @@ export async function createAcademicSession(req, res, next) {
     });
     
     await session.save();
-    
-    console.log('✅ Academic session created:', session.name);
     
     res.status(201).json({
       success: true,
@@ -188,17 +184,6 @@ export async function updateAcademicSession(req, res, next) {
       isCurrent, 
       description 
     } = req.body;
-    
-    console.log('📥 Updating academic session:', { 
-      id, 
-      name, 
-      code, 
-      startDate, 
-      endDate, 
-      status, 
-      isCurrent, 
-      description 
-    });
     
     // Find the session by Mongo _id or sessionId
     const session = await findSessionByIdentifier(id);
@@ -268,9 +253,7 @@ export async function updateAcademicSession(req, res, next) {
     
     // Save the session
     await session.save();
-    
-    console.log('✅ Academic session updated:', session.name);
-    
+
     res.json({
       success: true,
       data: session,
@@ -295,9 +278,7 @@ export async function updateAcademicSession(req, res, next) {
 export async function setCurrentAcademicSession(req, res, next) {
   try {
     const { id } = req.params;
-    
-    console.log('📥 Setting current academic session:', id);
-    
+
     // Find the session by Mongo _id or sessionId
     const session = await findSessionByIdentifier(id);
     if (!session) {
@@ -316,9 +297,7 @@ export async function setCurrentAcademicSession(req, res, next) {
     // Set this session as current
     session.isCurrent = true;
     await session.save();
-    
-    console.log('✅ Current academic session set to:', session.name);
-    
+
     res.json({
       success: true,
       data: session,
@@ -335,7 +314,6 @@ export async function deleteAcademicSession(req, res, next) {
   try {
     const { id } = req.params;
     
-    console.log('🗑️ Deleting academic session:', id);
     
     const session = await findSessionByIdentifier(id);
     if (!session) {
@@ -355,7 +333,6 @@ export async function deleteAcademicSession(req, res, next) {
     
     await session.deleteOne();
     
-    console.log('✅ Academic session deleted:', session.name);
     
     res.json({
       success: true,

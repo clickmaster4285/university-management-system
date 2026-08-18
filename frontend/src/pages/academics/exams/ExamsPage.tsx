@@ -113,7 +113,6 @@ export function ExamsPage() {
       const response = await courseAPI.getAll({ status: 'Active' });
       if (response && response.success) {
         setCourses(response.data || []);
-        console.log('✅ Loaded courses:', response.data?.length || 0);
       }
     } catch (error) {
       console.error('Failed to fetch courses:', error);
@@ -130,7 +129,6 @@ export function ExamsPage() {
       setError(null);
       
       const response = await examAPI.getAll({ limit: 100 });
-      console.log('📥 Exam Response:', response);
       
       let data: Exam[] = [];
       if (response && response.success) {
@@ -139,7 +137,6 @@ export function ExamsPage() {
         data = response.data || [];
       }
       
-      console.log('✅ Loaded exams:', data.length);
       setExams(data);
       setFilteredExams(data);
       
@@ -163,7 +160,6 @@ export function ExamsPage() {
   const fetchStats = async () => {
     try {
       const response = await examAPI.getStats();
-      console.log('📊 Stats Response:', response);
       
       if (response && response.success) {
         setStats(response.data);
@@ -411,7 +407,6 @@ export function ExamsPage() {
         instructions: formData.instructions || ''
       };
 
-      console.log('📤 Sending exam data:', examData);
 
       let response;
       if (isEditMode && editingId) {

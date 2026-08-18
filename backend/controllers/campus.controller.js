@@ -3,7 +3,6 @@ import University from "../models/University.js";
 
 export const createCampus = async (req, res) => {
   try {
-    console.log("📝 Creating campus with data:", req.body);
 
     const {
       universityId,
@@ -81,7 +80,6 @@ export const createCampus = async (req, res) => {
     });
 
     await campus.save();
-    console.log("✅ Campus created:", campus._id);
 
     res.status(201).json({
       success: true,
@@ -102,7 +100,6 @@ export const getCampuses = async (req, res) => {
   try {
     const { universityId } = req.query;
     
-    console.log("📝 Fetching campuses for university:", universityId);
     
     if (!universityId) {
       return res.status(400).json({
@@ -116,7 +113,6 @@ export const getCampuses = async (req, res) => {
       .select("-__v")
       .sort({ isMainCampus: -1, createdAt: 1 });
     
-    console.log(`✅ Found ${campuses.length} campuses`);
     
     res.json({
       success: true,

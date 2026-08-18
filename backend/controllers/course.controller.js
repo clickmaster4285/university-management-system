@@ -648,7 +648,6 @@ export async function createCourse(req, res, next) {
       schedule
     } = req.body;
 
-    console.log('📥 Received course data:', req.body);
     
     // Validate required fields with proper checks
     const requiredFields = ['code', 'name', 'department', 'credits', 'program', 'semester'];
@@ -736,7 +735,6 @@ export async function createCourse(req, res, next) {
       totalFee: parsedCredits * parsedFeePerCredit
     };
 
-    console.log('📝 Creating course with data:', courseData);
 
     const course = new Course(courseData);
     await course.save();
@@ -1676,7 +1674,6 @@ export async function seedAllCourses(req, res, next) {
     const count = await Course.countDocuments();
     if (req.query.force === 'true' && count > 0) {
       await Course.deleteMany({});
-      console.log('🗑️ Cleared existing courses for reseed');
     }
 
     // Define all courses - 5 Programs x 8 Semesters x 5 Courses each = 200 courses
@@ -1822,14 +1819,12 @@ export async function seedAllCourses(req, res, next) {
     try {
       const result = await Course.insertMany(prepared, { ordered: false });
       insertedCount = result.length;
-      console.log('✅ Successfully inserted ' + insertedCount + ' courses');
     } catch (insertErr) {
       // ordered:false will insert valid docs and throw for duplicates/validation
       console.warn('⚠️ Partial insert during seeding courses:', insertErr.message || insertErr);
       // Count how many were actually inserted by checking courseId values we generated
       const inserted = await Course.find({ courseId: { $in: prepared.map(function(p) { return p.courseId; }) } });
       insertedCount = inserted.length;
-      console.log('✅ Inserted ' + insertedCount + ' courses (with errors)');
     }
 
     // Return the courses that now exist for the seeded courseIds

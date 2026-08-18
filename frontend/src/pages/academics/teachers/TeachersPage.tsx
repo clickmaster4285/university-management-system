@@ -109,22 +109,22 @@ export function TeachersPage() {
     try {
       setLoading(true);
       setError(null);
-      
-      const response = await teacherAPI.getAll();
-      
-      if (response && response.data) {
-        setTeachers(response.data);
-        setFilteredTeachers(response.data);
-        console.log(`✅ Loaded ${response.data.length} teachers from database`);
+
+      const teacherList = await teacherAPI.getAll();
+      const teachersData = Array.isArray(teacherList) ? teacherList : [];
+
+      if (teachersData.length > 0) {
+        setTeachers(teachersData);
+        setFilteredTeachers(teachersData);
       } else {
         setTeachers([]);
         setFilteredTeachers([]);
         setError('No data received from server');
       }
-      
+
     } catch (error: any) {
       console.error('❌ Failed to fetch teachers:', error);
-      
+
       let errorMsg = 'Failed to load teachers from database';
       
       if (error.message?.includes('Failed to fetch') || error.message?.includes('NetworkError')) {

@@ -115,7 +115,6 @@ export const getExamById = async (req, res) => {
 // Create new exam
 export const createExam = async (req, res) => {
   try {
-    console.log('📝 Creating exam with data:', req.body);
     
     // Validate required fields
     const requiredFields = ['title', 'type', 'course', 'courseCode', 'department', 'program', 'semester', 'instructor', 'examDate', 'startTime', 'endTime', 'duration', 'hall', 'totalMarks', 'passingMarks'];
@@ -136,7 +135,6 @@ export const createExam = async (req, res) => {
     
     await exam.save();
     
-    console.log('✅ Exam created successfully:', exam.examId);
     
     res.status(201).json({ 
       success: true, 
@@ -168,8 +166,6 @@ export const createExam = async (req, res) => {
 // Update exam
 export const updateExam = async (req, res) => {
   try {
-    console.log('📝 Updating exam:', req.params.id);
-    console.log('📝 Update data:', req.body);
     
     const exam = await Exam.findById(req.params.id);
     if (!exam) {
@@ -218,7 +214,6 @@ export const updateExam = async (req, res) => {
     exam.updatedBy = normalizeUserRef(req.user?.id);
     await exam.save();
     
-    console.log('✅ Exam updated successfully:', exam.examId);
     
     res.json({ 
       success: true, 
@@ -250,7 +245,6 @@ export const updateExam = async (req, res) => {
 // Delete exam
 export const deleteExam = async (req, res) => {
   try {
-    console.log('📝 Deleting exam:', req.params.id);
     
     const exam = await Exam.findById(req.params.id);
     if (!exam) {
@@ -261,7 +255,6 @@ export const deleteExam = async (req, res) => {
     }
 
     await exam.deleteOne();
-    console.log('✅ Exam deleted successfully:', exam.examId);
     
     res.json({ 
       success: true, 
@@ -358,8 +351,6 @@ export const addGrades = async (req, res) => {
     const { id } = req.params;
     const { grades } = req.body;
     
-    console.log('📝 Adding grades to exam:', id);
-    console.log('📝 Grades:', grades);
     
     const exam = await Exam.findById(id);
     if (!exam) {
@@ -399,7 +390,6 @@ export const addGrades = async (req, res) => {
     exam.calculateStatistics();
     await exam.save();
     
-    console.log('✅ Grades added successfully');
     
     res.json({ 
       success: true, 

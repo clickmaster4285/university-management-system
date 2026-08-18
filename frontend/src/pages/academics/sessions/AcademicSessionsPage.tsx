@@ -76,7 +76,6 @@ export function AcademicSessionsPage() {
       if (response && response.data) {
         setSessions(response.data);
         setFilteredSessions(response.data);
-        console.log(`✅ Loaded ${response.data.length} academic sessions`);
       } else {
         setSessions([]);
         setFilteredSessions([]);
@@ -227,7 +226,6 @@ export function AcademicSessionsPage() {
         description: formData.description || ''
       };
 
-      console.log('📤 Submitting session data:', submitData);
 
       if (isEditMode && editingId) {
         const response = await academicSessionAPI.update(editingId, submitData);

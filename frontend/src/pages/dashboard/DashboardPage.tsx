@@ -62,14 +62,12 @@ export function DashboardPage() {
 
       if (statsRes.success) {
         setStats(statsRes.data);
-        console.log('✅ Dashboard stats loaded:', statsRes.data);
       } else {
         setError('Failed to load dashboard stats');
       }
 
       if (activitiesRes.success) {
         setActivities(activitiesRes.data);
-        console.log('✅ Activities loaded:', activitiesRes.data);
       }
     } catch (error: any) {
       console.error('❌ Failed to fetch dashboard data:', error);

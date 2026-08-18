@@ -109,7 +109,6 @@ export function AssignmentsPage() {
       const response = await courseAPI.getAll({ status: 'Active' });
       if (response && response.success) {
         setCourses(response.data || []);
-        console.log('✅ Loaded courses:', response.data?.length || 0);
       }
     } catch (error) {
       console.error('Failed to fetch courses:', error);
@@ -126,7 +125,6 @@ export function AssignmentsPage() {
       setError(null);
       
       const response = await assignmentAPI.getAll({ limit: 100 });
-      console.log('📥 Full API Response:', response);
       
       let data: Assignment[] = [];
       
@@ -151,9 +149,7 @@ export function AssignmentsPage() {
         }
       }
       
-      console.log('✅ Extracted assignments:', data.length);
       if (data.length > 0) {
-        console.log('📋 First assignment sample:', data[0]);
       }
       
       setAssignments(data);
@@ -179,7 +175,6 @@ export function AssignmentsPage() {
   const fetchStats = async () => {
     try {
       const response = await assignmentAPI.getStats();
-      console.log('📊 Stats Response:', response);
       
       let statsData = {
         total: 0,
@@ -212,7 +207,6 @@ export function AssignmentsPage() {
         }
       }
       
-      console.log('📊 Extracted stats:', statsData);
       setStats(statsData);
       
     } catch (error) {
@@ -509,12 +503,10 @@ export function AssignmentsPage() {
         rubric: sanitizedRubric
       };
 
-      console.log('📤 Sending assignment data:', assignmentData);
 
       let response;
       if (isEditMode && editingId) {
         response = await assignmentAPI.update(editingId, assignmentData);
-        console.log('📥 Update response:', response);
         if (response && response.success) {
           toast.success(`Assignment updated successfully!`);
         } else {

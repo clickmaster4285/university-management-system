@@ -81,14 +81,11 @@ export const getAdmissionById = async (req, res) => {
 // Create new admission
 export const createAdmission = async (req, res) => {
   try {
-    console.log('📝 Creating admission with data:', JSON.stringify(req.body, null, 2));
-    
     // Validate required fields
     const requiredFields = ['name', 'fatherName', 'email', 'phone', 'cnic', 'program', 'department', 'campus'];
     const missingFields = requiredFields.filter(field => !req.body[field] || req.body[field] === '');
     
     if (missingFields.length > 0) {
-      console.log('❌ Missing fields:', missingFields);
       return res.status(400).json({
         success: false,
         message: `Missing required fields: ${missingFields.join(', ')}`
@@ -112,7 +109,6 @@ export const createAdmission = async (req, res) => {
         if (existing.email === email) message += 'Email already exists. ';
         if (existing.cnic === cnic) message += 'CNIC already exists. ';
         if (existing.phone === phone) message += 'Phone number already exists. ';
-        console.log('❌ Duplicate found:', message);
         return res.status(400).json({ 
           success: false, 
           message: message.trim() 
@@ -124,7 +120,6 @@ export const createAdmission = async (req, res) => {
     const year = new Date().getFullYear();
     const count = await Admission.countDocuments();
     const admissionId = `ADM-${year}-${String(count + 1).padStart(4, '0')}`;
-    console.log('📋 Generated Admission ID:', admissionId);
 
     // Clean and prepare the data
     const cleanData = {
@@ -161,13 +156,10 @@ export const createAdmission = async (req, res) => {
       admissionId: admissionId,
       applicationDate: new Date()
     };
-
-    console.log('📤 Clean data being saved:', JSON.stringify(cleanData, null, 2));
-
+    
     const admission = new Admission(cleanData);
     await admission.save();
     
-    console.log('✅ Admission created successfully:', admission.admissionId);
     
     res.status(201).json({ 
       success: true, 
@@ -209,8 +201,6 @@ export const createAdmission = async (req, res) => {
 // Update admission
 export const updateAdmission = async (req, res) => {
   try {
-    console.log('📝 Updating admission:', req.params.id);
-    console.log('📝 Update data:', JSON.stringify(req.body, null, 2));
     
     const admission = await Admission.findById(req.params.id);
     if (!admission) {
@@ -275,7 +265,6 @@ export const updateAdmission = async (req, res) => {
     }
     
     await admission.save();
-    console.log('✅ Admission updated successfully:', admission.admissionId);
     
     res.json({ 
       success: true, 
@@ -307,7 +296,6 @@ export const updateAdmissionStatus = async (req, res) => {
   try {
     const { status, remarks, rejectionReason, interviewDate } = req.body;
     
-    console.log('📝 Updating status for admission:', req.params.id, 'to', status);
     
     const admission = await Admission.findById(req.params.id);
     if (!admission) {
@@ -332,7 +320,6 @@ export const updateAdmissionStatus = async (req, res) => {
 
     await admission.save();
     
-    console.log('✅ Status updated successfully:', status);
     
     res.json({ 
       success: true, 
@@ -352,7 +339,6 @@ export const updateAdmissionStatus = async (req, res) => {
 // Delete admission
 export const deleteAdmission = async (req, res) => {
   try {
-    console.log('📝 Deleting admission:', req.params.id);
     
     const admission = await Admission.findById(req.params.id);
     if (!admission) {
@@ -363,7 +349,6 @@ export const deleteAdmission = async (req, res) => {
     }
 
     await admission.deleteOne();
-    console.log('✅ Admission deleted successfully:', admission.admissionId);
     
     res.json({ 
       success: true, 
@@ -382,7 +367,6 @@ export const deleteAdmission = async (req, res) => {
 // Get admission statistics
 export const getAdmissionStats = async (req, res) => {
   try {
-    console.log('📊 Fetching admission statistics');
     
     const stats = await Admission.aggregate([
       {
@@ -399,7 +383,6 @@ export const getAdmissionStats = async (req, res) => {
     const rejected = await Admission.countDocuments({ status: 'Rejected' });
     const underReview = await Admission.countDocuments({ status: 'Under Review' });
 
-    console.log('📊 Statistics:', { total, pending, accepted, rejected, underReview });
 
     res.json({
       success: true,
@@ -426,7 +409,6 @@ export const getAdmissionStats = async (req, res) => {
 export const getAdmissionsByProgram = async (req, res) => {
   try {
     const { program } = req.params;
-    console.log('📝 Fetching admissions for program:', program);
     
     const admissions = await Admission.find({ program })
       .sort({ applicationDate: -1 });
@@ -450,7 +432,6 @@ export const getAdmissionsByProgram = async (req, res) => {
 export const getAdmissionsByDateRange = async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
-    console.log('📝 Fetching admissions by date range:', { startDate, endDate });
     
     const query = {};
     if (startDate || endDate) {
@@ -480,7 +461,6 @@ export const getAdmissionsByDateRange = async (req, res) => {
 // Get admission statistics by department
 export const getAdmissionStatsByDepartment = async (req, res) => {
   try {
-    console.log('📊 Fetching admission statistics by department');
     
     const stats = await Admission.aggregate([
       {
@@ -524,7 +504,6 @@ export const getAdmissionStatsByDepartment = async (req, res) => {
 export const getRecentAdmissions = async (req, res) => {
   try {
     const { limit = 10 } = req.query;
-    console.log('📝 Fetching recent admissions, limit:', limit);
     
     const admissions = await Admission.find({})
       .sort({ applicationDate: -1 })

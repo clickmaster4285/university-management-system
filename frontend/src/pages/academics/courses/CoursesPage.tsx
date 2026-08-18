@@ -135,23 +135,18 @@ export function CoursesPage() {
       setLoading(true);
       setError(null);
       
-      console.log('🔍 Fetching courses data...');
       
       // First check if courses are seeded
       const seededCheck = await courseAPI.isSeeded();
-      console.log('📊 Seeded check:', seededCheck);
       
       if (!seededCheck.seeded && !seedAttempted) {
-        console.log('📦 No courses found. Auto-seeding...');
         setIsAutoSeeding(true);
         setSeedAttempted(true);
         
         try {
           const seedResult = await courseAPI.seedAllCourses(true);
-          console.log('📥 Seed result:', seedResult);
           
           if (seedResult && seedResult.success) {
-            console.log(`✅ Auto-seeded ${seedResult.count || 'all'} courses successfully!`);
             toast.success(`✅ Loaded ${seedResult.count || 'all'} courses`);
           } else {
             console.warn('⚠️ Auto-seed failed or returned no data');
@@ -170,20 +165,17 @@ export function CoursesPage() {
         departmentAPI.getAll()
       ]);
       
-      console.log('📥 Courses response:', coursesRes);
       
       if (coursesRes && coursesRes.data) {
         const courseData = coursesRes.data;
         setCourses(courseData);
         setFilteredCourses(courseData);
-        console.log(`✅ Loaded ${courseData.length} courses from database`);
         
         // Log program distribution
         const programCounts = courseData.reduce((acc: any, c: Course) => {
           acc[c.program] = (acc[c.program] || 0) + 1;
           return acc;
         }, {});
-        console.log('📊 Program distribution:', programCounts);
       } else {
         setCourses([]);
         setFilteredCourses([]);
@@ -474,7 +466,6 @@ export function CoursesPage() {
         })()
       };
 
-      console.log('📤 Sending data to backend:', submitData);
 
       let response;
       if (isEditMode && editingId) {
@@ -485,7 +476,6 @@ export function CoursesPage() {
         toast.success(`Course ${formData.name} created successfully!`);
       }
       
-      console.log('📥 Response from backend:', response);
       
       closeModal();
       await fetchData();

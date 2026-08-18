@@ -3,9 +3,7 @@ import Employee from '../models/Employee.js';
 
 export const getAllEmployees = async (req, res) => {
   try {
-    console.log('📊 Fetching all employees...');
     const employees = await Employee.find().sort({ createdAt: -1 });
-    console.log(`✅ Found ${employees.length} employees`);
     
     res.status(200).json({
       success: true,
@@ -46,10 +44,8 @@ export const getEmployeeById = async (req, res) => {
 
 export const createEmployee = async (req, res) => {
   try {
-    console.log('📝 Creating new employee:', req.body);
     const employee = new Employee(req.body);
     await employee.save();
-    console.log('✅ Employee created:', employee.employeeId);
     
     res.status(201).json({
       success: true,

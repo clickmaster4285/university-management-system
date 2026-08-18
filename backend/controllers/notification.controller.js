@@ -11,8 +11,6 @@ const createTransporter = async () => {
     const emailUser = process.env.EMAIL_USER;
     const emailPassword = process.env.EMAIL_PASSWORD;
 
-    console.log('📧 EMAIL_USER:', emailUser);
-    console.log('📧 EMAIL_PASSWORD:', emailPassword ? '✅ Set' : '❌ Not Set');
 
     if (!emailUser || !emailPassword) {
       console.error('❌ Email credentials missing in .env');
@@ -40,7 +38,6 @@ const createTransporter = async () => {
           console.error('❌ Email verification failed:', error.message);
           emailConfigured = false;
         } else {
-          console.log('✅ Email transporter ready!');
           emailConfigured = true;
         }
         resolve();
@@ -59,7 +56,6 @@ const createTransporter = async () => {
 const sendNotificationEmail = async (to, subject, html) => {
   try {
     if (!emailConfigured || !transporter) {
-      console.log('🔄 Configuring email transporter...');
       await createTransporter();
       if (!transporter || !emailConfigured) {
         console.error('❌ Email still not configured after retry');
@@ -77,9 +73,7 @@ const sendNotificationEmail = async (to, subject, html) => {
       html: html
     };
 
-    console.log(`📧 Sending email to: ${to}`);
     const info = await transporter.sendMail(mailOptions);
-    console.log('✅ Email sent! ID:', info.messageId);
     return { success: true, messageId: info.messageId };
   } catch (error) {
     console.error('❌ Email error:', error.message);
@@ -494,7 +488,6 @@ const processNotificationEmailDelivery = async (notificationId, recipients, titl
 
         if (result.success) {
           deliveredCount += 1;
-          console.log(`✅ Delivered to: ${recipient}`);
         } else {
           failedCount += 1;
           console.error(`❌ Failed to: ${recipient}`, result.error);
@@ -514,7 +507,6 @@ const processNotificationEmailDelivery = async (notificationId, recipients, titl
       sentAt: new Date()
     });
 
-    console.log(`📦 Background email delivery finished for ${notificationId}:`, { deliveredCount, failedCount, emailError });
   } catch (error) {
     console.error(`❌ Background email delivery failed for ${notificationId}:`, error.message);
     await Notification.findByIdAndUpdate(notificationId, {
@@ -633,7 +625,6 @@ export const createNotification = async (req, res) => {
         ? recipients.split(',').map((recipient) => recipient.trim()).filter(Boolean)
         : [];
 
-    console.log('📝 Creating notification:', { title, message, normalizedRecipients, shouldSendEmail });
 
     const notification = new Notification({
       title,
@@ -649,7 +640,6 @@ export const createNotification = async (req, res) => {
     });
 
     await notification.save();
-    console.log('✅ Notification saved:', notification._id);
 
     let emailResult = null;
     let emailError = null;
@@ -658,7 +648,6 @@ export const createNotification = async (req, res) => {
       const emailRecipients = normalizedRecipients.length > 0
         ? normalizedRecipients
         : [process.env.NOTIFICATION_EMAIL || 'samiahayat95@gmail.com'];
-      console.log(`📧 Queuing email delivery to:`, emailRecipients);
 
       notification.status = 'pending';
       notification.sentAt = new Date();
@@ -674,7 +663,6 @@ export const createNotification = async (req, res) => {
       notification.status = 'sent';
       notification.sentAt = new Date();
       await notification.save();
-      console.log('✅ Notification marked as sent (email not sent)');
     }
 
     res.status(201).json({
@@ -800,7 +788,6 @@ export const sendTestEmail = async (req, res) => {
     const { email } = req.body;
     const testEmail = email || process.env.NOTIFICATION_EMAIL || 'samiahayat95@gmail.com';
 
-    console.log(`📧 Sending test email to: ${testEmail}`);
 
     if (!emailConfigured || !transporter) {
       await createTransporter();

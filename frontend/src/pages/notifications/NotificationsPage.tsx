@@ -209,7 +209,6 @@ export function NotificationsPage() {
       if (statsRes.success) {
         setStats(statsRes.data);
       }
-      console.log('✅ Notifications loaded successfully');
     } catch (error: any) {
       console.error('❌ Failed to fetch notifications:', error);
       setError(error.message || 'Failed to load notifications');

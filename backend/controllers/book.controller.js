@@ -137,7 +137,6 @@ export const getBookByISBN = async (req, res) => {
 // Create new book
 export const createBook = async (req, res) => {
   try {
-    console.log('📝 Creating book with data:', req.body);
     
     const requiredFields = ['isbn', 'title', 'authors', 'category', 'location', 'shelf', 'totalCopies'];
     const missingFields = requiredFields.filter(field => !req.body[field] || req.body[field] === '');
@@ -171,7 +170,6 @@ export const createBook = async (req, res) => {
     book.updateStatus();
     await book.save();
     
-    console.log('✅ Book created successfully:', book.bookId);
     
     res.status(201).json({ 
       success: true, 
@@ -203,7 +201,6 @@ export const createBook = async (req, res) => {
 // Update book
 export const updateBook = async (req, res) => {
   try {
-    console.log('📝 Updating book:', req.params.id);
     
     const book = await Book.findById(req.params.id);
     if (!book) {
@@ -245,7 +242,6 @@ export const updateBook = async (req, res) => {
     book.updatedBy = normalizeUserRef(req.user?.id);
     await book.save();
     
-    console.log('✅ Book updated successfully:', book.bookId);
     
     res.json({ 
       success: true, 
@@ -277,7 +273,6 @@ export const updateBook = async (req, res) => {
 // Delete book
 export const deleteBook = async (req, res) => {
   try {
-    console.log('📝 Deleting book:', req.params.id);
     
     const book = await Book.findById(req.params.id);
     if (!book) {
@@ -301,7 +296,6 @@ export const deleteBook = async (req, res) => {
     }
 
     await book.deleteOne();
-    console.log('✅ Book deleted successfully:', book.bookId);
     
     res.json({ 
       success: true, 
@@ -367,7 +361,6 @@ export const borrowBook = async (req, res) => {
     const { id } = req.params;
     const { userId, userType, userDetails, dueDate, finePerDay = 10 } = req.body;
     
-    console.log('📝 Borrowing book:', id);
     
     const book = await Book.findById(id);
     if (!book) {
@@ -424,7 +417,6 @@ export const borrowBook = async (req, res) => {
     book.updateStatus();
     await book.save();
 
-    console.log('✅ Book borrowed successfully');
     
     res.status(201).json({ 
       success: true, 
@@ -447,7 +439,6 @@ export const returnBook = async (req, res) => {
     const { id } = req.params;
     const { condition, finePerDay = 10 } = req.body;
     
-    console.log('📝 Returning book:', id);
     
     const borrowing = await Borrowing.findById(id);
     if (!borrowing) {
@@ -487,7 +478,6 @@ export const returnBook = async (req, res) => {
       await book.save();
     }
 
-    console.log('✅ Book returned successfully');
     
     res.json({ 
       success: true, 
@@ -615,7 +605,6 @@ export const payFine = async (req, res) => {
     borrowing.status = 'Returned';
     await borrowing.save();
 
-    console.log('✅ Fine paid successfully');
     
     res.json({ 
       success: true, 

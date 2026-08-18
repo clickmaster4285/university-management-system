@@ -69,7 +69,6 @@ export async function createDepartment(req, res, next) {
       location 
     } = req.body;
     
-    console.log('📥 Creating department with data:', req.body);
     
     if (!name || !code) {
       return res.status(400).json({
@@ -107,7 +106,6 @@ export async function createDepartment(req, res, next) {
     
     await department.save();
     
-    console.log('✅ Department created:', department.name);
     
     res.status(201).json({
       success: true,
@@ -148,21 +146,6 @@ export async function updateDepartment(req, res, next) {
       location 
     } = req.body;
     
-    console.log('📥 Updating department:', { 
-      id, 
-      name, 
-      code, 
-      description, 
-      status, 
-      head, 
-      faculty,
-      email,
-      phone,
-      establishedDate,
-      facultyCount, 
-      studentCount, 
-      location 
-    });
     
     // Find the department by Mongo _id or departmentId
     const department = await findDepartmentByIdentifier(id);
@@ -258,7 +241,6 @@ export async function updateDepartment(req, res, next) {
     // Save the department
     await department.save();
     
-    console.log('✅ Department updated:', department.name);
     
     res.json({
       success: true,
@@ -285,7 +267,6 @@ export async function deleteDepartment(req, res, next) {
   try {
     const { id } = req.params;
     
-    console.log('🗑️ Deleting department:', id);
     
     const department = await findDepartmentByIdentifier(id);
     if (!department) {
@@ -317,7 +298,6 @@ export async function deleteDepartment(req, res, next) {
     
     await department.deleteOne();
     
-    console.log('✅ Department deleted:', department.name);
     
     res.json({
       success: true,

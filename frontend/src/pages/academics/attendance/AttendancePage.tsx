@@ -120,7 +120,6 @@ export function AttendancePage() {
           notMarked
         });
         
-        console.log(`📊 Overall Today Stats: ${present} present, ${absent} absent, ${late} late, ${leave} leave`);
       }
     } catch (error) {
       console.error('Failed to fetch overall today stats:', error);
@@ -159,7 +158,6 @@ export function AttendancePage() {
         endDate: endDate.toISOString().split('T')[0]
       });
 
-      console.log('📊 Weekly Stats Response:', response);
 
       if (response && response.data) {
         setWeeklyStats(response.data);
@@ -228,7 +226,6 @@ export function AttendancePage() {
       }
     }
     
-    console.log('📊 Generated Chart Data:', chartData);
     setChartData(chartData);
   };
 
@@ -286,7 +283,6 @@ export function AttendancePage() {
       if (response && response.data) {
         setStudents(response.data.students || []);
         calculateTodayStats(response.data.students || []);
-        console.log(`✅ Loaded ${response.data.students?.length || 0} students`);
       }
     } catch (error: any) {
       console.error('Failed to fetch students:', error);

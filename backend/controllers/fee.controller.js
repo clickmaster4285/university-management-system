@@ -145,7 +145,6 @@ export const getFeesByStudent = async (req, res) => {
 // Create new fee
 export const createFee = async (req, res) => {
   try {
-    console.log('📝 Creating fee with data:', req.body);
     
     // Required fields
     const requiredFields = ['studentId', 'studentName', 'studentEmail', 'department', 'program', 'semester', 'feeType', 'amount', 'dueDate'];
@@ -155,7 +154,6 @@ export const createFee = async (req, res) => {
     });
     
     if (missingFields.length > 0) {
-      console.log('❌ Missing fields:', missingFields);
       return res.status(400).json({
         success: false,
         message: 'Missing required fields: ' + missingFields.join(', '),
@@ -243,12 +241,10 @@ export const createFee = async (req, res) => {
       }
     }
 
-    console.log('📤 Processed fee data:', feeData);
 
     const fee = new Fee(feeData);
     await fee.save();
     
-    console.log('✅ Fee created successfully:', fee.feeId);
     
     res.status(201).json({ 
       success: true, 
@@ -282,7 +278,6 @@ export const generateFeeFromStructure = async (req, res) => {
   try {
     const { studentId, feeStructureId, dueDate } = req.body;
     
-    console.log('📝 Generating fee from structure:', { studentId, feeStructureId, dueDate });
     
     if (!studentId || !feeStructureId) {
       return res.status(400).json({
@@ -377,7 +372,6 @@ export const generateFeeFromStructure = async (req, res) => {
     const fee = new Fee(feeData);
     await fee.save();
 
-    console.log('✅ Fee generated from structure:', fee.feeId);
 
     res.status(201).json({
       success: true,
@@ -399,8 +393,6 @@ export const generateFeeFromStructure = async (req, res) => {
 // Update fee
 export const updateFee = async (req, res) => {
   try {
-    console.log('📝 Updating fee:', req.params.id);
-    console.log('📝 Update data:', req.body);
     
     const fee = await Fee.findById(req.params.id);
     if (!fee) {
@@ -510,7 +502,6 @@ export const updateFee = async (req, res) => {
     fee.updatedBy = userId;
     await fee.save();
     
-    console.log('✅ Fee updated successfully:', fee.feeId);
     
     res.json({ 
       success: true, 
@@ -544,7 +535,6 @@ export const updateFee = async (req, res) => {
 // Delete fee
 export const deleteFee = async (req, res) => {
   try {
-    console.log('📝 Deleting fee:', req.params.id);
     
     const fee = await Fee.findById(req.params.id);
     if (!fee) {
@@ -555,7 +545,6 @@ export const deleteFee = async (req, res) => {
     }
 
     await fee.deleteOne();
-    console.log('✅ Fee deleted successfully:', fee.feeId);
     
     res.json({ 
       success: true, 
@@ -686,8 +675,6 @@ export const processPayment = async (req, res) => {
     const { id } = req.params;
     const { amount, paymentMethod, transactionId, paymentReference } = req.body;
     
-    console.log('📝 Processing payment for fee:', id);
-    console.log('📝 Payment data:', { amount, paymentMethod, transactionId });
     
     const fee = await Fee.findById(id);
     if (!fee) {
@@ -750,7 +737,6 @@ export const processPayment = async (req, res) => {
 
     await fee.save();
 
-    console.log('✅ Payment processed successfully');
     
     res.json({ 
       success: true, 
@@ -774,7 +760,6 @@ export const generateInvoice = async (req, res) => {
   try {
     const { id } = req.params;
     
-    console.log('📝 Generating invoice for fee:', id);
     
     const fee = await Fee.findById(id);
     if (!fee) {
@@ -798,7 +783,6 @@ export const generateInvoice = async (req, res) => {
     fee.invoiceGeneratedDate = new Date();
     await fee.save();
 
-    console.log('✅ Invoice generated:', invoiceNumber);
     
     res.json({ 
       success: true, 
@@ -822,7 +806,6 @@ export const applyLateFees = async (req, res) => {
   try {
     const { percentage = 5 } = req.query;
     
-    console.log('📝 Applying late fees with percentage:', percentage);
     
     const overdueFees = await Fee.find({
       dueDate: { $lt: new Date() },
@@ -848,7 +831,6 @@ export const applyLateFees = async (req, res) => {
       totalLateFeeApplied += lateFeeAmount;
     }
 
-    console.log('✅ Applied late fees to ' + appliedCount + ' fee records, total: PKR ' + totalLateFeeApplied.toFixed(2));
     
     res.json({ 
       success: true, 

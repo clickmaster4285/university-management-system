@@ -88,7 +88,6 @@ export function HrPage() {
       setLoading(true);
       setError(null);
       
-      console.log('📊 Fetching HR data from database...');
       
       const [employeesResult, leavesResult, statsResult] = await Promise.allSettled([
         hrAPI.getEmployees(),
@@ -116,7 +115,6 @@ export function HrPage() {
       if (employeesRes && employeesRes.success) {
         const employeeData = employeesRes.data || [];
         setEmployees(employeeData);
-        console.log(`✅ Loaded ${employeeData.length} employees from backend`);
       } else {
         console.warn('⚠️ No employees data received, starting with empty list');
         setEmployees([]);
@@ -126,7 +124,6 @@ export function HrPage() {
       if (leavesRes && leavesRes.success) {
         const leaveData = leavesRes.data || [];
         setLeaves(leaveData);
-        console.log(`✅ Loaded ${leaveData.length} leaves from backend`);
       } else {
         console.warn('⚠️ No leaves data received, starting with empty list');
         setLeaves([]);
@@ -134,7 +131,6 @@ export function HrPage() {
 
       // Handle stats (optional)
       if (statsRes && statsRes.success) {
-        console.log('✅ Stats loaded successfully');
       }
 
       // If both are empty, show info message
@@ -148,7 +144,6 @@ export function HrPage() {
       
       // Don't show error for empty data, just show info
       if (error.response?.status === 404) {
-        console.log('ℹ️ No data found in database');
         setEmployees([]);
         setLeaves([]);
         toast.info('No data found. Start by adding your first employee!');
@@ -458,14 +453,12 @@ export function HrPage() {
       let response;
       if (isEditLeaveMode && editingLeaveId) {
         // Update existing leave
-        console.log('🔄 Updating leave:', editingLeaveId, leaveData);
         response = await hrAPI.updateLeave(editingLeaveId, leaveData);
         if (response.success) {
           toast.success('Leave request updated successfully!');
         }
       } else {
         // Create new leave
-        console.log('📝 Creating new leave:', leaveData);
         response = await hrAPI.createLeave({ ...leaveData, status: 'Pending' as const });
         if (response.success) {
           toast.success('Leave request submitted successfully!');

@@ -497,7 +497,6 @@ export function DepartmentsPage() {
       if (response && response.data) {
         setDepartments(response.data);
         setFilteredDepartments(response.data);
-        console.log(`✅ Loaded ${response.data.length} departments from database`);
       } else {
         setDepartments([]);
         setFilteredDepartments([]);

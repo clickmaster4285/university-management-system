@@ -146,7 +146,6 @@ export async function createBatch(req, res, next) {
       description
     } = req.body;
     
-    console.log('📥 Creating batch with data:', req.body);
     
     // Validate required fields
     if (!year || !code || !departmentId || !program || !admissionSessionId) {
@@ -201,7 +200,6 @@ export async function createBatch(req, res, next) {
     
     await batch.save();
     
-    console.log('✅ Batch created:', batch.code);
     
     res.status(201).json({
       success: true,
@@ -242,21 +240,6 @@ export async function updateBatch(req, res, next) {
       description
     } = req.body;
     
-    console.log('📥 Updating batch:', { 
-      id, 
-      year,
-      code,
-      department,
-      departmentId,
-      program,
-      programId,
-      admissionSession,
-      admissionSessionId,
-      admissionSemester,
-      expectedGraduation,
-      status,
-      description
-    });
     
     // Find the batch
     const batch = await findBatchByIdentifier(id);
@@ -338,7 +321,6 @@ export async function updateBatch(req, res, next) {
     // Save the batch
     await batch.save();
     
-    console.log('✅ Batch updated:', batch.code);
     
     res.json({
       success: true,
@@ -365,7 +347,6 @@ export async function deleteBatch(req, res, next) {
   try {
     const { id } = req.params;
     
-    console.log('🗑️ Deleting batch:', id);
     
     const batch = await findBatchByIdentifier(id);
     if (!batch) {
@@ -377,7 +358,6 @@ export async function deleteBatch(req, res, next) {
     
     await batch.deleteOne();
     
-    console.log('✅ Batch deleted:', batch.code);
     
     res.json({
       success: true,

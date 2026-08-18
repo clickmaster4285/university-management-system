@@ -88,7 +88,6 @@ export function SemestersPage() {
       if (response && response.data) {
         setSemesters(response.data);
         setFilteredSemesters(response.data);
-        console.log(`✅ Loaded ${response.data.length} semesters`);
       } else {
         setSemesters([]);
         setFilteredSemesters([]);
@@ -284,7 +283,6 @@ export function SemestersPage() {
         description: formData.description || ''
       };
 
-      console.log('📤 Submitting semester data:', submitData);
 
       if (isEditMode && editingId) {
         const response = await semesterAPI.update(editingId, submitData);

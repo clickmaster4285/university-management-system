@@ -58,7 +58,6 @@ export function FinancePage() {
       if (response && response.success) {
         setFinanceData(response.data);
         setBudgetAllocations(response.data.budgetAllocation || []);
-        console.log('✅ Loaded finance data');
       } else {
         setError('No data received');
       }

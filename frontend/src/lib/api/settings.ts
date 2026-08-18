@@ -80,10 +80,8 @@ export const settingsAPI = {
    */
   getAll: async (): Promise<{ success: boolean; data: Settings }> => {
     try {
-      console.log('📤 GET /settings - Fetching all settings');
       const response = await api.get('/settings');
-      console.log('📥 GET /settings - Response received:', response.data);
-      return response.data;
+     return response.data;
     } catch (error) {
       console.error('❌ Error fetching settings:', error);
       throw error;
@@ -97,10 +95,8 @@ export const settingsAPI = {
    */
   updateProfile: async (data: Partial<Settings>): Promise<{ success: boolean; data: Settings; message: string }> => {
     try {
-      console.log('📤 PUT /settings/profile - Updating profile:', data);
       const response = await api.put('/settings/profile', data);
-      console.log('📥 PUT /settings/profile - Response:', response.data);
-      return response.data;
+     return response.data;
     } catch (error) {
       console.error('❌ Error updating profile:', error);
       throw error;
@@ -114,9 +110,7 @@ export const settingsAPI = {
    */
   updatePreferences: async (data: Partial<Preferences>): Promise<{ success: boolean; data: Settings; message: string }> => {
     try {
-      console.log('📤 PUT /settings/preferences - Updating preferences:', data);
       const response = await api.put('/settings/preferences', data);
-      console.log('📥 PUT /settings/preferences - Response:', response.data);
       return response.data;
     } catch (error) {
       console.error('❌ Error updating preferences:', error);
@@ -144,9 +138,7 @@ export const settingsAPI = {
         staff: Number(data.staff) || 0
       };
 
-      console.log('📤 POST /settings/campuses - Adding campus:', payload);
       const response = await api.post('/settings/campuses', payload);
-      console.log('📥 POST /settings/campuses - Response:', response.data);
       return response.data;
     } catch (error) {
       console.error('❌ Error adding campus:', error);
@@ -174,9 +166,7 @@ export const settingsAPI = {
       if (data.staff !== undefined) payload.staff = Number(data.staff);
       if (data.isActive !== undefined) payload.isActive = data.isActive;
 
-      console.log(`📤 PUT /settings/campuses/${campusId} - Updating campus:`, payload);
       const response = await api.put(`/settings/campuses/${campusId}`, payload);
-      console.log(`📥 PUT /settings/campuses/${campusId} - Response:`, response.data);
       return response.data;
     } catch (error) {
       console.error(`❌ Error updating campus ${campusId}:`, error);
@@ -195,9 +185,7 @@ export const settingsAPI = {
         throw new Error('Campus ID is required');
       }
 
-      console.log(`📤 DELETE /settings/campuses/${campusId} - Deleting campus`);
       const response = await api.delete(`/settings/campuses/${campusId}`);
-      console.log(`📥 DELETE /settings/campuses/${campusId} - Response:`, response.data);
       return response.data;
     } catch (error) {
       console.error(`❌ Error deleting campus ${campusId}:`, error);
@@ -216,9 +204,7 @@ export const settingsAPI = {
         throw new Error('Campus ID is required');
       }
 
-      console.log(`📤 GET /settings/campuses/${campusId} - Fetching campus`);
       const response = await api.get(`/settings/campuses/${campusId}`);
-      console.log(`📥 GET /settings/campuses/${campusId} - Response:`, response.data);
       return response.data;
     } catch (error) {
       console.error(`❌ Error fetching campus ${campusId}:`, error);
@@ -237,9 +223,7 @@ export const settingsAPI = {
         throw new Error('Campus ID is required');
       }
 
-      console.log(`📤 PATCH /settings/campuses/${campusId}/toggle - Toggling campus status`);
       const response = await api.patch(`/settings/campuses/${campusId}/toggle`);
-      console.log(`📥 PATCH /settings/campuses/${campusId}/toggle - Response:`, response.data);
       return response.data;
     } catch (error) {
       console.error(`❌ Error toggling campus ${campusId}:`, error);
@@ -254,9 +238,7 @@ export const settingsAPI = {
    */
   updateBranding: async (data: Partial<Branding>): Promise<{ success: boolean; data: Settings; message: string }> => {
     try {
-      console.log('📤 PUT /settings/branding - Updating branding:', data);
       const response = await api.put('/settings/branding', data);
-      console.log('📥 PUT /settings/branding - Response:', response.data);
       return response.data;
     } catch (error) {
       console.error('❌ Error updating branding:', error);
@@ -276,9 +258,7 @@ export const settingsAPI = {
         throw new Error('Integration type is required');
       }
 
-      console.log(`📤 PUT /settings/integrations - Updating integration ${type}:`, config);
       const response = await api.put('/settings/integrations', { type, config });
-      console.log(`📥 PUT /settings/integrations - Response:`, response.data);
       return response.data;
     } catch (error) {
       console.error(`❌ Error updating integration ${type}:`, error);
@@ -293,9 +273,7 @@ export const settingsAPI = {
    */
   updateSecurity: async (data: Partial<Security>): Promise<{ success: boolean; data: Settings; message: string }> => {
     try {
-      console.log('📤 PUT /settings/security - Updating security:', data);
       const response = await api.put('/settings/security', data);
-      console.log('📥 PUT /settings/security - Response:', response.data);
       return response.data;
     } catch (error) {
       console.error('❌ Error updating security:', error);
@@ -310,9 +288,7 @@ export const settingsAPI = {
    */
   updateMaintenance: async (data: Partial<Maintenance>): Promise<{ success: boolean; data: Settings; message: string }> => {
     try {
-      console.log('📤 PUT /settings/maintenance - Updating maintenance:', data);
       const response = await api.put('/settings/maintenance', data);
-      console.log('📥 PUT /settings/maintenance - Response:', response.data);
       return response.data;
     } catch (error) {
       console.error('❌ Error updating maintenance:', error);
@@ -326,9 +302,7 @@ export const settingsAPI = {
    */
   reset: async (): Promise<{ success: boolean; data: Settings; message: string }> => {
     try {
-      console.log('📤 POST /settings/reset - Resetting settings to default');
       const response = await api.post('/settings/reset');
-      console.log('📥 POST /settings/reset - Response:', response.data);
       return response.data;
     } catch (error) {
       console.error('❌ Error resetting settings:', error);

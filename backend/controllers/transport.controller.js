@@ -90,7 +90,6 @@ export const getBusById = async (req, res) => {
 // Create bus
 export const createBus = async (req, res) => {
   try {
-    console.log('📝 Creating bus with data:', req.body);
     
     // Validate required fields
     const requiredFields = ['busNumber', 'registrationNumber', 'model', 'make', 'year', 'capacity'];
@@ -103,7 +102,6 @@ export const createBus = async (req, res) => {
     });
     
     if (missingFields.length > 0) {
-      console.log('❌ Missing fields:', missingFields);
       return res.status(400).json({
         success: false,
         message: `Missing required fields: ${missingFields.join(', ')}`
@@ -150,12 +148,10 @@ export const createBus = async (req, res) => {
       createdBy: getAuditUserId(req.user?.id)
     };
 
-    console.log('📤 Processed bus data:', busData);
 
     const bus = new Bus(busData);
     await bus.save();
     
-    console.log('✅ Bus created successfully:', bus.busId);
     
     res.status(201).json({ 
       success: true, 
@@ -185,7 +181,6 @@ export const createBus = async (req, res) => {
 // Update bus
 export const updateBus = async (req, res) => {
   try {
-    console.log('📝 Updating bus:', req.params.id);
     
     const bus = await Bus.findById(req.params.id);
     if (!bus) {
@@ -233,7 +228,6 @@ export const updateBus = async (req, res) => {
     bus.updatedBy = getAuditUserId(req.user?.id);
     await bus.save();
     
-    console.log('✅ Bus updated successfully:', bus.busId);
     
     res.json({ success: true, data: bus, message: 'Bus updated successfully' });
   } catch (error) {
@@ -245,14 +239,12 @@ export const updateBus = async (req, res) => {
 // Delete bus
 export const deleteBus = async (req, res) => {
   try {
-    console.log('📝 Deleting bus:', req.params.id);
     
     const bus = await Bus.findById(req.params.id);
     if (!bus) {
       return res.status(404).json({ success: false, message: 'Bus not found' });
     }
     await bus.deleteOne();
-    console.log('✅ Bus deleted successfully:', bus.busId);
     res.json({ success: true, message: 'Bus deleted successfully' });
   } catch (error) {
     console.error('Error deleting bus:', error);
@@ -313,7 +305,6 @@ export const getAllDrivers = async (req, res) => {
 // Create driver
 export const createDriver = async (req, res) => {
   try {
-    console.log('📝 Creating driver with data:', req.body);
     
     // Validate required fields
     const requiredFields = ['name', 'email', 'phone', 'licenseNumber', 'licenseExpiry'];
@@ -326,7 +317,6 @@ export const createDriver = async (req, res) => {
     });
     
     if (missingFields.length > 0) {
-      console.log('❌ Missing fields:', missingFields);
       return res.status(400).json({
         success: false,
         message: `Missing required fields: ${missingFields.join(', ')}`
@@ -381,12 +371,10 @@ export const createDriver = async (req, res) => {
       createdBy: getAuditUserId(req.user?.id)
     };
 
-    console.log('📤 Processed driver data:', driverData);
 
     const driver = new Driver(driverData);
     await driver.save();
     
-    console.log('✅ Driver created successfully:', driver.driverId);
     
     res.status(201).json({ 
       success: true, 
@@ -416,7 +404,6 @@ export const createDriver = async (req, res) => {
 // Update driver
 export const updateDriver = async (req, res) => {
   try {
-    console.log('📝 Updating driver:', req.params.id);
     
     const driver = await Driver.findById(req.params.id);
     if (!driver) {
@@ -477,7 +464,6 @@ export const updateDriver = async (req, res) => {
     driver.updatedBy = getAuditUserId(req.user?.id);
     await driver.save();
     
-    console.log('✅ Driver updated successfully:', driver.driverId);
     
     res.json({ success: true, data: driver, message: 'Driver updated successfully' });
   } catch (error) {
@@ -489,14 +475,12 @@ export const updateDriver = async (req, res) => {
 // Delete driver
 export const deleteDriver = async (req, res) => {
   try {
-    console.log('📝 Deleting driver:', req.params.id);
     
     const driver = await Driver.findById(req.params.id);
     if (!driver) {
       return res.status(404).json({ success: false, message: 'Driver not found' });
     }
     await driver.deleteOne();
-    console.log('✅ Driver deleted successfully:', driver.driverId);
     res.json({ success: true, message: 'Driver deleted successfully' });
   } catch (error) {
     console.error('Error deleting driver:', error);
@@ -557,7 +541,6 @@ export const getAllRoutes = async (req, res) => {
 // Create route
 export const createRoute = async (req, res) => {
   try {
-    console.log('📝 Creating route with data:', req.body);
     
     // Validate required fields
     const requiredFields = ['routeNumber', 'name', 'startPoint', 'endPoint', 'distance', 'duration', 'baseFare'];
@@ -570,7 +553,6 @@ export const createRoute = async (req, res) => {
     });
     
     if (missingFields.length > 0) {
-      console.log('❌ Missing fields:', missingFields);
       return res.status(400).json({
         success: false,
         message: `Missing required fields: ${missingFields.join(', ')}`
@@ -607,12 +589,10 @@ export const createRoute = async (req, res) => {
       createdBy: getAuditUserId(req.user?.id)
     };
 
-    console.log('📤 Processed route data:', routeData);
 
     const route = new Route(routeData);
     await route.save();
     
-    console.log('✅ Route created successfully:', route.routeId);
     
     res.status(201).json({ 
       success: true, 
@@ -642,7 +622,6 @@ export const createRoute = async (req, res) => {
 // Update route
 export const updateRoute = async (req, res) => {
   try {
-    console.log('📝 Updating route:', req.params.id);
     
     const route = await Route.findById(req.params.id);
     if (!route) {
@@ -680,7 +659,6 @@ export const updateRoute = async (req, res) => {
     route.updatedBy = getAuditUserId(req.user?.id);
     await route.save();
     
-    console.log('✅ Route updated successfully:', route.routeId);
     
     res.json({ success: true, data: route, message: 'Route updated successfully' });
   } catch (error) {
@@ -692,14 +670,12 @@ export const updateRoute = async (req, res) => {
 // Delete route
 export const deleteRoute = async (req, res) => {
   try {
-    console.log('📝 Deleting route:', req.params.id);
     
     const route = await Route.findById(req.params.id);
     if (!route) {
       return res.status(404).json({ success: false, message: 'Route not found' });
     }
     await route.deleteOne();
-    console.log('✅ Route deleted successfully:', route.routeId);
     res.json({ success: true, message: 'Route deleted successfully' });
   } catch (error) {
     console.error('Error deleting route:', error);

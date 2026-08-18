@@ -12,7 +12,6 @@ import Course from '../models/Course.js';
 // Get dashboard statistics
 export const getDashboardStats = async (req, res) => {
   try {
-    console.log('📊 Fetching dashboard statistics...');
     
     // Get counts from all collections
     const [totalStudents, totalTeachers, totalDepartments, totalCourses, totalAdmissions, totalEmployees] = await Promise.all([

@@ -129,7 +129,6 @@ export const getEventById = async (req, res) => {
 // Create new event
 export const createEvent = async (req, res) => {
   try {
-    console.log('📝 Creating event with data:', req.body);
     
     const requiredFields = ['title', 'description', 'type', 'category', 'startDate', 'endDate', 'startTime', 'endTime', 'venue', 'campus', 'organizer', 'capacity'];
     const missingFields = requiredFields.filter(field => {
@@ -141,7 +140,6 @@ export const createEvent = async (req, res) => {
     });
     
     if (missingFields.length > 0) {
-      console.log('❌ Missing fields:', missingFields);
       return res.status(400).json({
         success: false,
         message: `Missing required fields: ${missingFields.join(', ')}`,
@@ -190,12 +188,10 @@ export const createEvent = async (req, res) => {
       updatedBy: auditUserId
     };
 
-    console.log('📤 Processed event data:', eventData);
 
     const event = new Event(eventData);
     await event.save();
     
-    console.log('✅ Event created successfully:', event.eventId);
     
     res.status(201).json({ 
       success: true, 
@@ -227,8 +223,6 @@ export const createEvent = async (req, res) => {
 // Update event - FIXED
 export const updateEvent = async (req, res) => {
   try {
-    console.log('📝 Updating event:', req.params.id);
-    console.log('📝 Update data:', JSON.stringify(req.body, null, 2));
     
     const event = await Event.findById(req.params.id);
     if (!event) {
@@ -316,7 +310,6 @@ export const updateEvent = async (req, res) => {
     event.updatedBy = getAuditUserId(req.user?.id || req.user?.userId || req.userId);
     await event.save();
     
-    console.log('✅ Event updated successfully:', event.eventId);
     
     res.json({ 
       success: true, 
@@ -348,7 +341,6 @@ export const updateEvent = async (req, res) => {
 // Delete event
 export const deleteEvent = async (req, res) => {
   try {
-    console.log('📝 Deleting event:', req.params.id);
     
     const event = await Event.findById(req.params.id);
     if (!event) {
@@ -359,7 +351,6 @@ export const deleteEvent = async (req, res) => {
     }
 
     await event.deleteOne();
-    console.log('✅ Event deleted successfully:', event.eventId);
     
     res.json({ 
       success: true, 
@@ -445,7 +436,6 @@ export const registerForEvent = async (req, res) => {
     const { id } = req.params;
     const { userId, userDetails } = req.body;
     
-    console.log('📝 Registering for event:', id);
     
     const event = await Event.findById(id);
     if (!event) {
@@ -474,7 +464,6 @@ export const registerForEvent = async (req, res) => {
     event.registeredCount += 1;
     await event.save();
 
-    console.log('✅ Registration successful');
     
     res.json({ 
       success: true, 

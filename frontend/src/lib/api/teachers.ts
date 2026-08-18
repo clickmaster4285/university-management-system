@@ -31,7 +31,13 @@ export interface Teacher {
 export type TeacherSearchKey = keyof Teacher;
 
 export const teacherAPI = {
-  getAll: () => apiClient.get('/teachers'),
+  getAll: async () => {
+    const result = await apiClient.get('/teachers');
+    const payload = result?.data;
+    if (Array.isArray(payload)) return payload;
+    if (Array.isArray(payload?.data)) return payload.data;
+    return [];
+  },
   getById: (id: string) => apiClient.get(`/teachers/${id}`),
   create: (data: Partial<Teacher>) => apiClient.post('/teachers', data),
   update: (id: string, data: Partial<Teacher>) => apiClient.put(`/teachers/${id}`, data),

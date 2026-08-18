@@ -122,9 +122,7 @@ class FeeAPI {
 
   async create(data: any) {
     try {
-      console.log('📤 Creating fee:', data);
       const response = await api.post(this.baseUrl, data);
-      console.log('📥 Create response:', response.data);
       
       return {
         success: true,
@@ -144,9 +142,7 @@ class FeeAPI {
 
   async update(id: string, data: any) {
     try {
-      console.log('📤 Updating fee:', id, data);
       const response = await api.put(`${this.baseUrl}/${id}`, data);
-      console.log('📥 Update response:', response.data);
       
       return {
         success: true,
@@ -184,7 +180,6 @@ class FeeAPI {
   async getStats() {
     try {
       const response = await api.get(`${this.baseUrl}/stats/summary`);
-      console.log('📊 Stats response:', response.data);
       
       let statsData = {
         total: 0,
@@ -235,7 +230,6 @@ class FeeAPI {
         }
       }
       
-      console.log('📊 Extracted stats:', statsData);
       
       return {
         success: true,
@@ -267,9 +261,7 @@ class FeeAPI {
 
   async processPayment(id: string, data: any) {
     try {
-      console.log('📤 Processing payment for fee:', id, data);
       const response = await api.post(`${this.baseUrl}/${id}/pay`, data);
-      console.log('📥 Payment response:', response.data);
       
       return {
         success: true,
@@ -289,9 +281,7 @@ class FeeAPI {
 
   async generateInvoice(id: string) {
     try {
-      console.log('📤 Generating invoice for fee:', id);
       const response = await api.post(`${this.baseUrl}/${id}/invoice`);
-      console.log('📥 Invoice response:', response.data);
       
       return {
         success: true,
@@ -311,9 +301,7 @@ class FeeAPI {
 
   async applyLateFees(percentage: number = 5) {
     try {
-      console.log('📤 Applying late fees with percentage:', percentage);
       const response = await api.post(`${this.baseUrl}/apply-late-fees?percentage=${percentage}`);
-      console.log('📥 Late fees response:', response.data);
       
       return {
         success: true,

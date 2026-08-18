@@ -96,9 +96,6 @@ export function CampusesPage() {
                       (user as any)?.university?._id ||
                       (user as any)?.university?.id;
 
-  console.log("🔍 User object:", user);
-  console.log("🔍 University ID:", universityId);
-
   const fetchCampuses = async () => {
     let resolvedUniversityId = localStorage.getItem('universityId') ||
       (user as any)?.universityId ||
@@ -142,15 +139,12 @@ export function CampusesPage() {
 
     try {
       setLoading(true);
-      console.log("📤 Fetching campuses for university:", resolvedUniversityId);
-      
+ 
       const response = await campusAPI.getAll(resolvedUniversityId);
-      console.log("📥 Response:", response);
       
       if (response.success && response.data) {
         const campusData = Array.isArray(response.data) ? response.data : [];
         setCampuses(campusData);
-        console.log(`✅ Loaded ${campusData.length} campuses`);
       } else {
         setCampuses([]);
       }

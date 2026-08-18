@@ -9,7 +9,6 @@ import jwt from "jsonwebtoken";
 // ========================================
 export const createUniversity = async (req, res) => {
   try {
-    console.log("📝 Creating university with data:", req.body);
 
     const {
       universityName,
@@ -104,7 +103,6 @@ export const createUniversity = async (req, res) => {
     });
 
     await university.save();
-    console.log("✅ University created:", university._id);
 
     // Create admin user with university reference
     // Role is "Admin" not "Super Admin" - Super Admin is a system-level role
@@ -119,7 +117,6 @@ export const createUniversity = async (req, res) => {
     });
 
     const savedAdmin = await adminUser.save();
-    console.log("✅ Admin user created:", savedAdmin._id);
 
     // Update university with admin user ID
     university.administrator.userId = savedAdmin._id;

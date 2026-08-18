@@ -74,7 +74,6 @@ api.interceptors.response.use(
                             error.config?.url?.includes('/auth/register');
       
       if (!isAuthEndpoint) {
-        console.log('🔐 Token expired or invalid, clearing session...');
         localStorage.removeItem('token');
         localStorage.removeItem('user');
         

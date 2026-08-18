@@ -28,10 +28,12 @@ export interface Student {
 
 export const studentAPI = {
   getAll: async () => {
-    console.log('📤 Fetching students from API...'); // Debug
     const result = await apiClient.get('/students');
-    console.log('📥 Students response:', result); // Debug
-    return result;
+
+    const payload = result?.data;
+    if (Array.isArray(payload)) return payload;
+    if (Array.isArray(payload?.data)) return payload.data;
+    return [];
   },
   
   getById: (id: string) => apiClient.get(`/students/${id}`),

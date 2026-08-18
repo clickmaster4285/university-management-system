@@ -5,10 +5,6 @@ import Settings from '../models/Settings.js';
 export const getSettings = async (req, res) => {
   try {
     const settings = await Settings.getSettings();
-    console.log('📊 Settings fetched:', {
-      universityName: settings.universityName,
-      campusesCount: settings.campuses?.length || 0
-    });
     res.status(200).json({
       success: true,
       data: settings
@@ -42,7 +38,6 @@ export const updateProfile = async (req, res) => {
 
     await settings.save();
 
-    console.log('✅ Profile updated successfully');
 
     res.status(200).json({
       success: true,
@@ -96,7 +91,6 @@ export const updatePreferences = async (req, res) => {
 // ✅ FIXED: Add campus with proper debugging
 export const addCampus = async (req, res) => {
   try {
-    console.log('📝 Adding campus with data:', req.body);
     
     const settings = await Settings.getSettings();
     const { name, location, students, staff } = req.body;
@@ -139,8 +133,6 @@ export const addCampus = async (req, res) => {
     // ✅ Save the settings document
     await settings.save();
 
-    console.log(`✅ Campus "${name}" added successfully`);
-    console.log('📊 Total campuses now:', settings.campuses.length);
 
     res.status(201).json({
       success: true,
@@ -200,7 +192,6 @@ export const updateCampus = async (req, res) => {
 
     await settings.save();
 
-    console.log(`✅ Campus "${settings.campuses[campusIndex].name}" updated successfully`);
 
     res.status(200).json({
       success: true,
@@ -238,7 +229,6 @@ export const deleteCampus = async (req, res) => {
 
     await settings.save();
 
-    console.log(`🗑️ Campus "${campusName}" deleted successfully`);
 
     res.status(200).json({
       success: true,
@@ -304,7 +294,6 @@ export const toggleCampusStatus = async (req, res) => {
     await settings.save();
 
     const status = settings.campuses[campusIndex].isActive ? 'activated' : 'deactivated';
-    console.log(`✅ Campus "${settings.campuses[campusIndex].name}" ${status}`);
 
     res.status(200).json({
       success: true,

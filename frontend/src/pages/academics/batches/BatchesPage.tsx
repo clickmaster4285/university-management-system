@@ -100,7 +100,6 @@ export function BatchesPage() {
       if (response && response.data) {
         setBatches(response.data);
         setFilteredBatches(response.data);
-        console.log(`✅ Loaded ${response.data.length} batches`);
       } else {
         setBatches([]);
         setFilteredBatches([]);
@@ -343,7 +342,6 @@ export function BatchesPage() {
         description: formData.description || ''
       };
 
-      console.log('📤 Submitting batch data:', submitData);
 
       if (isEditMode && editingId) {
         const response = await batchAPI.update(editingId, submitData);

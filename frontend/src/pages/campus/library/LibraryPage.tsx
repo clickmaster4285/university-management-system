@@ -112,7 +112,6 @@ export function LibraryPage() {
       setError(null);
       
       const response = await bookAPI.getAll({ limit: 100 });
-      console.log('📥 Book Response:', response);
       
       let data: BookType[] = [];
       if (response && response.success) {
@@ -121,7 +120,6 @@ export function LibraryPage() {
         data = response.data || [];
       }
       
-      console.log('✅ Loaded books:', data.length);
       setBooks(data);
       setFilteredBooks(data);
       
@@ -145,7 +143,6 @@ export function LibraryPage() {
   const fetchStats = async () => {
     try {
       const response = await bookAPI.getStats();
-      console.log('📊 Stats Response:', response);
       
       if (response && response.success) {
         setStats(response.data);
@@ -378,7 +375,6 @@ export function LibraryPage() {
         status: formData.status
       };
 
-      console.log('📤 Sending book data:', bookData);
 
       let response;
       if (isEditMode && editingId) {

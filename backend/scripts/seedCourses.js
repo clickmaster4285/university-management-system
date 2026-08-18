@@ -282,7 +282,6 @@ async function seedCourses() {
     // Connect to MongoDB (use backend .env MONGODB_URI if available)
     const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/scholars';
     await mongoose.connect(mongoUri);
-    console.log('✅ Connected to MongoDB');
 
     // Clear existing courses
     await Course.deleteMany({});
@@ -298,7 +297,6 @@ async function seedCourses() {
           code: deptName.substring(0, 3).toUpperCase(),
           isActive: true 
         });
-        console.log(`✅ Created department: ${deptName}`);
       }
     }
 
@@ -321,12 +319,10 @@ async function seedCourses() {
     let insertedDocs = [];
     try {
       insertedDocs = await Course.insertMany(preparedCourses, { ordered: false });
-      console.log(`✅ Successfully inserted ${insertedDocs.length} courses`);
     } catch (insertErr) {
       const insertedCount = insertErr.result?.insertedCount || (insertErr.insertedDocs && insertErr.insertedDocs.length) || (insertedDocs && insertedDocs.length) || 0;
       console.warn('⚠️ Partial insert during seeding courses:', insertErr.message || insertErr);
-      console.log(`✅ Inserted ${insertedCount} courses before error`);
-      // If some docs were inserted, try to use them for the summary
+     // If some docs were inserted, try to use them for the summary
       if (insertErr.insertedDocs && insertErr.insertedDocs.length) {
         insertedDocs = insertErr.insertedDocs;
       }
@@ -343,23 +339,17 @@ async function seedCourses() {
       { $sort: { '_id.program': 1, '_id.semester': 1 } }
     ]);
 
-    console.log('\n📊 Course Summary:');
-    console.log('─'.repeat(50));
-    let currentProgram = '';
+ let currentProgram = '';
     summary.forEach(item => {
       if (currentProgram !== item._id.program) {
         currentProgram = item._id.program;
-        console.log(`\n${currentProgram}:`);
       }
-      console.log(`  Semester ${item._id.semester}: ${item.count} courses`);
     });
-    console.log('─'.repeat(50));
+
     const totalCount = await Course.countDocuments();
-    console.log(`\n📚 Total Courses: ${totalCount}`);
 
     // Close connection
     await mongoose.disconnect();
-    console.log('👋 Disconnected from MongoDB');
     process.exit(0);
   } catch (error) {
     console.error('❌ Error seeding courses:', error);

@@ -93,7 +93,6 @@ export function SettingsPage() {
       setLoading(true);
       setError(null);
       
-      console.log('🔄 Fetching settings and profile...');
       
       const [settingsResult, profileResult] = await Promise.allSettled([
         settingsAPI.getAll(),
@@ -180,7 +179,6 @@ export function SettingsPage() {
   const saveAdminProfile = async () => {
     try {
       setSaving(true);
-      console.log('📤 Saving admin profile:', adminForm);
       const response = await authAPI.updateProfile(adminForm);
       if (response.success) {
         toast.success('Profile updated successfully!');
@@ -213,7 +211,6 @@ export function SettingsPage() {
       }
 
       setSaving(true);
-      console.log('📤 Changing password...');
       const response = await authAPI.changePassword({
         currentPassword: passwordForm.currentPassword,
         newPassword: passwordForm.newPassword
@@ -239,8 +236,7 @@ export function SettingsPage() {
   const savePreferences = async () => {
     try {
       setSaving(true);
-      console.log('📤 Saving preferences:', preferences);
-      const response = await settingsAPI.updatePreferences(preferences);
+     const response = await settingsAPI.updatePreferences(preferences);
       if (response.success) {
         toast.success('Preferences updated successfully!');
         await fetchSettings();
@@ -270,25 +266,18 @@ export function SettingsPage() {
         staff: Number(campusForm.staff) || 0
       };
 
-      console.log('📝 Submitting campus data:', campusData);
-      console.log('📝 Editing campus:', editingCampus);
-
       setSaving(true);
       
       let response;
       
       if (editingCampus) {
         // Update existing campus
-        console.log(`📤 Updating campus ${editingCampus._id}`);
-        response = await settingsAPI.updateCampus(editingCampus._id!, campusData);
+       response = await settingsAPI.updateCampus(editingCampus._id!, campusData);
       } else {
         // Add new campus
-        console.log('📤 Adding new campus');
         response = await settingsAPI.addCampus(campusData);
       }
-      
-      console.log('📥 Server response:', response);
-      
+       
       if (response.success) {
         const nextCampuses = response.data?.campuses || [];
         syncCampuses(nextCampuses);
@@ -328,7 +317,6 @@ export function SettingsPage() {
     if (!confirm(`Are you sure you want to delete "${name}"?`)) return;
     
     try {
-      console.log(`🗑️ Deleting campus ${campusId}: ${name}`);
       const response = await settingsAPI.deleteCampus(campusId);
       if (response.success) {
         const nextCampuses = response.data?.campuses || [];
@@ -345,7 +333,6 @@ export function SettingsPage() {
   // Toggle campus status
   const toggleCampusStatus = async (campusId: string, currentStatus: boolean) => {
     try {
-      console.log(`🔄 Toggling campus ${campusId} status from ${currentStatus} to ${!currentStatus}`);
       const response = await settingsAPI.toggleCampusStatus(campusId);
       if (response.success) {
         const nextCampuses = response.data?.campuses || [];

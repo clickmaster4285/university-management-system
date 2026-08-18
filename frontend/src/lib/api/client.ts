@@ -14,7 +14,6 @@ const normalizeApiBase = (value?: string) => {
 
 const API_BASE_URL = normalizeApiBase(import.meta.env.VITE_API_URL);
 
-console.log('🔗 API Base URL:', API_BASE_URL);
 
 // Create axios instance with proper configuration
 export const apiClient = axios.create({
@@ -30,7 +29,6 @@ export const apiClient = axios.create({
 // Request interceptor for logging
 apiClient.interceptors.request.use(
   (config) => {
-    console.log(`📤 ${config.method?.toUpperCase()} ${config.url}`);
     return config;
   },
   (error) => {
@@ -42,7 +40,6 @@ apiClient.interceptors.request.use(
 // Response interceptor for logging and error handling
 apiClient.interceptors.response.use(
   (response) => {
-    console.log(`📥 ${response.status} ${response.config.url}`);
     return response;
   },
   (error) => {

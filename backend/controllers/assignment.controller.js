@@ -112,7 +112,6 @@ export const getAssignmentById = async (req, res) => {
 // Create new assignment
 export const createAssignment = async (req, res) => {
   try {
-    console.log('📝 Creating assignment with data:', req.body);
     
     // Validate required fields
     const requiredFields = ['title', 'description', 'course', 'courseCode', 'department', 'program', 'semester', 'instructor', 'dueDate', 'submissionDeadline'];
@@ -133,7 +132,6 @@ export const createAssignment = async (req, res) => {
     
     await assignment.save();
     
-    console.log('✅ Assignment created successfully:', assignment.assignmentId);
     
     res.status(201).json({ 
       success: true, 
@@ -165,8 +163,6 @@ export const createAssignment = async (req, res) => {
 // Update assignment - FIXED
 export const updateAssignment = async (req, res) => {
   try {
-    console.log('📝 Updating assignment:', req.params.id);
-    console.log('📝 Update data:', req.body);
     
     const assignment = await Assignment.findById(req.params.id);
     if (!assignment) {
@@ -248,7 +244,6 @@ export const updateAssignment = async (req, res) => {
     assignment.updatedBy = normalizeUserRef(req.user?.id);
     await assignment.save();
     
-    console.log('✅ Assignment updated successfully:', assignment.assignmentId);
     
     res.json({ 
       success: true, 
@@ -280,7 +275,6 @@ export const updateAssignment = async (req, res) => {
 // Delete assignment
 export const deleteAssignment = async (req, res) => {
   try {
-    console.log('📝 Deleting assignment:', req.params.id);
     
     const assignment = await Assignment.findById(req.params.id);
     if (!assignment) {
@@ -291,7 +285,6 @@ export const deleteAssignment = async (req, res) => {
     }
 
     await assignment.deleteOne();
-    console.log('✅ Assignment deleted successfully:', assignment.assignmentId);
     
     res.json({ 
       success: true, 

@@ -140,7 +140,6 @@ export function TransportPage() {
         setStats(statsRes.data);
       }
       
-      console.log('✅ Loaded transport data');
     } catch (error: any) {
       console.error('Failed to fetch transport data:', error);
       if (error.message?.includes('NetworkError') || error.message?.includes('Failed to fetch')) {
