@@ -130,7 +130,9 @@ export const createUniversity = async (req, res) => {
         universityId: university._id,
         role: savedAdmin.role 
       },
-      process.env.JWT_SECRET || 'your-secret-key',
+
+      process.env.JWT_SECRET || 'campus-compass-dev-secret-change-me',
+
       { expiresIn: '7d' }
     );
 
