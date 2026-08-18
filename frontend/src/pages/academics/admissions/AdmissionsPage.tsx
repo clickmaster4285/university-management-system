@@ -1,6 +1,6 @@
 // src/routes/app.admissions.tsx
-import { AppShell } from "@/components/app-shell";
-import { KpiCard } from "@/components/kpi-card";
+import { AppShell } from "@/layouts";
+import { KpiCard } from "@/components/dashboard/kpi-card";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,7 +10,7 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@
 import { Badge } from "@/components/ui/badge";
 import { DataTable, type Column } from "@/components/data-table";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { admissionAPI, Admission } from "@/lib/api/admissions";
+import { admissionAPI, Admission } from "@/features/admissions";
 import { 
   UserPlus, 
   CheckCircle2, 

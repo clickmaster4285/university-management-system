@@ -1,5 +1,5 @@
 // src/routes/app.notifications.tsx
-import { AppShell } from "@/components/app-shell";
+import { AppShell } from "@/layouts";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
 import { toast } from "sonner";
-import { notificationAPI, Notification, NotificationStats } from "@/lib/api/notifications";
+import { notificationAPI, Notification, NotificationStats } from "@/features/notifications";
 
 // --- Lightweight, dependency-free chart primitives ---------------------
 

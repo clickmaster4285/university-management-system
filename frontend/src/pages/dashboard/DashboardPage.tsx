@@ -1,6 +1,6 @@
 // src/pages/dashboard/DashboardPage.tsx
-import { AppShell } from "@/components/app-shell";
-import { KpiCard } from "@/components/kpi-card";
+import { AppShell } from "@/layouts";
+import { KpiCard } from "@/components/dashboard/kpi-card";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -18,7 +18,7 @@ import {
 } from "recharts";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
-import { dashboardAPI, DashboardStats, Activity } from "@/lib/api/dashboard";
+import { dashboardAPI, DashboardStats, Activity } from "@/features/dashboard";
 
 const chartColors = ["hsl(var(--chart-1))", "hsl(var(--chart-2))", "hsl(var(--chart-3))", "hsl(var(--chart-4))", "hsl(var(--chart-5))"];
 

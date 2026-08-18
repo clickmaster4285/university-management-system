@@ -228,7 +228,7 @@ eventSchema.index({ status: 1 });
 eventSchema.index({ type: 1 });
 eventSchema.index({ category: 1 });
 eventSchema.index({ campus: 1 });
-eventSchema.index({ eventId: 1 });
+
 
 // Pre-save middleware to generate event ID
 eventSchema.pre('save', async function(next) {

@@ -235,7 +235,6 @@ assignmentSchema.index({ course: 1 });
 assignmentSchema.index({ instructor: 1 });
 assignmentSchema.index({ status: 1 });
 assignmentSchema.index({ dueDate: 1 });
-assignmentSchema.index({ assignmentId: 1 });
 assignmentSchema.index({ courseCode: 1 });
 
 // Pre-save middleware to generate assignment ID

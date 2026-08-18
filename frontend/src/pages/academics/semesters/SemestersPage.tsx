@@ -1,15 +1,15 @@
 // src/routes/app.semesters.tsx
 import { useState, useEffect } from "react";
-import { AppShell } from "@/components/app-shell";
+import { AppShell } from "@/layouts";
 import { DataTable, type Column } from "@/components/data-table";
-import { KpiCard } from "@/components/kpi-card";
+import { KpiCard } from "@/components/dashboard/kpi-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { semesterAPI, Semester } from "@/lib/api/semester";
-import { academicSessionAPI, AcademicSession } from "@/lib/api/academicSession";
+import { semesterAPI, Semester } from "@/features/semester";
+import { academicSessionAPI, AcademicSession } from "@/features/academicSession";
 import { 
   Calendar,
   Clock,

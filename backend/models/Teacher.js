@@ -91,8 +91,7 @@ teacherSchema.pre('validate', async function(next) {
 });
 
 // Index for search performance
-teacherSchema.index({ teacherId: 1 });
-teacherSchema.index({ name: 'text', email: 'text' });
+teacherSchema.index({ name: 'text' });
 
 const Teacher = mongoose.model('Teacher', teacherSchema);
 export default Teacher;

@@ -1,14 +1,14 @@
 // src/routes/app.teachers.tsx
 import { useState, useEffect } from "react";
-import { AppShell } from "@/components/app-shell";
+import { AppShell } from "@/layouts";
 import { DataTable, type Column } from "@/components/data-table";
-import { KpiCard } from "@/components/kpi-card";
+import { KpiCard } from "@/components/dashboard/kpi-card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { teacherAPI, Teacher } from "@/lib/api/teachers";
+import { teacherAPI, Teacher } from "@/features/teachers";
 import { 
   Users, 
   Award, 

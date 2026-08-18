@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
-import { AppShell } from "@/components/app-shell";
+import { AppShell } from "@/layouts";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -23,8 +23,8 @@ import {
   Star,
   StarOff
 } from "lucide-react";
-import { campusAPI, Campus, CampusData } from "@/lib/api/campus";
-import { getUniversities } from "@/lib/api/university";
+import { campusAPI, Campus, CampusData } from "@/features/campus";
+import { getUniversities } from "@/features/university";
 import { useAuth } from "@/lib/auth";
 
 

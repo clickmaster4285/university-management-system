@@ -1,14 +1,14 @@
 import { useState, useEffect } from "react";
-import { AppShell } from "@/components/app-shell";
-import { KpiCard } from "@/components/kpi-card";
+import { AppShell } from "@/layouts";
+import { KpiCard } from "@/components/dashboard/kpi-card";
 import { DataTable, type Column } from "@/components/data-table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { examAPI, Exam } from "@/lib/api/exam";
-import { courseAPI, Course } from "@/lib/api/courses";
+import { examAPI, Exam } from "@/features/exam";
+import { courseAPI, Course } from "@/features/courses";
 import { useAuth } from "@/lib/auth";
 import { 
   ClipboardCheck, 

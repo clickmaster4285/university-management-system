@@ -1,5 +1,5 @@
 // src/routes/app.reports.tsx
-import { AppShell } from "@/components/app-shell";
+import { AppShell } from "@/layouts";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,7 +37,7 @@ import {
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
-import { reportAPI, Report, ReportCategory } from "@/lib/api/reports";
+import { reportAPI, Report, ReportCategory } from "@/features/reports";
 
 
 const categoryIcons: Record<string, any> = {

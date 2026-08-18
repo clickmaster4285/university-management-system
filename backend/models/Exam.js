@@ -219,7 +219,6 @@ const examSchema = new mongoose.Schema({
 examSchema.index({ courseCode: 1 });
 examSchema.index({ examDate: 1 });
 examSchema.index({ status: 1 });
-examSchema.index({ examId: 1 });
 examSchema.index({ instructor: 1 });
 
 // Pre-save middleware to generate exam ID

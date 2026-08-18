@@ -1,7 +1,7 @@
 // src/routes/app.fees.tsx
 import { useState, useEffect } from "react";
-import { AppShell } from "@/components/app-shell";
-import { KpiCard } from "@/components/kpi-card";
+import { AppShell } from "@/layouts";
+import { KpiCard } from "@/components/dashboard/kpi-card";
 import { DataTable, type Column } from "@/components/data-table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,10 +12,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
-import { feeAPI, Fee } from "@/lib/api/fee";
-import { feeStructureAPI } from "@/lib/api/feeStructure";
-import { studentAPI, Student } from "@/lib/api/students";
-import { courseAPI, Course } from "@/lib/api/courses";
+import { feeAPI, Fee } from "@/features/fee";
+import { feeStructureAPI } from "@/features/feeStructure";
+import { studentAPI, Student } from "@/features/students";
+import { courseAPI, Course } from "@/features/courses";
 import { useAuth } from "@/lib/auth";
 import { 
   DollarSign, 

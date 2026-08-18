@@ -144,10 +144,8 @@ const routeSchema = new mongoose.Schema({
 });
 
 // Indexes
-routeSchema.index({ routeNumber: 1 });
 routeSchema.index({ startPoint: 1, endPoint: 1 });
 routeSchema.index({ status: 1 });
-routeSchema.index({ routeId: 1 });
 
 // Pre-save middleware to generate route ID
 routeSchema.pre('save', async function(next) {

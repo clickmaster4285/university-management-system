@@ -1,6 +1,6 @@
 // src/lib/auth.tsx
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { authAPI, User } from './api/auth';
+import { authAPI, User } from '../features/auth';
 import { toast } from 'sonner';
 
 export type Role = 'Super Admin' | 'Admin' | 'Teacher' | 'Student' | 'Student Affairs' | 'Finance' | 'Transport' | 'Library' | 'HR';

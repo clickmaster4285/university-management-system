@@ -1,14 +1,14 @@
 // src/routes/app.attendance.tsx
 import { useState, useEffect } from "react";
-import { AppShell } from "@/components/app-shell";
-import { KpiCard } from "@/components/kpi-card";
+import { AppShell } from "@/layouts";
+import { KpiCard } from "@/components/dashboard/kpi-card";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { attendanceAPI, StudentAttendance, AttendanceSummary } from "@/lib/api/attendance";
-import { departmentAPI } from "@/lib/api/departments";
+import { attendanceAPI, StudentAttendance, AttendanceSummary } from "@/features/attendance";
+import { departmentAPI } from "@/features/departments";
 import { 
   CalendarCheck, 
   UserCheck, 

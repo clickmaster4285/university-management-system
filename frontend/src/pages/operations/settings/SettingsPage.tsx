@@ -1,5 +1,5 @@
 // src/routes/app.settings.tsx
-import { AppShell } from "@/components/app-shell";
+import { AppShell } from "@/layouts";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -35,8 +35,8 @@ import {
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
-import { settingsAPI, Settings, Campus, AddCampusData, UpdateCampusData } from "@/lib/api/settings";
-import { authAPI, User } from "@/lib/api/auth";
+import { settingsAPI, Settings, Campus, AddCampusData, UpdateCampusData } from "@/features/settings";
+import { authAPI, User } from "@/features/auth";
 
 
 export function SettingsPage() {
