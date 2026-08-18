@@ -15,20 +15,9 @@ const startServer = async (port = DEFAULT_PORT) => {
         console.log(`\n🚀 Server running on http://localhost:${port}`);
         resolve(server);
       });
-
-      server.on('error', (error) => {
-        if (error.code === 'EADDRINUSE') {
-          console.warn(`⚠️ Port ${port} is busy. Trying ${port + 1}...`);
-          server.close(() => {
-            resolve(startServer(port + 1));
-          });
-        } else {
-          reject(error);
-        }
-      });
     });
   } catch (error) {
-    console.error('❌ Failed to start server:', error.message);
+    console.error('❌ Error starting server:', error.message);
     process.exit(1);
   }
 };

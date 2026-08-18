@@ -64,6 +64,12 @@ export function FinancePage() {
     } catch (error: any) {
       console.error('❌ Failed to fetch finance data:', error);
       let errorMsg = 'Failed to load finance data';
+      if (error.response?.status === 401) {
+        errorMsg = 'Session expired. Please log in again.';
+        toast.error(errorMsg);
+        setTimeout(() => { window.location.href = '/login'; }, 1500);
+        return;
+      }
       if (error.message?.includes('Failed to fetch') || error.message?.includes('NetworkError')) {
         errorMsg = 'Cannot connect to backend. Make sure the backend is running on the configured API port.';
       }

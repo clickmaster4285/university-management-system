@@ -28,9 +28,11 @@ const api = axios.create({
 // Request interceptor to add auth token
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('token') || localStorage.getItem('auth_token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+    } else {
+      delete config.headers.Authorization;
     }
     return config;
   },
@@ -70,15 +72,17 @@ api.interceptors.response.use(
 
     // Handle 401 Unauthorized
     if (status === 401) {
-      const isAuthEndpoint = error.config?.url?.includes('/auth/login') || 
-                            error.config?.url?.includes('/auth/register');
-      
-      if (!isAuthEndpoint) {
+      const isAuthEndpoint = error.config?.url?.includes('/auth/login') ||
+        error.config?.url?.includes('/auth/register');
+      const hasToken = !!(localStorage.getItem('token') || localStorage.getItem('auth_token'));
+
+      if (!isAuthEndpoint && hasToken) {
         localStorage.removeItem('token');
+        localStorage.removeItem('auth_token');
         localStorage.removeItem('user');
-        
-        if (!window.location.pathname.includes('/login') && 
-            !window.location.pathname.includes('/register')) {
+
+        if (!window.location.pathname.includes('/login') &&
+          !window.location.pathname.includes('/register')) {
           toast.error('Session expired. Please login again.');
           setTimeout(() => {
             window.location.href = '/login';

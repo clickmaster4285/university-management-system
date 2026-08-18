@@ -1,5 +1,4 @@
-// src/components/app-shell.tsx
-import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth, useTheme } from "@/lib/auth";
 import {
   LayoutDashboard, Users, GraduationCap, Building2, BookOpen, CalendarCheck,
@@ -28,60 +27,61 @@ const nav = [
   {
     label: "Overview",
     items: [
-      { to: "/app", label: "Dashboard", icon: LayoutDashboard, exact: true },
-      { to: "/app/university", label: "University", icon: University },
-      { to: "/app/campuses", label: "Campuses", icon: School }, // ✅ Now works
-      { to: "/app/ai", label: "AI Assistant", icon: Sparkles },
-      { to: "/app/notifications", label: "Notifications", icon: Bell },
+      { to: "/", label: "Dashboard", icon: LayoutDashboard, exact: true },
+      { to: "/university", label: "University", icon: University },
+      { to: "/campuses", label: "Campuses", icon: School },
+      { to: "/ai", label: "AI Assistant", icon: Sparkles },
+      { to: "/notifications", label: "Notifications", icon: Bell },
     ],
   },
   {
     label: "Academics",
     items: [
-      { to: "/app/admissions", label: "Admissions", icon: UserPlus },
-      { to: "/app/departments", label: "Departments", icon: Building2 },
-      { to: "/app/teachers", label: "Teachers", icon: Users },
-      { to: "/app/students", label: "Students", icon: GraduationCap },
-      { to: "/app/courses", label: "Courses", icon: BookOpen },
-      { to: "/app/attendance", label: "Attendance", icon: CalendarCheck },
-      { to: "/app/assignments", label: "Assignments", icon: ClipboardList },
-      { to: "/app/exams", label: "Exam Grades", icon: ClipboardCheck },
-      { to: "/app/online-classes", label: "Online Classes", icon: Video },
-      { to: "/app/academic-sessions", label: "Sessions", icon: Calendar },
-      { to: "/app/semesters", label: "Semesters", icon: Layers },
-      { to: "/app/batches", label: "Batches", icon: Users },
+      { to: "/admissions", label: "Admissions", icon: UserPlus },
+      { to: "/departments", label: "Departments", icon: Building2 },
+      { to: "/teachers", label: "Teachers", icon: Users },
+      { to: "/students", label: "Students", icon: GraduationCap },
+      { to: "/courses", label: "Courses", icon: BookOpen },
+      { to: "/attendance", label: "Attendance", icon: CalendarCheck },
+      { to: "/assignments", label: "Assignments", icon: ClipboardList },
+      { to: "/exams", label: "Exam Grades", icon: ClipboardCheck },
+      { to: "/online-classes", label: "Online Classes", icon: Video },
+      { to: "/academic-sessions", label: "Sessions", icon: Calendar },
+      { to: "/semesters", label: "Semesters", icon: Layers },
+      { to: "/batches", label: "Batches", icon: Users },
     ],
   },
   {
     label: "Campus",
     items: [
-      { to: "/app/library", label: "Library", icon: Library },
-      { to: "/app/hostel", label: "Hostel", icon: Home },
-      { to: "/app/transport", label: "Transport", icon: Bus },
-      { to: "/app/events", label: "Events", icon: Calendar },
-      { to: "/app/qr", label: "Smart QR", icon: QrCode },
+      { to: "/library", label: "Library", icon: Library },
+      { to: "/hostel", label: "Hostel", icon: Home },
+      { to: "/transport", label: "Transport", icon: Bus },
+      { to: "/events", label: "Events", icon: Calendar },
+      { to: "/qr", label: "Smart QR", icon: QrCode },
     ],
   },
   {
     label: "Operations",
     items: [
-      { to: "/app/fees", label: "Fees", icon: DollarSign },
-      { to: "/app/finance", label: "Finance", icon: Wallet },
-      { to: "/app/hr", label: "Human Resources", icon: Briefcase },
-      { to: "/app/reports", label: "Reports", icon: BarChart3 },
-      { to: "/app/settings", label: "Settings", icon: Settings },
+      { to: "/fees", label: "Fees", icon: DollarSign },
+      { to: "/finance", label: "Finance", icon: Wallet },
+      { to: "/hr", label: "Human Resources", icon: Briefcase },
+      { to: "/reports", label: "Reports", icon: BarChart3 },
+      { to: "/settings", label: "Settings", icon: Settings },
     ],
   },
 ];
 
 function AppSidebar() {
-  const path = useRouterState({ select: (s) => s.location.pathname });
-  const isActive = (to: string, exact?: boolean) => (exact ? path === to : path === to || path.startsWith(to + "/"));
+  const location = useLocation();
+  const path = location.pathname;
+  const isActive = (to: string, exact?: boolean) => (exact || to === "/" ? path === to : path === to || path.startsWith(to + "/"));
 
   return (
     <Sidebar collapsible="icon" className="border-r">
       <SidebarHeader className="border-b px-3 py-4">
-        <Link to="/app" className="flex items-center gap-2.5">
+        <Link to="/" className="flex items-center gap-2.5">
           <div className="h-9 w-9 rounded-xl gradient-brand flex items-center justify-center shadow-lg shadow-primary/20">
             <GraduationCap className="h-5 w-5 text-white" />
           </div>
@@ -175,10 +175,10 @@ function Topbar() {
           <DropdownMenuContent align="end" className="w-56">
             <DropdownMenuLabel>My Account</DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => navigate({ to: "/app/settings" })}>
+            <DropdownMenuItem onClick={() => navigate("/settings")}>
               <Settings className="h-4 w-4" /> Settings
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => { logout(); navigate({ to: "/login" }); toast.success("Signed out"); }}>
+            <DropdownMenuItem onClick={() => { logout(); navigate("/login" ); toast.success("Signed out"); }}>
               <LogOut className="h-4 w-4" /> Sign out
             </DropdownMenuItem>
           </DropdownMenuContent>
@@ -196,7 +196,7 @@ export function AppShell({ children, title, subtitle, actions }: {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
   useEffect(() => {
-    if (ready && !user) navigate({ to: "/login" });
+    if (ready && !user) navigate("/login" );
   }, [ready, user, navigate]);
 
   if (!mounted || !ready) {

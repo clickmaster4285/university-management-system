@@ -1,4 +1,4 @@
-import { useNavigate } from "@tanstack/react-router";
+import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { AppShell } from "@/components/app-shell";
@@ -96,7 +96,7 @@ export function UniversityProfilePage() {
         localStorage.setItem('auth_token', response.token);
       }
       
-      navigate({ to: "/app/university" });
+      navigate("/university" );
     } catch (error: any) {
       toast.error(error?.message || "Failed to create university");
     } finally {
@@ -115,7 +115,7 @@ export function UniversityProfilePage() {
       actions={
         <Button 
           variant="outline" 
-          onClick={() => navigate({ to: "/app/university" })}
+          onClick={() => navigate("/university" )}
         >
           <ArrowLeft className="h-4 w-4 mr-2" />
           Back to Universities

@@ -1,4 +1,4 @@
-import { Link, useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { Card, CardContent } from "@/components/ui/card";
@@ -23,7 +23,7 @@ export function LoginPage() {
     try {
       await login({ email, password });
       toast.success("Welcome back");
-      navigate({ to: "/app" });
+      navigate("/");
     } catch (error: any) {
       toast.error(error?.message || 'Login failed');
     } finally {
@@ -104,7 +104,7 @@ export function LoginPage() {
               <Button type="submit" disabled={loading} className="w-full h-11 gradient-brand text-white border-0">
                 {loading ? <><Loader2 className="h-4 w-4 animate-spin" /> Signing in…</> : "Sign in"}
               </Button>
-              <Button type="button" variant="outline" className="w-full h-11" onClick={() => navigate({ to: "/otp" })}>
+              <Button type="button" variant="outline" className="w-full h-11" onClick={() => navigate("/otp" )}>
                 Sign in with OTP
               </Button>
             </form>

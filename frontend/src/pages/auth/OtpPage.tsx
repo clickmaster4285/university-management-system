@@ -1,4 +1,4 @@
-import { Link, useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -19,7 +19,7 @@ export function OtpPage() {
     setTimeout(() => {
       login({ name: "Dr. Ali Raza", email: "admin@scholaros.edu", role: "Super Admin" });
       toast.success("Verified");
-      navigate({ to: "/app" });
+      navigate("/");
     }, 800);
   };
 

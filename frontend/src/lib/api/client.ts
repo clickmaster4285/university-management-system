@@ -26,9 +26,13 @@ export const apiClient = axios.create({
   timeout: 30000,
 });
 
-// Request interceptor for logging
+// Request interceptor - attach auth token + logging
 apiClient.interceptors.request.use(
   (config) => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
     return config;
   },
   (error) => {
@@ -37,35 +41,35 @@ apiClient.interceptors.request.use(
   }
 );
 
-// Response interceptor for logging and error handling
+// Response interceptor for error handling
 apiClient.interceptors.response.use(
   (response) => {
     return response;
   },
   (error) => {
-    console.error('❌ Response Error:', error);
-    
     if (error.response) {
-      // The request was made and the server responded with a status code
-      // that falls out of the range of 2xx
-      console.error('Error Data:', error.response.data);
-      console.error('Error Status:', error.response.status);
-      console.error('Error Headers:', error.response.headers);
-      
-      // Enhance error message
-      const message = error.response.data?.message || 
-                     error.response.data?.error || 
-                     `Server error: ${error.response.status}`;
+      const status = error.response.status;
+      const message = error.response.data?.message ||
+                     error.response.data?.error ||
+                     `Server error: ${status}`;
       error.message = message;
+
+      // Handle 401 - session expired, redirect to login
+      if (status === 401) {
+        const isAuthEndpoint = error.config?.url?.includes('/auth/login') ||
+                              error.config?.url?.includes('/auth/register');
+        if (!isAuthEndpoint) {
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          if (!window.location.pathname.includes('/login')) {
+            setTimeout(() => { window.location.href = '/login'; }, 1500);
+          }
+        }
+      }
     } else if (error.request) {
-      // The request was made but no response was received
-      console.error('No response received:', error.request);
       error.message = 'Cannot connect to server. Please check if backend is running.';
-    } else {
-      // Something happened in setting up the request that triggered an Error
-      console.error('Request setup error:', error.message);
     }
-    
+
     return Promise.reject(error);
   }
 );

@@ -1,4 +1,4 @@
-import { Link, useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate } from "react-router-dom";
 import { useEffect } from "react";
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
@@ -9,7 +9,7 @@ export function LandingPage() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (ready && user) navigate({ to: "/app" });
+    if (ready && user) navigate("/");
   }, [ready, user, navigate]);
 
   return (

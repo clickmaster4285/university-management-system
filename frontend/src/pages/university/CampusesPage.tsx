@@ -1,4 +1,4 @@
-import { useNavigate } from "@tanstack/react-router";
+import { useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
@@ -333,7 +333,7 @@ export function CampusesPage() {
             <p className="text-sm text-muted-foreground mt-2">
               Please create a university first before adding campuses.
             </p>
-            <Button className="mt-4" onClick={() => navigate({ to: "/app/university" })}>
+            <Button className="mt-4" onClick={() => navigate("/university" )}>
               <Plus className="h-4 w-4 mr-2" />
               Create University
             </Button>
