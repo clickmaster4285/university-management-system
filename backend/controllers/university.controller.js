@@ -183,11 +183,10 @@ export const createUniversity = async (req, res) => {
 // ========================================
 export const getUniversities = async (req, res) => {
   try {
-    // Check if user is Super Admin
-    if (req.user?.role !== 'Super Admin') {
-      return res.status(403).json({
+    if (!req.user) {
+      return res.status(401).json({
         success: false,
-        message: "Access denied. Super Admin privileges required."
+        message: "Authentication required"
       });
     }
 

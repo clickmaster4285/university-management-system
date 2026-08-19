@@ -1,3 +1,4 @@
+// src/features/university/index.ts
 import { apiClient } from "./client";
 
 export interface UniversityData {
@@ -49,11 +50,40 @@ export interface UniversityResponse {
     universityId: string;
     universityName?: string;
     universityCode?: string;
-    name?: string; // Add this for compatibility
+    name?: string;
   };
   token?: string;
 }
 
+// ✅ Campus interface
+export interface Campus {
+  _id: string;
+  campusId: string;
+  name: string;
+  campusCode: string;
+  type?: string;
+  address: {
+    street: string;
+    city: string;
+    province: string;
+    country: string;
+    postalCode?: string;
+  };
+  phone?: string;
+  email?: string;
+  establishedYear?: number;
+  description?: string;
+  status?: string;
+  isMainCampus?: boolean;
+  students?: any[];
+  teachers?: any[];
+  departments?: any[];
+  courses?: any[];
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+// ✅ Updated University interface with campuses
 export interface University {
   _id: string;
   universityId: string;
@@ -70,6 +100,7 @@ export interface University {
     province: string;
     city: string;
     street: string;
+    postalCode?: string;
   };
   academicSettings: {
     academicSystem: string;
@@ -88,6 +119,15 @@ export interface University {
   updatedAt: string;
   campusCount?: number;
   userCount?: number;
+  campuses?: Campus[];
+  // ✅ Additional properties for backward compatibility
+  country?: string;
+  province?: string;
+  city?: string;
+  academicSystem?: string;
+  gradingSystem?: string;
+  maxGPA?: number;
+  passingGPA?: number;
 }
 
 export interface UniversityStats {
@@ -95,6 +135,37 @@ export interface UniversityStats {
   totalTeachers: number;
   totalDepartments: number;
   totalCourses: number;
+  totalCampuses?: number;
+}
+
+// ✅ Updated response types - make them more flexible
+export interface UniversitiesListResponse {
+  success: boolean;
+  data: University[];
+  message?: string;
+  // ✅ Add these for flexibility
+  universities?: University[];
+  results?: University[];
+  items?: University[];
+}
+
+// ✅ Single university response
+export interface UniversitySingleResponse {
+  success: boolean;
+  data: University;
+  message?: string;
+}
+
+// ✅ Delete response
+export interface DeleteResponse {
+  success: boolean;
+  message: string;
+}
+
+// ✅ Check code response
+export interface CheckCodeResponse {
+  success: boolean;
+  exists: boolean;
 }
 
 /**
@@ -113,7 +184,7 @@ export const createUniversity = async (data: UniversityData): Promise<University
 /**
  * Get all universities (Super Admin only)
  */
-export const getUniversities = async (): Promise<{ success: boolean; data: University[] }> => {
+export const getUniversities = async (): Promise<UniversitiesListResponse> => {
   try {
     const response = await apiClient.get("/universities");
     return response.data;
@@ -126,7 +197,7 @@ export const getUniversities = async (): Promise<{ success: boolean; data: Unive
 /**
  * Get a single university by ID
  */
-export const getUniversityById = async (id: string): Promise<{ success: boolean; data: University }> => {
+export const getUniversityById = async (id: string): Promise<UniversitySingleResponse> => {
   try {
     const response = await apiClient.get(`/universities/${id}`);
     return response.data;
@@ -155,7 +226,7 @@ export const updateUniversity = async (
 /**
  * Delete a university
  */
-export const deleteUniversity = async (id: string): Promise<{ success: boolean; message: string }> => {
+export const deleteUniversity = async (id: string): Promise<DeleteResponse> => {
   try {
     const response = await apiClient.delete(`/universities/${id}`);
     return response.data;
@@ -168,7 +239,7 @@ export const deleteUniversity = async (id: string): Promise<{ success: boolean; 
 /**
  * Get university by code
  */
-export const getUniversityByCode = async (code: string): Promise<{ success: boolean; data: University }> => {
+export const getUniversityByCode = async (code: string): Promise<UniversitySingleResponse> => {
   try {
     const response = await apiClient.get(`/universities/code/${code}`);
     return response.data;
@@ -194,7 +265,7 @@ export const getUniversityStats = async (id: string): Promise<{ success: boolean
 /**
  * Check if university code exists
  */
-export const checkUniversityCode = async (code: string): Promise<{ success: boolean; exists: boolean }> => {
+export const checkUniversityCode = async (code: string): Promise<CheckCodeResponse> => {
   try {
     const response = await apiClient.get(`/universities/check-code/${code}`);
     return response.data;
@@ -202,4 +273,16 @@ export const checkUniversityCode = async (code: string): Promise<{ success: bool
     const serverMessage = error?.response?.data?.message || error?.message || "Failed to check university code";
     throw new Error(serverMessage);
   }
+};
+
+// ✅ Export all types and functions
+export default {
+  createUniversity,
+  getUniversities,
+  getUniversityById,
+  updateUniversity,
+  deleteUniversity,
+  getUniversityByCode,
+  getUniversityStats,
+  checkUniversityCode,
 };

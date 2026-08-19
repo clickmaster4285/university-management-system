@@ -1,3 +1,4 @@
+// src/App.tsx
 import { lazy, Suspense } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
@@ -19,7 +20,9 @@ const AiAssistantPage = lazy(() => import("./pages/ai/AiAssistantPage"));
 const NotificationsPage = lazy(() => import("./pages/notifications/NotificationsPage"));
 
 // University Governance
+const UniversityDashboardPage = lazy(() => import("./pages/university/DashboardPage"));
 const UniversityProfilePage = lazy(() => import("./pages/university/UniversityProfilePage"));
+const UniversityDetailsPage = lazy(() => import("./pages/university/UniversityDetailPage"));
 const CampusesPage = lazy(() => import("./pages/university/CampusesPage"));
 
 // Academics Modular Pages
@@ -82,8 +85,17 @@ export const App = () => (
               {/* Authenticated / Protected App Routes */}
               <Route path="/" element={<AppLayout />}>
                 <Route index element={<DashboardPage />} />
-                <Route path="university" element={<UniversityProfilePage />} />
+                
+                {/* University Routes */}
+                <Route path="university/:id" element={<UniversityDetailsPage />} />
+                <Route path="universities" element={<UniversityDashboardPage />} />
+                <Route path="university" element={<UniversityDashboardPage />} />
+                <Route path="university/create" element={<UniversityProfilePage />} />
+                <Route path="university/:id" element={<UniversityProfilePage />} />
+                <Route path="university/:id/edit" element={<UniversityProfilePage />} />
+                <Route path="university/:id/campuses" element={<CampusesPage />} />
                 <Route path="campuses" element={<CampusesPage />} />
+                
                 <Route path="ai" element={<AiAssistantPage />} />
                 <Route path="notifications" element={<NotificationsPage />} />
 

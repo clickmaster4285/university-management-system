@@ -1,4 +1,5 @@
 import express from "express";
+import auth from "../middleware/auth.js";
 import {
   createUniversity,
   getUniversities,
@@ -17,11 +18,11 @@ router.post("/", createUniversity);
 router.get("/check-code/:code", checkUniversityCode);
 
 // Protected routes
-router.get("/", getUniversities);
-router.get("/:id", getUniversityById);
-router.get("/code/:code", getUniversityByCode);
-router.get("/:id/stats", getUniversityStats);
-router.put("/:id", updateUniversity);
-router.delete("/:id", deleteUniversity);
+router.get("/", auth, getUniversities);
+router.get("/:id", auth, getUniversityById);
+router.get("/code/:code", auth, getUniversityByCode);
+router.get("/:id/stats", auth, getUniversityStats);
+router.put("/:id", auth, updateUniversity);
+router.delete("/:id", auth, deleteUniversity);
 
 export default router;

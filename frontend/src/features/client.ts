@@ -2,7 +2,7 @@
 import axios from 'axios';
 
 const normalizeApiBase = (value?: string) => {
-  const fallback = 'http://localhost:4006/api';
+  const fallback = 'http://127.0.0.1:5010/api';
   if (!value) return fallback;
 
   const trimmed = value.trim();
