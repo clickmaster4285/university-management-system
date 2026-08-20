@@ -1,4 +1,5 @@
 import express from 'express';
+import { auth } from '../middleware/auth.js';
 import {
   getAllEvents,
   getEventById,
@@ -8,19 +9,17 @@ import {
   getEventStats,
   registerForEvent
 } from '../controllers/event.controller.js';
-import auth from '../middleware/auth.js';
 
 const router = express.Router();
 
-// Public routes
+router.use(auth);
+
 router.get('/', getAllEvents);
 router.get('/stats/summary', getEventStats);
 router.get('/:id', getEventById);
-
-// Protected routes
-router.post('/', auth, createEvent);
-router.put('/:id', auth, updateEvent);
-router.delete('/:id', auth, deleteEvent);
-router.post('/:id/register', auth, registerForEvent);
+router.post('/', createEvent);
+router.put('/:id', updateEvent);
+router.delete('/:id', deleteEvent);
+router.post('/:id/register', registerForEvent);
 
 export default router;

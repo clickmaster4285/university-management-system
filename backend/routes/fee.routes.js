@@ -1,5 +1,5 @@
-
 import express from 'express';
+import { auth, authorize } from '../middleware/auth.js';
 import {
   getAllFees,
   getFeeById,
@@ -11,23 +11,21 @@ import {
   generateInvoice,
   applyLateFees
 } from '../controllers/fee.controller.js';
-import auth from '../middleware/auth.js';
 
 const router = express.Router();
 
-// Public routes
+router.use(auth, authorize("Admin", "Staff"));
+
 router.get('/', getAllFees);
 router.get('/stats/summary', getFeeStats);
 router.get('/:id', getFeeById);
-
-// Protected routes
-router.post('/', auth, createFee);
-router.put('/:id', auth, updateFee);
-router.delete('/:id', auth, deleteFee);
+router.post('/', createFee);
+router.put('/:id', updateFee);
+router.delete('/:id', deleteFee);
 
 // Payment routes
-router.post('/:id/pay', auth, processPayment);
-router.post('/:id/invoice', auth, generateInvoice);
-router.post('/apply-late-fees', auth, applyLateFees);
+router.post('/:id/pay', processPayment);
+router.post('/:id/invoice', generateInvoice);
+router.post('/apply-late-fees', applyLateFees);
 
 export default router;

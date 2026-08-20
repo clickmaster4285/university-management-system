@@ -32,7 +32,7 @@ export const createCampus = async (req, res) => {
     }
 
     // Check if university exists
-    const university = await University.findById(universityId);
+    const university = await University.findOne({ _id: universityId, isDeleted: { $ne: true } });
     if (!university) {
       return res.status(404).json({
         success: false,
@@ -43,6 +43,7 @@ export const createCampus = async (req, res) => {
     // Check if campus already exists for this university
     const existingCampus = await Campus.findOne({
       universityId,
+      isDeleted: { $ne: true },
       $or: [
         { campusCode: campusCode.toUpperCase() },
         { name: name }
@@ -57,7 +58,7 @@ export const createCampus = async (req, res) => {
     }
 
     // If this is the first campus, make it main campus
-    const campusCount = await Campus.countDocuments({ universityId });
+    const campusCount = await Campus.countDocuments({ universityId, isDeleted: { $ne: true } });
     const shouldBeMain = isMainCampus || campusCount === 0;
 
     const campus = new Campus({
@@ -110,7 +111,7 @@ export const getCampuses = async (req, res) => {
       });
     }
     
-    const campuses = await Campus.find({ universityId })
+    const campuses = await Campus.find({ universityId, isDeleted: { $ne: true } })
       .populate('universityId', 'universityName universityCode')
       .select("-__v")
       .sort({ isMainCampus: -1, createdAt: 1 });
@@ -133,7 +134,7 @@ export const getCampuses = async (req, res) => {
 
 export const getCampusById = async (req, res) => {
   try {
-    const campus = await Campus.findById(req.params.id)
+    const campus = await Campus.findOne({ _id: req.params.id, isDeleted: { $ne: true } })
       .populate('universityId', 'universityName universityCode');
     
     if (!campus) {
@@ -173,9 +174,9 @@ export const updateCampus = async (req, res) => {
       updates.campusCode = updates.campusCode.toUpperCase();
     }
     
-    const campus = await Campus.findByIdAndUpdate(
-      id,
-      { ...updates, updatedAt: Date.now() },
+    const campus = await Campus.findOneAndUpdate(
+      { _id: id, isDeleted: { $ne: true } },
+      updates,
       { new: true, runValidators: true }
     ).populate('universityId', 'universityName universityCode');
     
@@ -205,7 +206,7 @@ export const deleteCampus = async (req, res) => {
   try {
     const { id } = req.params;
     
-    const campus = await Campus.findById(id);
+    const campus = await Campus.findOne({ _id: id, isDeleted: { $ne: true } });
     if (!campus) {
       return res.status(404).json({
         success: false,
@@ -217,6 +218,7 @@ export const deleteCampus = async (req, res) => {
     if (campus.isMainCampus) {
       const otherCampuses = await Campus.countDocuments({ 
         universityId: campus.universityId,
+        isDeleted: { $ne: true },
         _id: { $ne: id }
       });
       
@@ -228,7 +230,12 @@ export const deleteCampus = async (req, res) => {
       }
     }
     
-    await campus.deleteOne();
+    // Soft delete the campus
+    await campus.updateOne({
+      isDeleted: true,
+      deletedAt: new Date(),
+      deletedBy: req.user?._id || null,
+    });
     
     res.json({
       success: true,
@@ -248,7 +255,7 @@ export const setMainCampus = async (req, res) => {
   try {
     const { id } = req.params;
     
-    const campus = await Campus.findById(id);
+    const campus = await Campus.findOne({ _id: id, isDeleted: { $ne: true } });
     if (!campus) {
       return res.status(404).json({
         success: false,
@@ -258,7 +265,7 @@ export const setMainCampus = async (req, res) => {
     
     // Remove main status from all campuses in this university
     await Campus.updateMany(
-      { universityId: campus.universityId },
+      { universityId: campus.universityId, isDeleted: { $ne: true } },
       { isMainCampus: false }
     );
     

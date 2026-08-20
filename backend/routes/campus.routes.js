@@ -11,12 +11,12 @@ import {
 
 const router = express.Router();
 
-// Protected routes (all campus actions require an authenticated Admin or Super Admin)
-router.post("/", auth, authorize("Super Admin", "Admin"), createCampus);
-router.get("/", auth, authorize("Super Admin", "Admin"), getCampuses);
-router.get("/:id", auth, authorize("Super Admin", "Admin"), getCampusById);
-router.put("/:id", auth, authorize("Super Admin", "Admin"), updateCampus);
-router.delete("/:id", auth, authorize("Super Admin", "Admin"), deleteCampus);
-router.put("/:id/set-main", auth, authorize("Super Admin", "Admin"), setMainCampus);
+// Protected routes (all campus actions require an authenticated Admin)
+router.post("/", auth, authorize("Admin"), createCampus);
+router.get("/", auth, authorize("Admin"), getCampuses);
+router.get("/:id", auth, authorize("Admin"), getCampusById);
+router.put("/:id", auth, authorize("Admin"), updateCampus);
+router.delete("/:id", auth, authorize("Admin"), deleteCampus);
+router.put("/:id/set-main", auth, authorize("Admin"), setMainCampus);
 
 export default router;

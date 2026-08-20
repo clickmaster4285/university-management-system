@@ -1,5 +1,6 @@
 // backend/src/routes/department.routes.js
 import { Router } from "express";
+import { auth } from "../middleware/auth.js";
 import {
   getDepartments,
   getDepartmentById,
@@ -10,6 +11,8 @@ import {
 } from "../controllers/department.controller.js";
 
 const router = Router();
+
+router.use(auth);
 
 router.get("/", getDepartments);
 router.get("/stats", getDepartmentStats);

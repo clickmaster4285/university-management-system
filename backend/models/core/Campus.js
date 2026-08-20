@@ -66,6 +66,19 @@ const campusSchema = new mongoose.Schema({
     enum: ['Active', 'Inactive', 'Under Construction'],
     default: 'Active',
   },
+  isDeleted: {
+    type: Boolean,
+    default: false,
+  },
+  deletedAt: {
+    type: Date,
+    default: null,
+  },
+  deletedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null,
+  },
 }, { timestamps: true });
 
 // Ensure unique campus code and ID within a university

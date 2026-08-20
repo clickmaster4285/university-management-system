@@ -1,4 +1,5 @@
 import express from 'express';
+import { auth } from '../middleware/auth.js';
 import {
   getAllExams,
   getExamById,
@@ -10,23 +11,21 @@ import {
   getGrades,
   updateGrade
 } from '../controllers/exam.controller.js';
-import auth from '../middleware/auth.js';
 
 const router = express.Router();
 
-// Public routes
+router.use(auth);
+
 router.get('/', getAllExams);
 router.get('/stats/summary', getExamStats);
 router.get('/:id', getExamById);
-
-// Protected routes
-router.post('/', auth, createExam);
-router.put('/:id', auth, updateExam);
-router.delete('/:id', auth, deleteExam);
+router.post('/', createExam);
+router.put('/:id', updateExam);
+router.delete('/:id', deleteExam);
 
 // Grade routes
-router.post('/:id/grades', auth, addGrades);
+router.post('/:id/grades', addGrades);
 router.get('/:id/grades', getGrades);
-router.put('/:id/grades/:studentId', auth, updateGrade);
+router.put('/:id/grades/:studentId', updateGrade);
 
 export default router;

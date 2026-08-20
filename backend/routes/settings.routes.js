@@ -1,16 +1,13 @@
 // backend/src/routes/settings.routes.js
 import express from 'express';
+import { auth, authorize } from '../middleware/auth.js';
 import * as settingsController from '../controllers/settings.controller.js';
-// Remove the protect import if it doesn't exist
-// import { protect } from '../middleware/auth.js';
 
 const router = express.Router();
 
-// ==================== SETTINGS ROUTES ====================
-// Temporarily remove authentication middleware until it's set up
-// router.use(protect);
+router.use(auth, authorize("Admin"));
 
-// Get settings
+// ==================== SETTINGS ROUTES ====================
 router.get('/', settingsController.getSettings);
 
 // Profile

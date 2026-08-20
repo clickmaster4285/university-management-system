@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { auth } from "../middleware/auth.js";
 import {
   getTeachers,
   getTeacherById,
@@ -11,19 +12,14 @@ import {
 
 const router = Router();
 
-// GET routes
+router.use(auth);
+
 router.get("/", getTeachers);
 router.get("/stats", getTeacherStats);
 router.get("/:id", getTeacherById);
-
-// POST routes
 router.post("/", createTeacher);
 router.post("/bulk", bulkCreateTeachers);
-
-// PUT routes
 router.put("/:id", updateTeacher);
-
-// DELETE routes
 router.delete("/:id", deleteTeacher);
 
 export default router;

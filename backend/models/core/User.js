@@ -18,6 +18,11 @@ const userSchema = new mongoose.Schema({
     trim: true,
     lowercase: true
   },
+  phoneNumber: {
+    type: String,
+    trim: true,
+    match: [/^[+\d][\d\s-]{6,}$/, 'Please provide a valid phone number']
+  },
   password: {
     type: String,
     required: [true, 'Password is required']
@@ -28,13 +33,26 @@ const userSchema = new mongoose.Schema({
   },
   role: {
     type: String,
-    enum: ['Super Admin', 'Admin', 'Teacher', 'Student', 'Staff'],
+    enum: ['Admin', 'Teacher', 'Student', 'Staff'],
     default: 'Student'
   },
   status: {
     type: String,
     enum: ['Active', 'Inactive', 'Suspended'],
     default: 'Active'
+  },
+  isDeleted: {
+    type: Boolean,
+    default: false
+  },
+  deletedAt: {
+    type: Date,
+    default: null
+  },
+  deletedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null
   }
 }, {
   timestamps: true

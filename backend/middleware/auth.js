@@ -16,7 +16,7 @@ export const auth = async (req, res, next) => {
     }
 
     const decoded = jwt.verify(token, JWT_SECRET);
-    const user = await User.findById(decoded.id).select('-password');
+    const user = await User.findOne({ _id: decoded.id, isDeleted: { $ne: true } }).select('-password');
 
     if (!user) {
       return res.status(401).json({
@@ -38,16 +38,6 @@ export const auth = async (req, res, next) => {
 
 export const authMiddleware = auth;
 
-export const superAdminOnly = async (req, res, next) => {
-  if (req.user?.role !== 'Super Admin') {
-    return res.status(403).json({
-      success: false,
-      message: "Access denied. Super Admin privileges required."
-    });
-  }
-  next();
-};
-
 export const authorize = (...roles) => {
   return (req, res, next) => {
     if (roles.length > 0 && !roles.includes(req.user?.role)) {
@@ -64,10 +54,6 @@ export const checkUniversityAccess = async (req, res, next) => {
   try {
     const userUniversityId = req.user?.universityId?.toString();
     const requestedUniversityId = req.params.id || req.query.universityId || req.body.universityId;
-
-    if (req.user?.role === 'Super Admin') {
-      return next();
-    }
 
     if (requestedUniversityId && requestedUniversityId !== userUniversityId) {
       return res.status(403).json({

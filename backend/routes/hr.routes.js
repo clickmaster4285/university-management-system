@@ -1,9 +1,12 @@
 // backend/src/routes/hr.routes.js
 import express from 'express';
+import { auth, authorize } from '../middleware/auth.js';
 import * as employeeController from '../controllers/employee.controller.js';
 import * as leaveController from '../controllers/leave.controller.js';
 
 const router = express.Router();
+
+router.use(auth, authorize("Admin"));
 
 // ==================== EMPLOYEE ROUTES ====================
 router.get('/employees', employeeController.getAllEmployees);
@@ -22,8 +25,6 @@ router.post('/leaves', leaveController.createLeave);
 router.put('/leaves/:id', leaveController.updateLeave);
 router.put('/leaves/:id/status', leaveController.updateLeaveStatus);
 router.delete('/leaves/:id', leaveController.deleteLeave);
-
-// ==================== ADMIN ROUTES ====================
 router.post('/leaves/daily-update', leaveController.dailyStatusUpdate);
 
 export default router;

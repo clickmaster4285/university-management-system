@@ -1,4 +1,5 @@
 import express from 'express';
+import { auth } from '../middleware/auth.js';
 import {
   getAllAdmissions,
   getAdmissionById,
@@ -12,11 +13,11 @@ import {
   getAdmissionStatsByDepartment,
   getRecentAdmissions
 } from '../controllers/admission.controller.js';
-// import auth from '../middleware/auth.js'; // Comment this out for now
 
 const router = express.Router();
 
-// All routes are public for now (remove auth)
+router.use(auth);
+
 router.post('/', createAdmission);
 router.get('/', getAllAdmissions);
 router.get('/stats/summary', getAdmissionStats);
@@ -25,8 +26,8 @@ router.get('/recent', getRecentAdmissions);
 router.get('/program/:program', getAdmissionsByProgram);
 router.get('/by-date', getAdmissionsByDateRange);
 router.get('/:id', getAdmissionById);
-router.put('/:id', updateAdmission); // Remove auth
-router.patch('/:id/status', updateAdmissionStatus); // Remove auth
-router.delete('/:id', deleteAdmission); // Remove auth
+router.put('/:id', updateAdmission);
+router.patch('/:id/status', updateAdmissionStatus);
+router.delete('/:id', deleteAdmission);
 
 export default router;

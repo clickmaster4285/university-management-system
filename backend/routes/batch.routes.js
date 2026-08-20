@@ -1,5 +1,6 @@
 // backend/src/routes/batch.routes.js
 import express from 'express';
+import { auth } from '../middleware/auth.js';
 import {
   getBatches,
   getBatchById,
@@ -11,22 +12,13 @@ import {
 
 const router = express.Router();
 
-// GET /api/batches
+router.use(auth);
+
 router.get('/', getBatches);
-
-// GET /api/batches/stats
 router.get('/stats', getBatchStats);
-
-// GET /api/batches/:id
 router.get('/:id', getBatchById);
-
-// POST /api/batches
 router.post('/', createBatch);
-
-// PUT /api/batches/:id
 router.put('/:id', updateBatch);
-
-// DELETE /api/batches/:id
 router.delete('/:id', deleteBatch);
 
 export default router;
