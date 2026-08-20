@@ -5,7 +5,7 @@ dotenv.config();
 
 const connectDB = async () => {
   try {
-    const mongoUri = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/scholars';
+    const mongoUri = process.env.MONGODB_URI;
 
     if (!mongoUri) {
       throw new Error('MONGODB_URI is not configured');
