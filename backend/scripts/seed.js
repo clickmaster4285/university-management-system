@@ -1,43 +1,39 @@
 import dotenv from 'dotenv';
-import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
 import User from '../models/User.js';
 
 dotenv.config();
 
-const MONGODB_URI = process.env.MONGODB_URI;
-
 export const seedDefaultAdmin = async () => {
   try {
-    await mongoose.connect(MONGODB_URI, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-    });
+    const firstName = process.env.ADMIN_FIRST_NAME;
+    const lastName = process.env.ADMIN_LAST_NAME;
+    const email = process.env.ADMIN_EMAIL;
+    const password = process.env.ADMIN_PASSWORD;
 
-    const existingAdmin = await User.findOne({ email: 'admin@scholaros.edu' });
+    if (!firstName || !lastName || !email || !password) {
+      throw new Error('ADMIN_FIRST_NAME, ADMIN_LAST_NAME, ADMIN_EMAIL, and ADMIN_PASSWORD must be configured');
+    }
+
+    const existingAdmin = await User.findOne({ email });
     if (existingAdmin) {
-      console.log('✅ Default admin user already exists');
+      console.log(`✅ Admin user already exists: ${email}`);
       return;
     }
 
-    const hashedPassword = await bcrypt.hash('demo1234', 10);
+    const hashedPassword = await bcrypt.hash(password, 10);
     await User.create({
-      name: 'Admin User',
-      email: 'admin@scholaros.edu',
+      firstName,
+      lastName,
+      email,
       password: hashedPassword,
-      role: 'admin',
-      status: 'active',
+      role: 'Admin',
+      status: 'Active',
     });
 
-    console.log('✅ Default admin user seeded: admin@scholaros.edu / demo1234');
+    console.log(`✅ Admin user seeded: ${email}`);
   } catch (error) {
     console.error('❌ Failed to seed default admin:', error);
     throw error;
-  } finally {
-    await mongoose.disconnect();
   }
 };
-
-if (process.argv[1]?.endsWith('seed.js')) {
-  seedDefaultAdmin().then(() => process.exit(0)).catch(() => process.exit(1));
-}

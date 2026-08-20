@@ -277,15 +277,13 @@ const coursesWithStatus = courseData.map(course => ({
   departmentName: course.department
 }));
 
-async function seedCourses() {
+export async function seedCourses() {
   try {
-    // Connect to MongoDB (use backend .env MONGODB_URI if available)
-    const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/scholars';
-    await mongoose.connect(mongoUri);
-
-    // Clear existing courses
-    await Course.deleteMany({});
-    console.log('🗑️ Cleared existing courses');
+    const existingCourseCount = await Course.countDocuments();
+    if (existingCourseCount > 0) {
+      console.log(`✅ Courses already exist (${existingCourseCount}); skipping course seed`);
+      return;
+    }
 
     // Create departments if they don't exist
     const departments = [...new Set(courseData.map(c => c.department))];
@@ -348,15 +346,8 @@ async function seedCourses() {
 
     const totalCount = await Course.countDocuments();
 
-    // Close connection
-    await mongoose.disconnect();
-    process.exit(0);
   } catch (error) {
     console.error('❌ Error seeding courses:', error);
-    await mongoose.disconnect();
-    process.exit(1);
+    throw error;
   }
 }
-
-// Run the seed function
-seedCourses();

@@ -2,7 +2,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'campus-compass-dev-secret-change-me';
+const JWT_SECRET = process.env.JWT_SECRET_Key;
 const JWT_EXPIRES_IN = '7d';
 
 export const login = async (req, res) => {
@@ -22,7 +22,7 @@ export const login = async (req, res) => {
       return res.status(401).json({ success: false, message: 'Invalid email or password' });
     }
 
-    const token = jwt.sign({ id: user._id.toString(), email: user.email, name: user.name, role: user.role }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
+    const token = jwt.sign({ id: user._id.toString() }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
 
     res.status(200).json({ success: true, data: { user: { _id: user._id.toString(), name: user.name, email: user.email, role: user.role }, token } });
   } catch (error) {
