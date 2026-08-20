@@ -14,28 +14,14 @@ dotenv.config();
 
 const port = Number(process.env.PORT);
 const host = process.env.HOST;
-const allowedOrigins = (process.env.FRONTEND_URL)
-  .split(',')
-  .map((origin) => origin.trim())
-  .filter(Boolean);
-
+const allowedOrigins = process.env.FRONTEND_URL;
 const app = express();
 
 app.use(helmet({
   crossOriginResourcePolicy: { policy: 'cross-origin' },
-  hsts: false,
-  contentSecurityPolicy: false,
 }));
 
 app.use(cors({
-  origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-      return;
-    }
-
-    callback(new Error(`CORS origin not allowed: ${origin}`));
-  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],

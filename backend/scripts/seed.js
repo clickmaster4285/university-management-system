@@ -17,7 +17,7 @@ export const seedDefaultAdmin = async () => {
 
     const existingAdmin = await User.findOne({ email });
     if (existingAdmin) {
-      console.log(`✅ Admin user already exists: ${email}`);
+      console.info(`✅ Admin user already exists: ${email}`);
       return;
     }
 
@@ -31,7 +31,7 @@ export const seedDefaultAdmin = async () => {
       status: 'Active',
     });
 
-    console.log(`✅ Admin user seeded: ${email}`);
+    console.info(`✅ Admin user seeded: ${email}`);
   } catch (error) {
     console.error('❌ Failed to seed default admin:', error);
     throw error;
