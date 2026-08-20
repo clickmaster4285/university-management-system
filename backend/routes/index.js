@@ -53,39 +53,4 @@ router.use("/batches", batchRoutes);
 router.use("/universities", universityRoutes);
 router.use("/campuses", campusRoutes);
 
-router.get("/", (req, res) => {
-  res.json({
-    success: true,
-    message: "Campus Compass API",
-    version: "1.0.0",
-    endpoints: {
-      universities: "/api/universities",
-      students: "/api/students",
-      teachers: "/api/teachers",
-      departments: "/api/departments",
-      courses: "/api/courses",
-      attendance: "/api/attendance",
-      admissions: "/api/admissions",
-      assignments: "/api/assignments",
-      exams: "/api/exams",
-      books: "/api/books",
-      transport: "/api/transport",
-      events: "/api/events",
-      fees: "/api/fees",
-      feeStructures: "/api/fee-structures",
-      finance: "/api/finance",
-      hr: "/api/hr",
-      auth: "/api/auth",
-      academicSessions: "/api/academic-sessions",
-      semesters: "/api/semesters",
-      batches: "/api/batches",
-      settings: "/api/settings",
-      reports: "/api/reports",
-      dashboard: "/api/dashboard",
-      notifications: "/api/notifications",
-      campuses: "/api/campuses"
-    }
-  });
-});
-
 export default router;
