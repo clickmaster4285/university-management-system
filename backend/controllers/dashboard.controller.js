@@ -1,13 +1,13 @@
 // backend/src/controllers/dashboard.controller.js
-import Student from '../models/Student.js';
-import Teacher from '../models/Teacher.js';
-import Admission from '../models/Admission.js';
-import Attendance from '../models/Attendance.js';
-import Fee from '../models/Fee.js';
-import Employee from '../models/Employee.js';
-import Leave from '../models/Leave.js';
-import Department from '../models/Department.js';
-import Course from '../models/Course.js';
+import Student from '../models/academic/Student.js';
+import Teacher from '../models/academic/Teacher.js';
+import Admission from '../models/academic/Admission.js';
+import Attendance from '../models/academic/Attendance.js';
+import Fee from '../models/finance/Fee.js';
+import Employee from '../models/hr/Employee.js';
+import Leave from '../models/hr/Leave.js';
+import Department from '../models/academic/Department.js';
+import Course from '../models/academic/Course.js';
 
 // Get dashboard statistics
 export const getDashboardStats = async (req, res) => {

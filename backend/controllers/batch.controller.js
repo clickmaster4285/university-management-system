@@ -1,8 +1,8 @@
 // backend/src/controllers/batch.controller.js
 import mongoose from 'mongoose';
-import Batch from '../models/Batch.js';
-import Department from '../models/Department.js';
-import AcademicSession from '../models/AcademicSession.js';
+import Batch from '../models/academic/Batch.js';
+import Department from '../models/academic/Department.js';
+import AcademicSession from '../models/academic/AcademicSession.js';
 
 // GET /api/batches - Get all batches
 export async function getBatches(req, res, next) {

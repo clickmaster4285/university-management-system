@@ -1,4 +1,4 @@
-import Admission from '../models/Admission.js';
+import Admission from '../models/academic/Admission.js';
 
 // Get all admissions with filtering and pagination
 export const getAllAdmissions = async (req, res) => {

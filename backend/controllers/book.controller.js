@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
-import Book from '../models/Book.js';
-import Borrowing from '../models/Borrowing.js';
+import Book from '../models/library/Book.js';
+import Borrowing from '../models/library/Borrowing.js';
 
 const normalizeUserRef = (value) => {
   if (!value) return undefined;

@@ -1,5 +1,6 @@
-import Campus from "../models/Campus.js";
-import University from "../models/University.js";
+import Campus from "../models/core/Campus.js";
+import University from "../models/core/University.js";
+import { generateCampusId } from "../utils/generateCampusId.js";
 
 export const createCampus = async (req, res) => {
   try {
@@ -60,6 +61,7 @@ export const createCampus = async (req, res) => {
     const shouldBeMain = isMainCampus || campusCount === 0;
 
     const campus = new Campus({
+      campusId: await generateCampusId(universityId),
       universityId,
       name,
       campusCode: campusCode.toUpperCase(),

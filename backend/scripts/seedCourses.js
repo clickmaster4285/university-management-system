@@ -1,7 +1,7 @@
 // backend/src/scripts/seedCourses.js
 import mongoose from 'mongoose';
-import Course from '../models/Course.js';
-import Department from '../models/Department.js';
+import Course from '../models/academic/Course.js';
+import Department from '../models/academic/Department.js';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';

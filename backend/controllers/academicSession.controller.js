@@ -1,6 +1,6 @@
 // backend/src/controllers/academicSession.controller.js
 import mongoose from 'mongoose';
-import AcademicSession from '../models/AcademicSession.js';
+import AcademicSession from '../models/academic/AcademicSession.js';
 
 // GET /api/academic-sessions - Get all academic sessions
 export async function getAcademicSessions(req, res, next) {

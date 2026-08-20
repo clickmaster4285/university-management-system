@@ -1,6 +1,6 @@
 // backend/src/middleware/auth.js
 import jwt from "jsonwebtoken";
-import User from "../models/User.js";
+import User from "../models/core/User.js";
 
 const JWT_SECRET = process.env.JWT_SECRET_Key;
 
@@ -46,6 +46,18 @@ export const superAdminOnly = async (req, res, next) => {
     });
   }
   next();
+};
+
+export const authorize = (...roles) => {
+  return (req, res, next) => {
+    if (roles.length > 0 && !roles.includes(req.user?.role)) {
+      return res.status(403).json({
+        success: false,
+        message: "Access denied. Insufficient privileges."
+      });
+    }
+    next();
+  };
 };
 
 export const checkUniversityAccess = async (req, res, next) => {

@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import address from "../shared/address.js";
 
 const campusSchema = new mongoose.Schema({
   // Tenant Reference (University)
@@ -12,7 +13,7 @@ const campusSchema = new mongoose.Schema({
   // Campus Identification
   campusId: {
     type: String,
-    unique: true,
+    required: [true, 'Campus ID is required'],
   },
   campusCode: {
     type: String,
@@ -38,27 +39,7 @@ const campusSchema = new mongoose.Schema({
   },
   
   // Location
-  address: {
-    street: {
-      type: String,
-      required: [true, 'Street address is required'],
-    },
-    city: {
-      type: String,
-      required: [true, 'City is required'],
-    },
-    province: {
-      type: String,
-      required: [true, 'Province is required'],
-    },
-    country: {
-      type: String,
-      default: 'Pakistan',
-    },
-    postalCode: {
-      type: String,
-    },
-  },
+  address: address,
   
   // Contact
   phone: {
@@ -85,38 +66,12 @@ const campusSchema = new mongoose.Schema({
     enum: ['Active', 'Inactive', 'Under Construction'],
     default: 'Active',
   },
-  
-  createdAt: {
-    type: Date,
-    default: Date.now,
-  },
-  updatedAt: {
-    type: Date,
-    default: Date.now,
-  },
-});
+}, { timestamps: true });
 
-// Ensure unique campus code within a university
+// Ensure unique campus code and ID within a university
 campusSchema.index({ universityId: 1, campusCode: 1 }, { unique: true });
 campusSchema.index({ universityId: 1, name: 1 }, { unique: true });
-
-// Generate Campus ID before saving
-campusSchema.pre('save', async function(next) {
-  if (this.isNew) {
-    try {
-      const Campus = mongoose.model('Campus');
-      const count = await Campus.countDocuments({ 
-        universityId: this.universityId 
-      });
-      this.campusId = `CMP-${String(count + 1).padStart(3, '0')}`;
-    } catch (error) {
-      const timestamp = Date.now().toString().slice(-4);
-      this.campusId = `CMP-${timestamp}`;
-    }
-  }
-  this.updatedAt = Date.now();
-  next();
-});
+campusSchema.index({ universityId: 1, campusId: 1 }, { unique: true });
 
 const Campus = mongoose.model('Campus', campusSchema);
 export default Campus;

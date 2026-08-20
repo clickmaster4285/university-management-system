@@ -1,7 +1,7 @@
 import mongoose from 'mongoose';
-import Bus from '../models/Bus.js';
-import Driver from '../models/Driver.js';
-import Route from '../models/Route.js';
+import Bus from '../models/transport/Bus.js';
+import Driver from '../models/transport/Driver.js';
+import Route from '../models/transport/Route.js';
 
 const getTrimmedValue = (value) => {
   if (value === undefined || value === null) return '';

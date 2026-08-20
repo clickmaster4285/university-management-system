@@ -1,5 +1,5 @@
 import mongoose from 'mongoose';
-import './User.js';
+import '../core/User.js';
 
 const assignmentSchema = new mongoose.Schema({
   // Basic Information

@@ -1,4 +1,4 @@
-import Student from '../models/Student.js';
+import Student from '../models/academic/Student.js';
 
 // GET /api/students
 export async function getStudents(req, res, next) {

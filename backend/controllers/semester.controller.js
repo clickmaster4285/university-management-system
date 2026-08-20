@@ -1,7 +1,7 @@
 // backend/src/controllers/semester.controller.js
 import mongoose from 'mongoose';
-import Semester from '../models/Semester.js';
-import AcademicSession from '../models/AcademicSession.js';
+import Semester from '../models/academic/Semester.js';
+import AcademicSession from '../models/academic/AcademicSession.js';
 
 // GET /api/semesters - Get all semesters
 export async function getSemesters(req, res, next) {

@@ -1,8 +1,9 @@
-import University from "../models/University.js";
-import User from "../models/User.js";
-import Campus from "../models/Campus.js";
+import University from "../models/core/University.js";
+import User from "../models/core/User.js";
+import Campus from "../models/core/Campus.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import { generateUniversityId } from "../utils/generateUniversityId.js";
 
 // ========================================
 // 1. CREATE UNIVERSITY
@@ -74,6 +75,7 @@ export const createUniversity = async (req, res) => {
 
     // Create university first
     const university = new University({
+      universityId: await generateUniversityId(),
       universityName,
       universityCode: universityCode.toUpperCase(),
       shortName: shortName ? shortName.toUpperCase() : universityCode.toUpperCase(),
@@ -94,11 +96,6 @@ export const createUniversity = async (req, res) => {
         maxGPA: maxGPA || 4.0,
         passingGPA: passingGPA || 2.0,
       },
-      administrator: {
-        firstName: firstName || "Admin",
-        lastName: lastName || "User",
-        email: adminEmail.toLowerCase(),
-      },
       status: "Active",
     });
 
@@ -117,10 +114,6 @@ export const createUniversity = async (req, res) => {
     });
 
     const savedAdmin = await adminUser.save();
-
-    // Update university with admin user ID
-    university.administrator.userId = savedAdmin._id;
-    await university.save();
 
     // Generate JWT token for auto-login
     const token = jwt.sign(
@@ -183,17 +176,8 @@ export const createUniversity = async (req, res) => {
 // ========================================
 export const getUniversities = async (req, res) => {
   try {
-    // Check if user is Super Admin
-    if (req.user?.role !== 'Super Admin') {
-      return res.status(403).json({
-        success: false,
-        message: "Access denied. Super Admin privileges required."
-      });
-    }
-
     const universities = await University.find()
       .select("-__v")
-      .populate("administrator.userId", "firstName lastName email role")
       .sort({ createdAt: -1 });
 
     // Get counts for each university
@@ -230,17 +214,8 @@ export const getUniversities = async (req, res) => {
 export const getUniversityById = async (req, res) => {
   try {
     const { id } = req.params;
-    
-    // Check access: Super Admin can access any, Admin only their own
-    if (req.user?.role !== 'Super Admin' && req.user?.universityId?.toString() !== id) {
-      return res.status(403).json({
-        success: false,
-        message: "Access denied. You can only access your own university."
-      });
-    }
 
-    const university = await University.findById(id)
-      .populate("administrator.userId", "firstName lastName email role");
+    const university = await University.findById(id);
     
     if (!university) {
       return res.status(404).json({
@@ -280,20 +255,12 @@ export const getUniversityByCode = async (req, res) => {
     
     const university = await University.findOne({ 
       universityCode: code.toUpperCase() 
-    }).populate("administrator.userId", "firstName lastName email role");
+    });
     
     if (!university) {
       return res.status(404).json({
         success: false,
         message: "University not found"
-      });
-    }
-
-    // Check access: Super Admin can access any, Admin only their own
-    if (req.user?.role !== 'Super Admin' && req.user?.universityId?.toString() !== university._id.toString()) {
-      return res.status(403).json({
-        success: false,
-        message: "Access denied. You can only access your own university."
       });
     }
 
@@ -319,19 +286,10 @@ export const updateUniversity = async (req, res) => {
     const { id } = req.params;
     const updates = req.body;
     
-    // Check access: Super Admin can update any, Admin only their own
-    if (req.user?.role !== 'Super Admin' && req.user?.universityId?.toString() !== id) {
-      return res.status(403).json({
-        success: false,
-        message: "Access denied. You can only update your own university."
-      });
-    }
-    
     // Remove fields that shouldn't be updated
     delete updates.universityId;
     delete updates._id;
     delete updates.createdAt;
-    delete updates.administrator;
     
     if (updates.universityCode) {
       updates.universityCode = updates.universityCode.toUpperCase();
@@ -345,7 +303,7 @@ export const updateUniversity = async (req, res) => {
       id,
       { ...updates, updatedAt: Date.now() },
       { new: true, runValidators: true }
-    ).populate("administrator.userId", "firstName lastName email role");
+    );
     
     if (!university) {
       return res.status(404).json({
@@ -375,14 +333,6 @@ export const updateUniversity = async (req, res) => {
 export const deleteUniversity = async (req, res) => {
   try {
     const { id } = req.params;
-    
-    // Only Super Admin can delete universities
-    if (req.user?.role !== 'Super Admin') {
-      return res.status(403).json({
-        success: false,
-        message: "Access denied. Only Super Admin can delete universities."
-      });
-    }
     
     const university = await University.findById(id);
     if (!university) {
@@ -614,7 +564,7 @@ export const updateUniversityStatus = async (req, res) => {
       id,
       { status, updatedAt: Date.now() },
       { new: true, runValidators: true }
-    ).populate("administrator.userId", "firstName lastName email role");
+    );
     
     if (!university) {
       return res.status(404).json({

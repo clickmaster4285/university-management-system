@@ -1,5 +1,5 @@
-import Attendance from '../models/Attendance.js';
-import Student from '../models/Student.js';
+import Attendance from '../models/academic/Attendance.js';
+import Student from '../models/academic/Student.js';
 import mongoose from 'mongoose';
 
 // GET /api/attendance - Get attendance with filters

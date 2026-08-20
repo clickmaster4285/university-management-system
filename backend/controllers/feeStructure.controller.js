@@ -1,5 +1,5 @@
 // backend/src/controllers/feeStructure.controller.js
-import FeeStructure from '../models/FeeStructure.js';
+import FeeStructure from '../models/finance/FeeStructure.js';
 
 // Get all fee structures
 export const getAllFeeStructures = async (req, res) => {

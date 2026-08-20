@@ -1,6 +1,6 @@
 // backend/src/controllers/leaveController.js
-import Leave from '../models/Leave.js';
-import Employee from '../models/Employee.js';
+import Leave from '../models/hr/Leave.js';
+import Employee from '../models/hr/Employee.js';
 
 // Helper function to update employee status based on active leaves
 const updateEmployeeStatus = async (employeeId) => {

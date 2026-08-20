@@ -1,5 +1,5 @@
 // backend/src/controllers/employeeController.js
-import Employee from '../models/Employee.js';
+import Employee from '../models/hr/Employee.js';
 
 export const getAllEmployees = async (req, res) => {
   try {

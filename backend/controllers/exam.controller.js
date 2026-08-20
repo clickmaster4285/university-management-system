@@ -1,5 +1,5 @@
 import mongoose from 'mongoose';
-import Exam from '../models/Exam.js';
+import Exam from '../models/academic/Exam.js';
 
 const normalizeUserRef = (value) => {
   if (!value) return undefined;

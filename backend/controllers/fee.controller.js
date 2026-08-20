@@ -1,7 +1,7 @@
 // backend/src/controllers/fee.controller.js
 import mongoose from 'mongoose';
-import Fee from '../models/Fee.js';
-import FeeStructure from '../models/FeeStructure.js';
+import Fee from '../models/finance/Fee.js';
+import FeeStructure from '../models/finance/FeeStructure.js';
 
 const getAuditUserId = (userId) => {
   if (!userId) return undefined;

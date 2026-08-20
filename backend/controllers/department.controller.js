@@ -1,6 +1,6 @@
 // backend/src/controllers/department.controller.js
 import mongoose from 'mongoose';
-import Department from '../models/Department.js';
+import Department from '../models/academic/Department.js';
 
 // GET /api/departments - Get all departments
 export async function getDepartments(req, res, next) {
@@ -279,7 +279,7 @@ export async function deleteDepartment(req, res, next) {
     // Check if department has courses
     let Course;
     try {
-      const module = await import('../models/Course.js');
+      const module = await import('../models/academic/Course.js');
       Course = module.default;
     } catch (err) {
       console.warn('Course model not found, skipping course check');
@@ -321,7 +321,7 @@ export async function getDepartmentStats(req, res, next) {
   try {
     let Course;
     try {
-      const module = await import('../models/Course.js');
+      const module = await import('../models/academic/Course.js');
       Course = module.default;
     } catch (err) {
       console.warn('Course model not found, returning basic stats');

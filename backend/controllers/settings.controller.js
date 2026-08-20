@@ -1,5 +1,5 @@
 // backend/src/controllers/settings.controller.js
-import Settings from '../models/Settings.js';
+import Settings from '../models/core/Settings.js';
 
 // Get settings
 export const getSettings = async (req, res) => {

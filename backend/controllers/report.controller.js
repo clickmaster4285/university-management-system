@@ -1,12 +1,12 @@
 // backend/src/controllers/report.controller.js
-import Report from '../models/Report.js';
-import Student from '../models/Student.js';
-import Teacher from '../models/Teacher.js';
-import Admission from '../models/Admission.js';
-import Attendance from '../models/Attendance.js';
-import Fee from '../models/Fee.js';
-import Employee from '../models/Employee.js';
-import Leave from '../models/Leave.js';
+import Report from '../models/report/Report.js';
+import Student from '../models/academic/Student.js';
+import Teacher from '../models/academic/Teacher.js';
+import Admission from '../models/academic/Admission.js';
+import Attendance from '../models/academic/Attendance.js';
+import Fee from '../models/finance/Fee.js';
+import Employee from '../models/hr/Employee.js';
+import Leave from '../models/hr/Leave.js';
 import mongoose from 'mongoose';
 
 // Helper: derive a readable name from an email local-part

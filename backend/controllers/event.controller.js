@@ -1,5 +1,5 @@
 import mongoose from 'mongoose';
-import Event from '../models/Event.js';
+import Event from '../models/communication/Event.js';
 
 const getTrimmedValue = (value) => {
   if (value === undefined || value === null) return '';

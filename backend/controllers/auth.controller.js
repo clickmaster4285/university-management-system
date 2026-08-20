@@ -1,6 +1,6 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import User from '../models/User.js';
+import User from '../models/core/User.js';
 
 const JWT_SECRET = process.env.JWT_SECRET_Key;
 const JWT_EXPIRES_IN = '7d';

@@ -1,5 +1,5 @@
 // backend/src/controllers/notification.controller.js
-import Notification from '../models/Notification.js';
+import Notification from '../models/communication/Notification.js';
 import nodemailer from 'nodemailer';
 
 let transporter = null;

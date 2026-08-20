@@ -1,6 +1,6 @@
 import dotenv from 'dotenv';
 import bcrypt from 'bcryptjs';
-import User from '../models/User.js';
+import User from '../models/core/User.js';
 
 dotenv.config();
 
