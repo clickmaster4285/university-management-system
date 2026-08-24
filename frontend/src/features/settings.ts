@@ -1,7 +1,7 @@
 // src/lib/api/settings.ts
 import api from './axios';
 
-export interface Campus {
+export interface SettingsCampus {
   _id?: string;
   name: string;
   location: string;
@@ -57,7 +57,7 @@ export interface Settings {
   website: string;
   logo: string;
   preferences: Preferences;
-  campuses: Campus[];
+  campuses: SettingsCampus[];
   integrations: Record<string, any>;
   branding: Branding;
   security: Security;
@@ -66,12 +66,6 @@ export interface Settings {
   updatedAt?: string;
   createdAt?: string;
 }
-
-// Type for adding a new campus (without auto-generated fields)
-export type AddCampusData = Omit<Campus, '_id' | 'isActive' | 'createdAt'>;
-
-// Type for updating a campus (all fields optional)
-export type UpdateCampusData = Partial<Omit<Campus, '_id' | 'createdAt'>>;
 
 export const settingsAPI = {
   /**
@@ -114,119 +108,6 @@ export const settingsAPI = {
       return response.data;
     } catch (error) {
       console.error('❌ Error updating preferences:', error);
-      throw error;
-    }
-  },
-
-  /**
-   * Add a new campus
-   * @param {AddCampusData} data - Campus data (name, location, students, staff)
-   * @returns {Promise<{ success: boolean; data: Settings; message: string }>}
-   */
-  addCampus: async (data: AddCampusData): Promise<{ success: boolean; data: Settings; message: string }> => {
-    try {
-      // Validate required fields
-      if (!data.name || data.name.trim() === '') {
-        throw new Error('Campus name is required');
-      }
-
-      // Ensure proper data types
-      const payload = {
-        name: data.name.trim(),
-        location: data.location?.trim() || '',
-        students: Number(data.students) || 0,
-        staff: Number(data.staff) || 0
-      };
-
-      const response = await api.post('/settings/campuses', payload);
-      return response.data;
-    } catch (error) {
-      console.error('❌ Error adding campus:', error);
-      throw error;
-    }
-  },
-
-  /**
-   * Update an existing campus
-   * @param {string} campusId - Campus ID to update
-   * @param {UpdateCampusData} data - Campus data to update
-   * @returns {Promise<{ success: boolean; data: Settings; message: string }>}
-   */
-  updateCampus: async (campusId: string, data: UpdateCampusData): Promise<{ success: boolean; data: Settings; message: string }> => {
-    try {
-      if (!campusId) {
-        throw new Error('Campus ID is required');
-      }
-
-      // Prepare the payload
-      const payload: any = {};
-      if (data.name !== undefined) payload.name = data.name.trim();
-      if (data.location !== undefined) payload.location = data.location.trim();
-      if (data.students !== undefined) payload.students = Number(data.students);
-      if (data.staff !== undefined) payload.staff = Number(data.staff);
-      if (data.isActive !== undefined) payload.isActive = data.isActive;
-
-      const response = await api.put(`/settings/campuses/${campusId}`, payload);
-      return response.data;
-    } catch (error) {
-      console.error(`❌ Error updating campus ${campusId}:`, error);
-      throw error;
-    }
-  },
-
-  /**
-   * Delete a campus
-   * @param {string} campusId - Campus ID to delete
-   * @returns {Promise<{ success: boolean; data: Settings; message: string }>}
-   */
-  deleteCampus: async (campusId: string): Promise<{ success: boolean; data: Settings; message: string }> => {
-    try {
-      if (!campusId) {
-        throw new Error('Campus ID is required');
-      }
-
-      const response = await api.delete(`/settings/campuses/${campusId}`);
-      return response.data;
-    } catch (error) {
-      console.error(`❌ Error deleting campus ${campusId}:`, error);
-      throw error;
-    }
-  },
-
-  /**
-   * Get a single campus by ID
-   * @param {string} campusId - Campus ID to fetch
-   * @returns {Promise<{ success: boolean; data: Campus }>}
-   */
-  getCampusById: async (campusId: string): Promise<{ success: boolean; data: Campus }> => {
-    try {
-      if (!campusId) {
-        throw new Error('Campus ID is required');
-      }
-
-      const response = await api.get(`/settings/campuses/${campusId}`);
-      return response.data;
-    } catch (error) {
-      console.error(`❌ Error fetching campus ${campusId}:`, error);
-      throw error;
-    }
-  },
-
-  /**
-   * Toggle campus active status
-   * @param {string} campusId - Campus ID to toggle
-   * @returns {Promise<{ success: boolean; data: Settings; message: string }>}
-   */
-  toggleCampusStatus: async (campusId: string): Promise<{ success: boolean; data: Settings; message: string }> => {
-    try {
-      if (!campusId) {
-        throw new Error('Campus ID is required');
-      }
-
-      const response = await api.patch(`/settings/campuses/${campusId}/toggle`);
-      return response.data;
-    } catch (error) {
-      console.error(`❌ Error toggling campus ${campusId}:`, error);
       throw error;
     }
   },
@@ -316,11 +197,6 @@ export const {
   getAll,
   updateProfile,
   updatePreferences,
-  addCampus,
-  updateCampus,
-  deleteCampus,
-  getCampusById,
-  toggleCampusStatus,
   updateBranding,
   updateIntegration,
   updateSecurity,

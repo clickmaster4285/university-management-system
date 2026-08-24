@@ -168,7 +168,7 @@ export function TeachersPage() {
       const shortIdMatch = shortId.toLowerCase().includes(searchLower);
       const nameMatch = teacher.name?.toLowerCase().includes(searchLower) || false;
       const emailMatch = teacher.email?.toLowerCase().includes(searchLower) || false;
-      const departmentMatch = teacher.department?.toLowerCase().includes(searchLower) || false;
+      const departmentMatch = (typeof teacher.departmentId === 'object' ? teacher.departmentId?.name : teacher.departmentId)?.toLowerCase().includes(searchLower) || false;
       const designationMatch = teacher.designation?.toLowerCase().includes(searchLower) || false;
       const specializationMatch = teacher.specialization?.toLowerCase().includes(searchLower) || false;
       const statusMatch = teacher.status?.toLowerCase().includes(searchLower) || false;
@@ -218,7 +218,7 @@ export function TeachersPage() {
       name: teacher.name || '',
       email: teacher.email || '',
       phone: teacher.phone || '',
-      department: teacher.department || 'Computer Science',
+      department: (typeof teacher.departmentId === 'object' ? teacher.departmentId?._id : teacher.departmentId) || '',
       designation: teacher.designation || 'Professor',
       specialization: teacher.specialization || '',
       experience: teacher.experience || 0,
@@ -316,9 +316,6 @@ export function TeachersPage() {
   const totalRating = teachers.reduce((sum, t) => sum + (t.rating || 0), 0);
   const avgRating = totalTeachers > 0 ? (totalRating / totalTeachers) : 0;
   const totalCourses = teachers.reduce((sum, t) => {
-    if (t.coursesTeaching && Array.isArray(t.coursesTeaching)) {
-      return sum + t.coursesTeaching.length;
-    }
     return sum;
   }, 0);
   const activeTeachers = teachers.filter(t => t.status === 'Active').length;
@@ -326,7 +323,7 @@ export function TeachersPage() {
 
   // Department distribution for chart
   const deptCounts = teachers.reduce((acc, t) => {
-    const dept = t.department || 'Unknown';
+    const dept = (typeof t.departmentId === 'object' ? t.departmentId?.name : t.departmentId) || 'Unknown';
     acc[dept] = (acc[dept] || 0) + 1;
     return acc;
   }, {} as Record<string, number>);
@@ -389,7 +386,7 @@ export function TeachersPage() {
     { 
       key: "department", 
       header: "Department",
-      cell: (r) => <span className="text-sm">{r.department}</span>
+      cell: (r) => <span className="text-sm">{typeof r.departmentId === 'object' ? r.departmentId?.name : r.departmentId || ''}</span>
     },
     { 
       key: "experience", 

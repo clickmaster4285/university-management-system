@@ -233,7 +233,7 @@ export function ExamsPage() {
         ...formData,
         course: selectedCourse.name || '',
         courseCode: selectedCourse.code || '',
-        department: selectedCourse.department || formData.department,
+        department: (typeof selectedCourse.departmentId === 'object' ? selectedCourse.departmentId?.name : '') || formData.department,
         program: formData.program,
         instructor: selectedCourse.instructor || formData.instructor,
       });

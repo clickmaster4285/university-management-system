@@ -5,56 +5,28 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { 
-  QrCode, 
-  Download, 
-  Printer, 
-  Palette, 
-  Globe, 
-  School, 
   Loader2, 
   RefreshCw, 
   AlertCircle,
-  Plus,
-  X,
   Save,
-  Pencil,
-  Trash2,
-  Mail,
-  Phone,
-  MapPin,
-  Building2,
   UserCog,
-  Shield,
   Key,
-  Camera,
-  User as UserIcon
+  Camera
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
-import { settingsAPI, Settings, Campus, AddCampusData, UpdateCampusData } from "@/features/settings";
-import { authAPI, User } from "@/features/auth";
+import { settingsAPI, Settings } from "@/features/settings";
+import { authAPI } from "@/features/auth";
 
 
 export function SettingsPage() {
   const [settings, setSettings] = useState<Settings | null>(null);
-  const [adminProfile, setAdminProfile] = useState<User | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState<boolean>(false);
-  const [isCampusModalOpen, setIsCampusModalOpen] = useState<boolean>(false);
-  const [editingCampus, setEditingCampus] = useState<Campus | null>(null);
-  
-  // Campus form state
-  const [campusForm, setCampusForm] = useState<AddCampusData>({
-    name: '',
-    location: '',
-    students: 0,
-    staff: 0
-  });
 
   // Admin Profile form state
   const [adminForm, setAdminForm] = useState({
@@ -79,10 +51,6 @@ export function SettingsPage() {
     aiInsights: true,
     faceRecognitionAttendance: false
   });
-
-  const syncCampuses = (campuses: Campus[]) => {
-    setSettings((prev) => prev ? { ...prev, campuses } : prev);
-  };
 
   const fetchSettings = async () => {
     try {
@@ -112,7 +80,6 @@ export function SettingsPage() {
       }
 
       if (profileResult.status === 'fulfilled' && profileResult.value.success) {
-        setAdminProfile(profileResult.value.data);
         const admin = profileResult.value.data;
         setAdminForm({
           name: admin.name || `${admin.firstName || ''} ${admin.lastName || ''}`.trim() || '',
@@ -148,23 +115,9 @@ export function SettingsPage() {
     setPasswordForm(prev => ({ ...prev, [name]: value }));
   };
 
-  // Handle profile select change
-  const handleProfileSelectChange = (name: string, value: string) => {
-    setAdminForm(prev => ({ ...prev, [name]: value }));
-  };
-
   // Handle preference toggle
   const handlePreferenceToggle = (key: keyof typeof preferences) => {
     setPreferences(prev => ({ ...prev, [key]: !prev[key] }));
-  };
-
-  // Handle campus form input
-  const handleCampusInput = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setCampusForm(prev => ({
-      ...prev,
-      [name]: name === 'students' || name === 'staff' ? parseInt(value) || 0 : value
-    }));
   };
 
   // Save admin profile
@@ -240,125 +193,6 @@ export function SettingsPage() {
       setSaving(false);
     }
   };
-
-  // ✅ FIXED: Add/Update campus with proper data handling
-  const handleCampusSubmit = async () => {
-    try {
-      // Validate required fields
-      if (!campusForm.name || campusForm.name.trim() === '') {
-        toast.error('Campus name is required');
-        return;
-      }
-
-      // Prepare the data
-      const campusData: AddCampusData = {
-        name: campusForm.name.trim(),
-        location: campusForm.location?.trim() || '',
-        students: Number(campusForm.students) || 0,
-        staff: Number(campusForm.staff) || 0
-      };
-
-      setSaving(true);
-      
-      let response;
-      
-      if (editingCampus) {
-        // Update existing campus
-       response = await settingsAPI.updateCampus(editingCampus._id!, campusData);
-      } else {
-        // Add new campus
-        response = await settingsAPI.addCampus(campusData);
-      }
-       
-      if (response.success) {
-        const nextCampuses = response.data?.campuses || [];
-        syncCampuses(nextCampuses);
-        toast.success(editingCampus ? 'Campus updated successfully!' : 'Campus added successfully!');
-        setIsCampusModalOpen(false);
-        setEditingCampus(null);
-        setCampusForm({ name: '', location: '', students: 0, staff: 0 });
-        // Refresh the data in the background
-        await fetchSettings();
-      } else {
-        toast.error(response.message || 'Failed to save campus');
-      }
-    } catch (error: any) {
-      console.error('❌ Error saving campus:', error);
-      
-      // Handle specific error cases
-      if (error.response?.status === 409) {
-        toast.error(error.response?.data?.message || 'Campus name already exists');
-      } else if (error.response?.status === 400) {
-        const errors = error.response?.data?.errors;
-        if (errors && Array.isArray(errors)) {
-          const errorMessages = errors.map((err: any) => err.message).join(', ');
-          toast.error(`Validation error: ${errorMessages}`);
-        } else {
-          toast.error(error.response?.data?.message || 'Invalid data provided');
-        }
-      } else {
-        toast.error(error.message || 'Failed to save campus');
-      }
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  // Delete campus
-  const deleteCampus = async (campusId: string, name: string) => {
-    if (!confirm(`Are you sure you want to delete "${name}"?`)) return;
-    
-    try {
-      const response = await settingsAPI.deleteCampus(campusId);
-      if (response.success) {
-        const nextCampuses = response.data?.campuses || [];
-        syncCampuses(nextCampuses);
-        toast.success('Campus deleted successfully!');
-        await fetchSettings();
-      }
-    } catch (error: any) {
-      console.error('❌ Error deleting campus:', error);
-      toast.error(error.message || 'Failed to delete campus');
-    }
-  };
-
-  // Toggle campus status
-  const toggleCampusStatus = async (campusId: string, currentStatus: boolean) => {
-    try {
-      const response = await settingsAPI.toggleCampusStatus(campusId);
-      if (response.success) {
-        const nextCampuses = response.data?.campuses || [];
-        syncCampuses(nextCampuses);
-        toast.success(`Campus ${currentStatus ? 'deactivated' : 'activated'} successfully!`);
-        await fetchSettings();
-      }
-    } catch (error: any) {
-      console.error('❌ Error toggling campus status:', error);
-      toast.error(error.message || 'Failed to toggle campus status');
-    }
-  };
-
-  // Open edit campus modal
-  const openEditCampus = (campus: Campus) => {
-    setEditingCampus(campus);
-    setCampusForm({
-      name: campus.name,
-      location: campus.location || '',
-      students: campus.students || 0,
-      staff: campus.staff || 0
-    });
-    setIsCampusModalOpen(true);
-  };
-
-  // Open add campus modal
-  const openAddCampus = () => {
-    setEditingCampus(null);
-    setCampusForm({ name: '', location: '', students: 0, staff: 0 });
-    setIsCampusModalOpen(true);
-  };
-
-  // Get campuses with fallback to empty array
-  const campuses = settings?.campuses || [];
 
   // Get initials for avatar
   const getInitials = (name: string) => {
@@ -567,203 +401,6 @@ export function SettingsPage() {
           </CardContent>
         </Card>
       </div>
-
-      {/* Multi-campus */}
-      <Card className="glass">
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="flex items-center gap-2">
-                <School className="h-4 w-4" /> Multi-campus
-              </CardTitle>
-              <CardDescription>Each campus keeps its own students, faculty, finance, and analytics</CardDescription>
-            </div>
-            <Button onClick={openAddCampus} className="gradient-brand text-white border-0">
-              <Plus className="h-4 w-4 mr-2" /> Add Campus
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent className="grid md:grid-cols-2 lg:grid-cols-4 gap-3">
-          {campuses.length > 0 ? (
-            campuses.map((campus) => (
-              <div 
-                key={campus._id} 
-                className={`rounded-xl border p-4 bg-card/50 card-hover relative group ${
-                  !campus.isActive ? 'opacity-60' : ''
-                }`}
-              >
-                <div className="h-10 w-10 rounded-xl gradient-brand flex items-center justify-center mb-3">
-                  <Globe className="h-5 w-5 text-white" />
-                </div>
-                <div className="font-semibold text-sm flex items-center gap-2">
-                  {campus.name}
-                  {!campus.isActive && (
-                    <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded">
-                      Inactive
-                    </span>
-                  )}
-                </div>
-                <div className="text-xs text-muted-foreground mt-1">
-                  {campus.students} students · {campus.staff} staff
-                </div>
-                {campus.location && (
-                  <div className="text-xs text-muted-foreground">{campus.location}</div>
-                )}
-                <div className="flex gap-2 mt-3">
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="flex-1"
-                    onClick={() => openEditCampus(campus)}
-                  >
-                    <Pencil className="h-3 w-3 mr-1" /> Edit
-                  </Button>
-                  <Button 
-                    variant="destructive" 
-                    size="sm"
-                    className="flex-1"
-                    onClick={() => deleteCampus(campus._id!, campus.name)}
-                  >
-                    <Trash2 className="h-3 w-3 mr-1" /> Delete
-                  </Button>
-                </div>
-                <div className="mt-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="w-full text-xs"
-                    onClick={() => toggleCampusStatus(campus._id!, campus.isActive)}
-                  >
-                    {campus.isActive ? 'Deactivate' : 'Activate'}
-                  </Button>
-                </div>
-              </div>
-            ))
-          ) : (
-            <div className="col-span-full text-center py-8 text-muted-foreground">
-              No campuses added yet. Click "Add Campus" to create one.
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Campus Modal */}
-      {isCampusModalOpen && (
-        <div 
-          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) {
-              setIsCampusModalOpen(false);
-              setEditingCampus(null);
-              setCampusForm({ name: '', location: '', students: 0, staff: 0 });
-            }
-          }}
-        >
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
-            <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between">
-              <h2 className="text-xl font-bold flex items-center gap-2">
-                <School className="h-5 w-5 text-primary" />
-                {editingCampus ? 'Edit Campus' : 'Add New Campus'}
-              </h2>
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                onClick={() => {
-                  setIsCampusModalOpen(false);
-                  setEditingCampus(null);
-                  setCampusForm({ name: '', location: '', students: 0, staff: 0 });
-                }} 
-                className="h-8 w-8 p-0 rounded-full hover:bg-gray-100"
-              >
-                <X className="h-5 w-5" />
-              </Button>
-            </div>
-
-            <div className="p-6 space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="campusName">Campus Name *</Label>
-                <Input
-                  id="campusName"
-                  name="name"
-                  value={campusForm.name}
-                  onChange={handleCampusInput}
-                  placeholder="Enter campus name..."
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="campusLocation">Location</Label>
-                <Input
-                  id="campusLocation"
-                  name="location"
-                  value={campusForm.location}
-                  onChange={handleCampusInput}
-                  placeholder="City, Country..."
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="students">Students</Label>
-                  <Input
-                    id="students"
-                    name="students"
-                    type="number"
-                    min="0"
-                    value={campusForm.students}
-                    onChange={handleCampusInput}
-                    placeholder="0"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="staff">Staff</Label>
-                  <Input
-                    id="staff"
-                    name="staff"
-                    type="number"
-                    min="0"
-                    value={campusForm.staff}
-                    onChange={handleCampusInput}
-                    placeholder="0"
-                  />
-                </div>
-              </div>
-
-              <div className="flex justify-end gap-3 pt-4 border-t">
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  onClick={() => {
-                    setIsCampusModalOpen(false);
-                    setEditingCampus(null);
-                    setCampusForm({ name: '', location: '', students: 0, staff: 0 });
-                  }}
-                >
-                  Cancel
-                </Button>
-                <Button 
-                  type="submit" 
-                  className="gradient-brand text-white border-0" 
-                  onClick={handleCampusSubmit}
-                  disabled={saving}
-                >
-                  {saving ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Saving...
-                    </>
-                  ) : (
-                    <>
-                      <Save className="h-4 w-4 mr-2" />
-                      {editingCampus ? 'Update Campus' : 'Add Campus'}
-                    </>
-                  )}
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </AppShell>
   );
 }

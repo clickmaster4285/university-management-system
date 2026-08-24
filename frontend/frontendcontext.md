@@ -136,7 +136,29 @@ Only 4 endpoints — no `:id` params because there is exactly one university:
 
 Frontend API (`features/university.ts`): `getUniversity()`, `createUniversity(data)`, `updateUniversity(data)`, `deleteUniversity()`. Legacy compat wrappers (`getUniversities`, `getUniversityById`, `updateUniversityById`) redirect to the single-university versions.
 
-`UniversityProfilePage.tsx` only handles creation (no admin account fields — admin is pre-seeded).
+`UniversityProfilePage.tsx`: fetches on mount; if university exists → read-only view + Edit button; if 404 → create form. No admin account fields (admin pre-seeded).
+
+## Campus System
+
+Real campus CRUD lives in `/campuses` endpoints (`campus.controller.js`) — NOT in settings. The old fake campus CRUD inside settings controller/routes was **removed**.
+
+Backend behavior:
+- Controller auto-resolves `universityId` from the single university — no need to send it.
+- Accepts flat address fields (`street`, `city`, `province`, `country`, `postalCode`) and maps them into nested `address`.
+- First created campus automatically becomes main (`isMainCampus`).
+- Delete cascades soft-delete to Departments scoped to that campus.
+- Main campus cannot be deleted while other campuses exist; `PUT /campuses/:id/set-main` promotes one.
+- Has `createdBy`/`updatedBy` audit fields.
+
+Frontend pages (separate pages, NOT modals):
+- `/campuses` → `pages/university/campuses/CampusesPage.tsx` — card grid list, search, dropdown actions (Edit / Set as Main / Delete), status+type badges
+- `/campuses/create` → `CampusCreatePage.tsx`
+- `/campuses/edit/:id` → `CampusEditPage.tsx`
+- Shared form component: `pages/university/campuses/CampusForm.tsx` (mode: "create" | "edit")
+
+Frontend API (`features/campus.ts`): `campusAPI.getAll()` (no params needed), `.getById(id)`, `.create(data)`, `.update(id, data)`, `.delete(id)`, `.setMain(id)`.
+
+SettingsPage no longer manages campuses — profile (name/email/phone/bio only), password change, preferences remain.
 
 ## What's NOT Done Yet (frontend)
 

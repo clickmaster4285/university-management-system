@@ -20,19 +20,20 @@ export interface Campus {
   establishedYear?: number;
   description: string;
   status: string;
+  createdBy?: string;
+  updatedBy?: string;
   createdAt: string;
   updatedAt: string;
 }
 
 export interface CampusData {
-  universityId: string;
   name: string;
   campusCode: string;
   type?: string;
   isMainCampus?: boolean;
-  street: string;
-  city: string;
-  province: string;
+  street?: string;
+  city?: string;
+  province?: string;
   country?: string;
   postalCode?: string;
   phone?: string;
@@ -61,13 +62,9 @@ export const campusAPI = {
     }
   },
   
-  getAll: async (universityId?: string): Promise<CampusResponse> => {
+  getAll: async (): Promise<CampusResponse> => {
     try {
-      if (!universityId) {
-        throw new Error("universityId is required");
-      }
-      // Remove /api prefix - apiClient already adds it
-      const response = await apiClient.get(`/campuses?universityId=${universityId}`);
+      const response = await apiClient.get(`/campuses`);
       return response.data;
     } catch (error: any) {
       const serverMessage = error?.response?.data?.message || error?.message || "Failed to fetch campuses";

@@ -20,7 +20,9 @@ const NotificationsPage = lazy(() => import("./pages/notifications/Notifications
 
 // University Governance
 const UniversityProfilePage = lazy(() => import("./pages/university/UniversityProfilePage"));
-const CampusesPage = lazy(() => import("./pages/university/CampusesPage"));
+const CampusesPage = lazy(() => import("./pages/university/campuses/CampusesPage"));
+const CampusCreatePage = lazy(() => import("./pages/university/campuses/CampusCreatePage"));
+const CampusEditPage = lazy(() => import("./pages/university/campuses/CampusEditPage"));
 
 // Academics Modular Pages
 const AdmissionsPage = lazy(() => import("./pages/academics/admissions/AdmissionsPage"));
@@ -85,6 +87,8 @@ export const App = () => (
                 <Route index element={<DashboardPage />} />
                 <Route path="university" element={<UniversityProfilePage />} />
                 <Route path="campuses" element={<CampusesPage />} />
+                <Route path="campuses/create" element={<CampusCreatePage />} />
+                <Route path="campuses/edit/:id" element={<CampusEditPage />} />
                 <Route path="ai" element={<AiAssistantPage />} />
                 <Route path="notifications" element={<NotificationsPage />} />
 

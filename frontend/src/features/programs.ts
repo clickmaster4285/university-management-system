@@ -6,11 +6,11 @@ export interface Program {
   name: string;
   code: string;
   departmentId: string | { _id: string; name: string; code: string };
-  degreeLevel: 'BS' | 'MS' | 'PhD' | 'BBA' | 'MBA' | 'LLB' | 'Other';
+  degreeLevel: string;
   duration: number;
   totalCredits?: number;
   description?: string;
-  status?: 'Active' | 'Inactive';
+  status?: string;
   createdAt?: string;
   updatedAt?: string;
 }

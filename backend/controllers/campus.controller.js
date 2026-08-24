@@ -1,19 +1,27 @@
 import { generateCampusId } from "../utils/generateCampusId.js";
 import { handle } from "../utils/asyncHandler.js";
 
-import { Campus, University } from "../models/index.js";
+import { Campus, Department, University } from "../models/index.js";
+
+// Resolve the single university (single-university architecture)
+const getSingleUniversity = async () =>
+  University.findOne({ isDeleted: { $ne: true } });
+
+// Build nested address object from flat or nested body fields
+const buildAddress = (body) => ({
+  street: body.street || body.address?.street || "",
+  city: body.city || body.address?.city || "",
+  province: body.province || body.address?.province || "",
+  country: body.country || body.address?.country || "Pakistan",
+  postalCode: body.postalCode || body.address?.postalCode || "",
+});
+
 export const createCampus = handle(async (req, res) => {
   const {
-    universityId,
     name,
     campusCode,
     type,
     isMainCampus,
-    street,
-    city,
-    province,
-    country,
-    postalCode,
     phone,
     email,
     establishedYear,
@@ -22,62 +30,60 @@ export const createCampus = handle(async (req, res) => {
   } = req.body;
 
   // Validate required fields
-  if (!universityId || !name || !campusCode || !city || !province) {
+  if (!name || !campusCode) {
     return res.status(400).json({
       success: false,
-      message: "Missing required fields: universityId, name, campusCode, city, province are required"
+      message: "Missing required fields: name and campusCode are required",
     });
   }
 
-  // Check if university exists
-  const university = await University.findOne({ _id: universityId, isDeleted: { $ne: true } });
+  // Auto-resolve the single university
+  const university = await getSingleUniversity();
   if (!university) {
     return res.status(404).json({
       success: false,
-      message: "University not found"
+      message: "No university exists. Create the university first.",
     });
   }
 
-  // Check if campus already exists for this university
+  // Duplicate check (code or name within this university)
   const existingCampus = await Campus.findOne({
-    universityId,
+    universityId: university._id,
     isDeleted: { $ne: true },
     $or: [
       { campusCode: campusCode.toUpperCase() },
-      { name: name }
-    ]
+      { name },
+    ],
   });
-
   if (existingCampus) {
-    return res.status(400).json({
+    return res.status(409).json({
       success: false,
-      message: "Campus with this code or name already exists for this university"
+      message: "Campus with this code or name already exists for this university",
     });
   }
 
-  // If this is the first campus, make it main campus
-  const campusCount = await Campus.countDocuments({ universityId, isDeleted: { $ne: true } });
-  const shouldBeMain = isMainCampus || campusCount === 0;
+  // First campus automatically becomes main
+  const campusCount = await Campus.countDocuments({
+    universityId: university._id,
+    isDeleted: { $ne: true },
+  });
+  const shouldBeMain = Boolean(isMainCampus) || campusCount === 0;
 
   const campus = new Campus({
-    campusId: await generateCampusId(universityId),
-    universityId,
+    campusId: await generateCampusId(university._id),
+    universityId: university._id,
     name,
     campusCode: campusCode.toUpperCase(),
-    type: type || (campusCount === 0 ? 'Main Campus' : 'Branch'),
+    type: type || (campusCount === 0 ? "Main Campus" : "Branch"),
     isMainCampus: shouldBeMain,
-    address: {
-      street: street || "",
-      city: city,
-      province: province,
-      country: country || "Pakistan",
-      postalCode: postalCode || "",
-    },
+    address: buildAddress(req.body),
     phone: phone || "",
     email: email || "",
     establishedYear: establishedYear || null,
     description: description || "",
     status: status || "Active",
+    createdBy: req.user._id,
+    updatedBy: req.user._id,
   });
 
   await campus.save();
@@ -90,17 +96,16 @@ export const createCampus = handle(async (req, res) => {
 });
 
 export const getCampuses = handle(async (req, res) => {
-  const { universityId } = req.query;
-
-  if (!universityId) {
-    return res.status(400).json({
-      success: false,
-      message: "universityId is required"
-    });
+  const university = await getSingleUniversity();
+  if (!university) {
+    return res.json({ success: true, data: [], count: 0 });
   }
 
-  const campuses = await Campus.find({ universityId, isDeleted: { $ne: true } })
-    .populate('universityId', 'universityName universityCode')
+  const campuses = await Campus.find({
+    universityId: university._id,
+    isDeleted: { $ne: true },
+  })
+    .populate("universityId", "universityName universityCode")
     .select("-__v")
     .sort({ isMainCampus: -1, createdAt: 1 });
 
@@ -112,13 +117,15 @@ export const getCampuses = handle(async (req, res) => {
 });
 
 export const getCampusById = handle(async (req, res) => {
-  const campus = await Campus.findOne({ _id: req.params.id, isDeleted: { $ne: true } })
-    .populate('universityId', 'universityName universityCode');
+  const campus = await Campus.findOne({
+    _id: req.params.id,
+    isDeleted: { $ne: true },
+  }).populate("universityId", "universityName universityCode");
 
   if (!campus) {
     return res.status(404).json({
       success: false,
-      message: "Campus not found"
+      message: "Campus not found",
     });
   }
 
@@ -130,32 +137,64 @@ export const getCampusById = handle(async (req, res) => {
 
 export const updateCampus = handle(async (req, res) => {
   const { id } = req.params;
-  const updates = req.body;
+  const body = req.body;
 
-  // Remove fields that shouldn't be updated via the API
-  delete updates._id;
-  delete updates.campusId;
+  // Build update object from allowed flat fields
+  const updates = {};
+  if (body.name !== undefined) updates.name = body.name;
+  if (body.campusCode !== undefined) updates.campusCode = body.campusCode.toUpperCase();
+  if (body.type !== undefined) updates.type = body.type;
+  if (body.isMainCampus !== undefined) updates.isMainCampus = body.isMainCampus;
+  if (body.phone !== undefined) updates.phone = body.phone;
+  if (body.email !== undefined) updates.email = body.email;
+  if (body.establishedYear !== undefined) updates.establishedYear = body.establishedYear || null;
+  if (body.description !== undefined) updates.description = body.description;
+  if (body.status !== undefined) updates.status = body.status;
+
+  // Address: rebuild from flat fields when any address-related field present
+  if (
+    body.street !== undefined || body.city !== undefined ||
+    body.province !== undefined || body.country !== undefined ||
+    body.postalCode !== undefined || typeof body.address === "object"
+  ) {
+    const current = await Campus.findOne({ _id: id, isDeleted: { $ne: true } }).select("address");
+    if (!current) {
+      return res.status(404).json({ success: false, message: "Campus not found" });
+    }
+    updates.address = {
+      ...buildAddress(body),
+      // Preserve existing values for fields not sent
+      ...(updates.address || {}),
+    };
+    // Fill gaps from current record
+    updates.address.street = updates.address.street || current.address?.street || "";
+    updates.address.city = updates.address.city || current.address?.city || "";
+    updates.address.province = updates.address.province || current.address?.province || "";
+    updates.address.country = updates.address.country && updates.address.country !== "Pakistan"
+      ? updates.address.country : (body.country || current.address?.country || "Pakistan");
+    updates.address.postalCode = updates.address.postalCode || current.address?.postalCode || "";
+  }
+
+  // Never allow changing tenant/id/audit fields directly
   delete updates.universityId;
-  delete updates.createdAt;
-  delete updates.updatedAt;
+  delete updates.campusId;
+  delete updates.createdBy;
   delete updates.isDeleted;
   delete updates.deletedAt;
   delete updates.deletedBy;
 
-  if (updates.campusCode) {
-    updates.campusCode = updates.campusCode.toUpperCase();
-  }
+  updates.updatedBy = req.user._id;
 
   const campus = await Campus.findOneAndUpdate(
     { _id: id, isDeleted: { $ne: true } },
-    updates,
+    { $set: updates },
     { new: true, runValidators: true }
-  ).populate('universityId', 'universityName universityCode');
+  ).populate("universityId", "universityName universityCode");
 
   if (!campus) {
     return res.status(404).json({
       success: false,
-      message: "Campus not found"
+      message: "Campus not found",
     });
   }
 
@@ -173,36 +212,43 @@ export const deleteCampus = handle(async (req, res) => {
   if (!campus) {
     return res.status(404).json({
       success: false,
-      message: "Campus not found"
+      message: "Campus not found",
     });
   }
 
-  // Prevent deleting main campus if there are other campuses
+  // Prevent deleting main campus if other campuses exist
   if (campus.isMainCampus) {
     const otherCampuses = await Campus.countDocuments({
       universityId: campus.universityId,
       isDeleted: { $ne: true },
-      _id: { $ne: id }
+      _id: { $ne: id },
     });
-
     if (otherCampuses > 0) {
       return res.status(400).json({
         success: false,
-        message: "Cannot delete main campus. Please set another campus as main first."
+        message: "Cannot delete main campus. Set another campus as main first.",
       });
     }
   }
 
-  // Soft delete the campus
+  // Cascade soft-delete to departments scoped to this campus
+  const now = new Date();
+  const deletedBy = req.user?._id || null;
+
+  await Department.updateMany(
+    { campusId: campus._id, isDeleted: { $ne: true } },
+    { $set: { isDeleted: true, deletedAt: now, deletedBy } }
+  );
+
   await campus.updateOne({
     isDeleted: true,
-    deletedAt: new Date(),
-    deletedBy: req.user?._id || null,
+    deletedAt: now,
+    deletedBy,
   });
 
   res.json({
     success: true,
-    message: "Campus deleted successfully"
+    message: "Campus and its departments deleted successfully",
   });
 });
 
@@ -213,18 +259,18 @@ export const setMainCampus = handle(async (req, res) => {
   if (!campus) {
     return res.status(404).json({
       success: false,
-      message: "Campus not found"
+      message: "Campus not found",
     });
   }
 
-  // Remove main status from all campuses in this university
+  // Demote all, then promote target
   await Campus.updateMany(
     { universityId: campus.universityId, isDeleted: { $ne: true } },
     { isMainCampus: false }
   );
 
-  // Set this campus as main
   campus.isMainCampus = true;
+  campus.updatedBy = req.user?._id || null;
   await campus.save();
 
   res.json({

@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { courseAPI, Course } from "@/features/courses";
-import { departmentAPI } from "@/features/departments";
+import { departmentAPI, type Department } from "@/features/departments";
 import { 
   BookOpen, 
   Users, 
@@ -64,7 +64,7 @@ const getDefaultSchedule = (schedule?: Course['schedule']) => ({
 export function CoursesPage() {
   const [courses, setCourses] = useState<Course[]>([]);
   const [filteredCourses, setFilteredCourses] = useState<Course[]>([]);
-  const [departments, setDepartments] = useState<string[]>([]);
+  const [departments, setDepartments] = useState<Department[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -94,15 +94,14 @@ export function CoursesPage() {
     semesterType: '',
     status: '',
     isActive: true,
-    department: ''
+    departmentId: ''
   });
 
   // Form data with all fields
   const [formData, setFormData] = useState({
     code: '',
     name: '',
-    department: '',
-    departmentName: '',
+    departmentId: '',
     program: 'BSCS',
     semester: 1,
     semesterType: 'Fall' as 'Fall' | 'Spring' | 'Summer',
@@ -182,7 +181,7 @@ export function CoursesPage() {
       }
       
       if (deptsRes && deptsRes.data) {
-        setDepartments(deptsRes.data.map((d: any) => d.name));
+        setDepartments(Array.isArray(deptsRes.data) ? deptsRes.data : []);
       }
     } catch (error: any) {
       console.error('❌ Failed to fetch data:', error);
@@ -220,8 +219,10 @@ export function CoursesPage() {
     if (filters.status) {
       filtered = filtered.filter(c => c.status === filters.status);
     }
-    if (filters.department) {
-      filtered = filtered.filter(c => c.department === filters.department);
+    if (filters.departmentId) {
+      filtered = filtered.filter(c =>
+        typeof c.departmentId === 'object' ? c.departmentId?._id === filters.departmentId : c.departmentId === filters.departmentId
+      );
     }
     if (filters.isActive !== undefined && filters.isActive !== null) {
       filtered = filtered.filter(c => c.isActive === filters.isActive);
@@ -275,7 +276,7 @@ export function CoursesPage() {
   const getDepartmentDistribution = () => {
     const deptMap = new Map();
     courses.forEach(course => {
-      const dept = course.department || 'Other';
+      const dept = typeof course.departmentId === 'object' ? course.departmentId?.name || 'Other' : 'Other';
       deptMap.set(dept, (deptMap.get(dept) || 0) + 1);
     });
     return Array.from(deptMap.entries()).map(([name, value]) => ({ name, value }));
@@ -309,7 +310,7 @@ export function CoursesPage() {
   const avgCredits = totalCourses > 0 
     ? courses.reduce((sum, c) => sum + (c.credits || 0), 0) / totalCourses 
     : 0;
-  const uniqueDepartments = new Set(courses.map(c => c.department)).size;
+  const uniqueDepartments = new Set(courses.map(c => typeof c.departmentId === 'object' ? c.departmentId?._id : c.departmentId)).size;
   const uniquePrograms = new Set(courses.map(c => c.program)).size;
   const enrollmentRate = totalCapacity > 0 ? Math.round((totalEnrolled / totalCapacity) * 100) : 0;
   const totalFee = courses.reduce((sum, c) => sum + (c.totalFee || 0), 0);
@@ -326,7 +327,7 @@ export function CoursesPage() {
       const idMatch = course.courseId?.toLowerCase().includes(searchLower) || false;
       const codeMatch = course.code?.toLowerCase().includes(searchLower) || false;
       const nameMatch = course.name?.toLowerCase().includes(searchLower) || false;
-      const deptMatch = course.department?.toLowerCase().includes(searchLower) || false;
+      const deptMatch = (typeof course.departmentId === 'object' ? course.departmentId?.name : '')?.toLowerCase().includes(searchLower) || false;
       const instructorMatch = course.instructor?.toLowerCase().includes(searchLower) || false;
       const programMatch = course.program?.toLowerCase().includes(searchLower) || false;
       return idMatch || codeMatch || nameMatch || deptMatch || instructorMatch || programMatch;
@@ -355,8 +356,7 @@ export function CoursesPage() {
     setFormData({
       code: '',
       name: '',
-      department: departments.length > 0 ? departments[0] : '',
-      departmentName: '',
+      departmentId: departments.length > 0 ? (departments[0]._id || '') : '',
       program: 'BSCS',
       semester: 1,
       semesterType: 'Fall',
@@ -392,8 +392,7 @@ export function CoursesPage() {
     setFormData({
       code: course.code || '',
       name: course.name || '',
-      department: course.department || '',
-      departmentName: course.departmentName || '',
+      departmentId: typeof course.departmentId === 'object' ? course.departmentId._id : (course.departmentId || ''),
       program: course.program || 'BSCS',
       semester: course.semester || 1,
       semesterType: course.semesterType || 'Fall',
@@ -430,7 +429,7 @@ export function CoursesPage() {
     
     try {
       // Validate required fields
-      if (!formData.code || !formData.name || !formData.department || !formData.program) {
+      if (!formData.code || !formData.name || !formData.departmentId || !formData.program) {
         toast.error('Code, Name, Department and Program are required');
         setIsSubmitting(false);
         return;
@@ -440,8 +439,7 @@ export function CoursesPage() {
       const submitData = {
         code: formData.code.toUpperCase().trim(),
         name: formData.name.trim(),
-        department: formData.department.trim(),
-        departmentName: formData.department.trim(),
+        departmentId: formData.departmentId,
         program: formData.program.trim(),
         semester: Number(formData.semester) || 1,
         semesterType: formData.semesterType || 'Fall',
@@ -882,12 +880,12 @@ export function CoursesPage() {
               <div>
                 <Label className="text-xs">Department</Label>
                 <select
-                  value={filters.department}
-                  onChange={(e) => setFilters(prev => ({ ...prev, department: e.target.value }))}
+                  value={filters.departmentId}
+                  onChange={(e) => setFilters(prev => ({ ...prev, departmentId: e.target.value }))}
                   className="w-full border rounded-lg px-2 py-1 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary"
                 >
                   <option value="">All</option>
-                  {departments.map(d => <option key={d} value={d}>{d}</option>)}
+                  {departments.map(d => <option key={d._id} value={d._id}>{d.name}</option>)}
                 </select>
               </div>
             </div>
@@ -1162,15 +1160,15 @@ export function CoursesPage() {
                   <Label htmlFor="department">Department *</Label>
                   <select
                     id="department"
-                    name="department"
-                    value={formData.department}
+                    name="departmentId"
+                    value={formData.departmentId}
                     onChange={handleInputChange}
                     className="w-full border rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-primary"
                     required
                   >
                     <option value="">Select Department</option>
                     {departments.map(d => (
-                      <option key={d} value={d}>{d}</option>
+                      <option key={d._id} value={d._id}>{d.name}</option>
                     ))}
                   </select>
                 </div>

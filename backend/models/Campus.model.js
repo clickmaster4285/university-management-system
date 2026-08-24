@@ -79,6 +79,16 @@ const campusSchema = new mongoose.Schema({
     ref: 'User',
     default: null,
   },
+  createdBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null,
+  },
+  updatedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null,
+  },
 }, { timestamps: true });
 
 // Ensure unique campus code and ID within a university

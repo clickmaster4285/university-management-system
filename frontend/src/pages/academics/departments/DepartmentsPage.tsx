@@ -523,7 +523,7 @@ export function DepartmentsPage() {
         campusAPI.getAll(),
         teacherAPI.getAll()
       ]);
-      setCampuses(campusRes?.data || []);
+      setCampuses(Array.isArray(campusRes?.data) ? campusRes.data : []);
       setTeachers(teacherRes || []);
     } catch (err) {
       console.error('Failed to fetch campuses/teachers:', err);
@@ -702,7 +702,7 @@ export function DepartmentsPage() {
       cell: (r) => (
         <div className="flex items-center gap-2">
           <User className="h-3 w-3 text-muted-foreground" />
-          <span>{r.head || '—'}</span>
+          <span>{typeof r.headId === 'object' ? r.headId?.name || '—' : '—'}</span>
         </div>
       ) 
     },
@@ -1218,7 +1218,7 @@ export function DepartmentsPage() {
                     <Label className="text-muted-foreground">Head of Department</Label>
                     <div className="flex items-center gap-2 mt-1">
                       <User className="h-4 w-4 text-muted-foreground" />
-                      <p className="font-medium">{viewingDepartment.head || '—'}</p>
+                      <p className="font-medium">{typeof viewingDepartment.headId === 'object' ? viewingDepartment.headId?.name || '—' : '—'}</p>
                     </div>
                   </div>
                 </div>

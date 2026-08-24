@@ -132,19 +132,19 @@ export default function ProgramsPage() {
   };
 
   const columns: Column<Program>[] = [
-    { key: "code", header: "Code", render: (p) => <span className="font-mono font-semibold">{p.code}</span> },
+    { key: "code", header: "Code", cell: (p) => <span className="font-mono font-semibold">{p.code}</span> },
     { key: "name", header: "Name" },
-    { key: "departmentId", header: "Department", render: (p) => getDeptName(p.departmentId) },
-    { key: "degreeLevel", header: "Degree", render: (p) => <Badge variant="outline">{p.degreeLevel}</Badge> },
-    { key: "duration", header: "Duration", render: (p) => `${p.duration} sem` },
-    { key: "totalCredits", header: "Credits", render: (p) => p.totalCredits || 0 },
+    { key: "departmentId", header: "Department", cell: (p) => getDeptName(p.departmentId) },
+    { key: "degreeLevel", header: "Degree", cell: (p) => <Badge variant="outline">{p.degreeLevel}</Badge> },
+    { key: "duration", header: "Duration", cell: (p) => `${p.duration} sem` },
+    { key: "totalCredits", header: "Credits", cell: (p) => p.totalCredits || 0 },
     {
       key: "status", header: "Status",
-      render: (p) => <Badge variant={p.status === "Active" ? "default" : "secondary"}>{p.status || "Active"}</Badge>
+      cell: (p) => <Badge variant={p.status === "Active" ? "default" : "secondary"}>{p.status || "Active"}</Badge>
     },
     {
       key: "_id", header: "Actions",
-      render: (p) => (
+      cell: (p) => (
         <div className="flex gap-1">
           <Button size="sm" variant="ghost" onClick={() => openEdit(p)}><Pencil className="h-4 w-4" /></Button>
           <Button size="sm" variant="ghost" onClick={() => handleDelete(p._id!)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
@@ -167,9 +167,9 @@ export default function ProgramsPage() {
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
-        <KpiCard title="Total Programs" value={stats.total} icon={Layers} />
-        <KpiCard title="Active" value={stats.active} icon={BookOpen} />
-        <KpiCard title="Inactive" value={stats.inactive} icon={Building2} />
+        <KpiCard label="Total Programs" value={stats.total} icon={Layers} />
+        <KpiCard label="Active" value={stats.active} icon={BookOpen} />
+        <KpiCard label="Inactive" value={stats.inactive} icon={Building2} />
       </div>
 
       <div className="flex items-center gap-2">
