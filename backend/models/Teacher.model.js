@@ -3,8 +3,13 @@ import mongoose from 'mongoose';
 const teacherSchema = new mongoose.Schema({
   teacherId: {
     type: String,
-    unique: true,
-    required: true
+    unique: true
+  },
+  userId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: [true, 'User ID is required'],
+    unique: true
   },
   name: {
     type: String,
@@ -22,10 +27,10 @@ const teacherSchema = new mongoose.Schema({
     type: String,
     trim: true
   },
-  department: {
-    type: String,
-    required: [true, 'Department is required'],
-    trim: true
+  departmentId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Department',
+    required: [true, 'Department is required']
   },
   designation: {
     type: String,
@@ -90,21 +95,7 @@ const teacherSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Auto-generate teacherId before validation so required fields are satisfied
-teacherSchema.pre('validate', async function(next) {
-  if (this.isNew && !this.teacherId) {
-    const lastTeacher = await mongoose.model('Teacher').findOne().sort({ teacherId: -1 });
-    let nextId = 1;
-    if (lastTeacher && lastTeacher.teacherId) {
-      const lastNumber = parseInt(lastTeacher.teacherId.replace('FAC-', ''));
-      nextId = lastNumber + 1;
-    }
-    this.teacherId = `FAC-${String(nextId).padStart(4, '0')}`;
-  }
-  next();
-});
-
-// Index for search performance
+teacherSchema.index({ departmentId: 1 });
 teacherSchema.index({ name: 'text' });
 
 const Teacher = mongoose.model('Teacher', teacherSchema);

@@ -9,6 +9,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { departmentAPI, Department } from "@/features/departments";
+import { campusAPI, Campus } from "@/features/campus";
+import { teacherAPI, Teacher } from "@/features/teachers";
 import { 
   Building2, 
   Users, 
@@ -54,7 +56,8 @@ type DepartmentFormData = {
   name: string;
   code: string;
   description: string;
-  head: string;
+  campusId: string;
+  headId: string;
   status: DepartmentStatus;
   location: string;
   email: string;
@@ -449,17 +452,6 @@ const faculties = [
 ];
 
 // HOD options
-const hodOptions = [
-  'Dr. Ahmad Khan',
-  'Dr. Sarah Ahmed',
-  'Dr. Muhammad Ali',
-  'Dr. Fatima Noor',
-  'Dr. Usman Malik',
-  'Dr. Ayesha Siddiqui',
-  'Dr. Hassan Raza',
-  'Prof. Imran Ali'
-];
-
 export function DepartmentsPage() {
   const [departments, setDepartments] = useState<Department[]>([]);
   const [filteredDepartments, setFilteredDepartments] = useState<Department[]>([]);
@@ -472,12 +464,15 @@ export function DepartmentsPage() {
   const [viewingDepartment, setViewingDepartment] = useState<Department | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [campuses, setCampuses] = useState<Campus[]>([]);
+  const [teachers, setTeachers] = useState<Teacher[]>([]);
   
   const [formData, setFormData] = useState<DepartmentFormData>({
     name: '',
     code: '',
     description: '',
-    head: '',
+    campusId: '',
+    headId: '',
     status: 'Active',
     location: '',
     email: '',
@@ -519,7 +514,21 @@ export function DepartmentsPage() {
 
   useEffect(() => {
     fetchDepartments();
+    fetchCampusesAndTeachers();
   }, []);
+
+  const fetchCampusesAndTeachers = async () => {
+    try {
+      const [campusRes, teacherRes] = await Promise.all([
+        campusAPI.getAll(),
+        teacherAPI.getAll()
+      ]);
+      setCampuses(campusRes?.data || []);
+      setTeachers(teacherRes || []);
+    } catch (err) {
+      console.error('Failed to fetch campuses/teachers:', err);
+    }
+  };
 
   // Handle search
   const handleSearch = (query: string) => {
@@ -533,7 +542,8 @@ export function DepartmentsPage() {
       const idMatch = dept.departmentId?.toLowerCase().includes(searchLower) || false;
       const nameMatch = dept.name?.toLowerCase().includes(searchLower) || false;
       const codeMatch = dept.code?.toLowerCase().includes(searchLower) || false;
-      const headMatch = dept.head?.toLowerCase().includes(searchLower) || false;
+      const headIdName = typeof dept.headId === 'object' ? dept.headId.name : '';
+      const headMatch = headIdName?.toLowerCase().includes(searchLower) || false;
       const locationMatch = dept.location?.toLowerCase().includes(searchLower) || false;
       return idMatch || nameMatch || codeMatch || headMatch || locationMatch;
     });
@@ -557,7 +567,8 @@ export function DepartmentsPage() {
       name: '',
       code: '',
       description: '',
-      head: '',
+      campusId: '',
+      headId: '',
       status: 'Active',
       location: '',
       email: '',
@@ -576,7 +587,8 @@ export function DepartmentsPage() {
       name: dept.name || '',
       code: dept.code || '',
       description: dept.description || '',
-      head: dept.head || '',
+      campusId: typeof dept.campusId === 'object' ? dept.campusId._id : (dept.campusId || ''),
+      headId: typeof dept.headId === 'object' ? dept.headId._id : (dept.headId || ''),
       status: dept.status || 'Active',
       location: dept.location || '',
       email: dept.email || '',
@@ -981,6 +993,22 @@ export function DepartmentsPage() {
                     />
                   </div>
                   <div className="space-y-2">
+                    <Label htmlFor="campusId">Campus *</Label>
+                    <select
+                      id="campusId"
+                      name="campusId"
+                      value={formData.campusId}
+                      onChange={handleInputChange}
+                      className="w-full border rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-primary"
+                      required
+                    >
+                      <option value="">Select Campus</option>
+                      {campuses.map(c => (
+                        <option key={c._id} value={c._id}>{c.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="space-y-2">
                     <Label htmlFor="faculty">Faculty / School *</Label>
                     <select
                       id="faculty"
@@ -997,18 +1025,17 @@ export function DepartmentsPage() {
                     </select>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="head">Head of Department *</Label>
+                    <Label htmlFor="headId">Head of Department</Label>
                     <select
-                      id="head"
-                      name="head"
-                      value={formData.head}
+                      id="headId"
+                      name="headId"
+                      value={formData.headId}
                       onChange={handleInputChange}
                       className="w-full border rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-primary"
-                      required
                     >
                       <option value="">Select HOD</option>
-                      {hodOptions.map(h => (
-                        <option key={h} value={h}>{h}</option>
+                      {teachers.map(t => (
+                        <option key={t._id} value={t._id}>{t.name}</option>
                       ))}
                     </select>
                   </div>

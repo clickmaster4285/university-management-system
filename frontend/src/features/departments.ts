@@ -4,10 +4,11 @@ import api from './axios';
 export interface Department {
   _id?: string;
   departmentId?: string;
+  campusId?: string | { _id: string; name: string; campusCode: string };
   name: string;
   code: string;
   description?: string;
-  head?: string;
+  headId?: string | { _id: string; name: string; email: string; designation: string };
   facultyCount?: number;
   studentCount?: number;
   status?: 'Active' | 'Inactive';
@@ -37,9 +38,10 @@ export interface DepartmentStats {
 class DepartmentAPI {
   private baseUrl = '/departments';
 
-  async getAll(params?: { isActive?: boolean }) {
+  async getAll(params?: { campusId?: string; isActive?: boolean }) {
     try {
       const queryParams = new URLSearchParams();
+      if (params?.campusId) queryParams.append('campusId', params.campusId);
       if (params?.isActive !== undefined) {
         queryParams.append('isActive', String(params.isActive));
       }

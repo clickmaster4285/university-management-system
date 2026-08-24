@@ -8,7 +8,7 @@ export const getAttendance = handle(async (req, res) => {
     date, 
     program, 
     semester, 
-    department, 
+    departmentId, 
     status,
     studentId,
     page = 1, 
@@ -25,7 +25,7 @@ export const getAttendance = handle(async (req, res) => {
   }
   if (program) filter.program = program;
   if (semester) filter.semester = parseInt(semester);
-  if (department) filter.department = department;
+  if (departmentId) filter.departmentId = departmentId;
   if (status) filter.status = status;
   if (studentId) filter.studentId = studentId;
 
@@ -51,12 +51,12 @@ export const getAttendance = handle(async (req, res) => {
 
 // GET /api/attendance/students - Get students by program and semester
 export const getStudentsForAttendance = handle(async (req, res) => {
-  const { program, semester, department } = req.query;
+  const { program, semester, departmentId } = req.query;
   
-  if (!program || !semester || !department) {
+  if (!program || !semester || !departmentId) {
     return res.status(400).json({
       success: false,
-      message: "Program, semester and department are required"
+      message: "Program, semester and departmentId are required"
     });
   }
 
@@ -64,7 +64,7 @@ export const getStudentsForAttendance = handle(async (req, res) => {
   const students = await Student.find({
     program: program,
     semester: parseInt(semester),
-    department: department,
+    department: departmentId,
     status: 'Active',
     isDeleted: { $ne: true }
   })
@@ -129,7 +129,7 @@ export const getStudentsForAttendance = handle(async (req, res) => {
 
 // POST /api/attendance/mark - Mark attendance for multiple students
 export const markAttendance = handle(async (req, res) => {
-  const { attendance, date, program, semester, department, markedBy, course } = req.body;
+  const { attendance, date, program, semester, departmentId, markedBy, course } = req.body;
   
   if (!attendance || !Array.isArray(attendance) || attendance.length === 0) {
     return res.status(400).json({
@@ -138,10 +138,10 @@ export const markAttendance = handle(async (req, res) => {
     });
   }
 
-  if (!program || !semester || !department) {
+  if (!program || !semester || !departmentId) {
     return res.status(400).json({
       success: false,
-      message: "Program, semester and department are required"
+      message: "Program, semester and departmentId are required"
     });
   }
 
@@ -187,6 +187,7 @@ export const markAttendance = handle(async (req, res) => {
           program: student.program,
           semester: student.semester,
           department: student.department,
+          departmentId: departmentId,
           date: attendanceDate,
           status: status || 'Present',
           remarks: remarks || '',
@@ -224,12 +225,12 @@ export const markAttendance = handle(async (req, res) => {
 
 // GET /api/attendance/stats - Get attendance statistics
 export const getAttendanceStats = handle(async (req, res) => {
-  const { program, semester, department, startDate, endDate } = req.query;
+  const { program, semester, departmentId, startDate, endDate } = req.query;
   
   const filter = { isDeleted: { $ne: true } };
   if (program) filter.program = program;
   if (semester) filter.semester = parseInt(semester);
-  if (department) filter.department = department;
+  if (departmentId) filter.departmentId = departmentId;
   
   if (startDate && endDate) {
     const start = new Date(startDate);

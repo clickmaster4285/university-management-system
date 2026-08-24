@@ -39,11 +39,11 @@ export interface BatchStats {
 class BatchAPI {
   private baseUrl = '/batches';
 
-  async getAll(params?: { department?: string; program?: string; status?: string }) {
+  async getAll(params?: { departmentId?: string; program?: string; status?: string }) {
     try {
       const queryParams = new URLSearchParams();
-      if (params?.department) {
-        queryParams.append('department', params.department);
+      if (params?.departmentId) {
+        queryParams.append('departmentId', params.departmentId);
       }
       if (params?.program) {
         queryParams.append('program', params.program);

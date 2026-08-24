@@ -17,21 +17,19 @@ const courseSchema = new mongoose.Schema({
     required: [true, 'Course name is required'],
     trim: true
   },
-  department: {
-    type: String,
-    required: [true, 'Department is required'],
-    trim: true
-  },
-  departmentName: {
-    type: String,
-    required: true,
-    trim: true
+  departmentId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Department',
+    required: [true, 'Department is required']
   },
   program: {
     type: String,
     required: [true, 'Program is required'],
-    trim: true,
-    enum: ['BSCS', 'BSSE', 'BSIT', 'BBA', 'MBA', 'BEE', 'BME', 'BSAI', 'BSDS', 'BSEE', 'MSDS', 'BS Physics', 'BS Math', 'LLB']
+    trim: true
+  },
+  programId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Program'
   },
   semester: {
     type: Number,
@@ -83,7 +81,7 @@ const courseSchema = new mongoose.Schema({
   },
   instructorId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'User'
+    ref: 'Teacher'
   },
   capacity: {
     type: Number,
@@ -188,19 +186,8 @@ const courseSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Pre-save middleware to auto-generate courseId and calculate total fee
-courseSchema.pre('save', async function(next) {
-  // Auto-generate courseId if not present
-  if (this.isNew && !this.courseId) {
-    const lastCourse = await mongoose.model('Course').findOne().sort({ courseId: -1 });
-    let nextId = 1;
-    if (lastCourse && lastCourse.courseId) {
-      const lastNumber = parseInt(lastCourse.courseId.replace('CRS-', ''));
-      nextId = lastNumber + 1;
-    }
-    this.courseId = `CRS-${String(nextId).padStart(4, '0')}`;
-  }
-  
+// Pre-save middleware to calculate total fee
+courseSchema.pre('save', function(next) {
   // Calculate total fee from credits and feePerCredit
   if (this.credits && this.feePerCredit) {
     this.totalFee = this.credits * this.feePerCredit;
@@ -225,13 +212,13 @@ courseSchema.pre('findOneAndUpdate', function(next) {
 // Indexes for better query performance
 courseSchema.index({ code: 'text', name: 'text', instructor: 'text', description: 'text' });
 // `courseId` has a unique constraint on the field definition; avoid duplicating index declarations
-courseSchema.index({ department: 1 });
-courseSchema.index({ program: 1 });
+courseSchema.index({ departmentId: 1 });
+courseSchema.index({ programId: 1 });
 courseSchema.index({ semester: 1 });
 courseSchema.index({ status: 1 });
 courseSchema.index({ isActive: 1 });
 courseSchema.index({ feePerCredit: 1 });
-courseSchema.index({ department: 1, program: 1, semester: 1 });
+courseSchema.index({ departmentId: 1, program: 1, semester: 1 });
 courseSchema.index({ code: 1, program: 1, semester: 1 }, { unique: true });
 
 // Virtual field for available seats
@@ -282,25 +269,25 @@ courseSchema.methods = {
 // Static methods
 courseSchema.statics = {
   // Get courses by department, program, semester
-  getByFilter: async function({ department, program, semester, isActive = true }) {
+  getByFilter: async function({ departmentId, program, semester, isActive = true }) {
     const filter = { isActive };
-    if (department) filter.department = department;
+    if (departmentId) filter.departmentId = departmentId;
     if (program) filter.program = program;
     if (semester) filter.semester = semester;
     return this.find(filter).sort({ code: 1 });
   },
   
   // Get courses with fee structure
-  getWithFeeStructure: async function({ department, program, semester }) {
+  getWithFeeStructure: async function({ departmentId, program, semester }) {
     const filter = { 
       isActive: true,
       isFeeApplied: true
     };
-    if (department) filter.department = department;
+    if (departmentId) filter.departmentId = departmentId;
     if (program) filter.program = program;
     if (semester) filter.semester = semester;
     return this.find(filter)
-      .select('code name credits feePerCredit totalFee department program semester')
+      .select('code name credits feePerCredit totalFee departmentId program semester')
       .sort({ code: 1 });
   },
   
@@ -335,7 +322,7 @@ courseSchema.statics = {
         $group: {
           _id: {
             semester: '$semester',
-            department: '$department'
+            departmentId: '$departmentId'
           },
           courses: { 
             $push: {
@@ -354,7 +341,7 @@ courseSchema.statics = {
       { $sort: { '_id.semester': 1 } },
       { 
         $group: {
-          _id: '$_id.department',
+          _id: '$_id.departmentId',
           semesters: {
             $push: {
               semester: '$_id.semester',

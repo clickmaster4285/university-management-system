@@ -14,7 +14,7 @@ dotenv.config();
 
 const port = Number(process.env.PORT);
 const host = process.env.HOST;
-const allowedOrigins = process.env.FRONTEND_URL;
+const frontendUrl = process.env.FRONTEND_URL;
 const app = express();
 
 app.use(helmet({
@@ -22,6 +22,7 @@ app.use(helmet({
 }));
 
 app.use(cors({
+  origin: frontendUrl,
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],

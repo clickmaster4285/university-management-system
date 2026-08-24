@@ -20,6 +20,7 @@ export { default as Finance } from "./Finance.model.js";
 export { default as Leave } from "./Leave.model.js";
 export { default as Notification } from "./Notification.model.js";
 export { default as Payroll } from "./Payroll.model.js";
+export { default as Program } from "./Program.model.js";
 export { default as Recruitment } from "./Recruitment.model.js";
 export { default as Report } from "./Report.model.js";
 export { default as Route } from "./Route.model.js";

@@ -6,6 +6,7 @@ import { handle } from '../utils/asyncHandler.js';
 import { University, User } from '../models/index.js';
 const buildUser = (user) => ({
   _id: user._id.toString(),
+  name: `${user.firstName} ${user.lastName}`,
   firstName: user.firstName,
   lastName: user.lastName,
   email: user.email,
@@ -82,11 +83,17 @@ export const getProfile = handle(async (req, res) => {
 });
 
 export const updateProfile = handle(async (req, res) => {
-  const { firstName, lastName, phoneNumber } = req.body;
+  const { firstName, lastName, name, phoneNumber } = req.body;
 
   const updates = {};
-  if (firstName !== undefined) updates.firstName = firstName.trim();
-  if (lastName !== undefined) updates.lastName = lastName.trim();
+  if (name !== undefined) {
+    const parts = name.trim().split(/\s+/);
+    updates.firstName = parts[0] || '';
+    updates.lastName = parts.slice(1).join(' ') || '';
+  } else {
+    if (firstName !== undefined) updates.firstName = firstName.trim();
+    if (lastName !== undefined) updates.lastName = lastName.trim();
+  }
   if (phoneNumber !== undefined) updates.phoneNumber = phoneNumber;
 
   const updated = await User.findOneAndUpdate(

@@ -1,9 +1,11 @@
+import mongoose from 'mongoose';
 import { handle } from "../utils/asyncHandler.js";
+import { User, Teacher, Counter } from "../models/index.js";
+import { generateTeacherId } from "../utils/generateTeacherId.js";
 
-import { Teacher } from "../models/index.js";
 export const getTeachers = handle(async (req, res) => {
   const {
-    department,
+    departmentId,
     designation,
     status,
     search,
@@ -12,7 +14,7 @@ export const getTeachers = handle(async (req, res) => {
   } = req.query;
 
   const filter = { isDeleted: { $ne: true } };
-  if (department) filter.department = department;
+  if (departmentId) filter.departmentId = departmentId;
   if (designation) filter.designation = designation;
   if (status) filter.status = status;
 
@@ -30,6 +32,8 @@ export const getTeachers = handle(async (req, res) => {
     .skip(skip)
     .limit(parseInt(limit))
     .sort({ createdAt: -1 })
+    .populate('userId', 'firstName lastName email role status')
+    .populate('departmentId', 'name code')
     .select('-__v');
 
   const totalCount = await Teacher.countDocuments(filter);
@@ -46,6 +50,8 @@ export const getTeachers = handle(async (req, res) => {
 
 export const getTeacherById = handle(async (req, res) => {
   const teacher = await Teacher.findOne({ _id: req.params.id, isDeleted: { $ne: true } })
+    .populate('userId', 'firstName lastName email role status')
+    .populate('departmentId', 'name code')
     .select('-__v');
 
   if (!teacher) {
@@ -59,46 +65,98 @@ export const getTeacherById = handle(async (req, res) => {
 });
 
 export const createTeacher = handle(async (req, res) => {
-  const { name, department, designation, email } = req.body;
+  const {
+    firstName,
+    lastName,
+    email,
+    password,
+    departmentId,
+    designation,
+    phone,
+    specialization,
+    experience,
+    salary,
+    officeHours,
+    qualifications
+  } = req.body;
 
-  if (!name || !department || !designation) {
+  if (!firstName || !lastName || !email || !password || !departmentId || !designation) {
     return res.status(400).json({
       success: false,
-      message: "name, department and designation are required fields",
+      message: "firstName, lastName, email, password, departmentId and designation are required",
     });
   }
 
-  if (email) {
-    const existingEmail = await Teacher.findOne({ email, isDeleted: { $ne: true } });
-    if (existingEmail) {
-      return res.status(400).json({
-        success: false,
-        message: `Teacher with email ${email} already exists`
-      });
-    }
+  // Check if user with this email already exists
+  const existingUser = await User.findOne({ email: email.toLowerCase().trim(), isDeleted: { $ne: true } });
+  if (existingUser) {
+    return res.status(400).json({
+      success: false,
+      message: `User with email ${email} already exists`
+    });
   }
 
-  const teacherData = {
-    name,
-    department,
-    designation,
-    email: email || "",
-    phone: req.body.phone || "",
-    specialization: req.body.specialization || "",
-    experience: req.body.experience ?? 0,
-    rating: req.body.rating ?? 0,
-    salary: req.body.salary ?? 0,
-    status: req.body.status ?? "Active",
-    officeHours: req.body.officeHours || "",
-    qualifications: req.body.qualifications || []
-  };
+  // Check if department exists
+  const department = await mongoose.model('Department').findOne({ _id: departmentId, isDeleted: { $ne: true } });
+  if (!department) {
+    return res.status(400).json({
+      success: false,
+      message: `Department ${departmentId} not found`
+    });
+  }
 
-  const teacher = new Teacher(teacherData);
+  // Generate teacherId
+  const teacherId = await generateTeacherId();
+
+  // Create User account
+  const user = new User({
+    firstName: firstName.trim(),
+    lastName: lastName.trim(),
+    email: email.toLowerCase().trim(),
+    password,
+    role: 'Teacher',
+    status: 'Active'
+  });
+  await user.save();
+
+  // Create Teacher profile
+  const teacher = new Teacher({
+    teacherId,
+    userId: user._id,
+    name: `${firstName.trim()} ${lastName.trim()}`,
+    email: email.toLowerCase().trim(),
+    phone: phone || "",
+    departmentId,
+    designation,
+    specialization: specialization || "",
+    experience: experience ?? 0,
+    salary: salary ?? 0,
+    officeHours: officeHours || "",
+    qualifications: qualifications || []
+  });
   await teacher.save();
 
   res.status(201).json({
     success: true,
-    data: teacher
+    data: {
+      user: {
+        _id: user._id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        role: user.role,
+        status: user.status
+      },
+      teacher: {
+        _id: teacher._id,
+        teacherId: teacher.teacherId,
+        name: teacher.name,
+        email: teacher.email,
+        departmentId: teacher.departmentId,
+        designation: teacher.designation
+      }
+    },
+    message: 'Teacher and User account created successfully'
   });
 });
 
@@ -127,7 +185,7 @@ export const updateTeacher = handle(async (req, res) => {
     }
   }
 
-  const { _id, isDeleted, deletedAt, deletedBy, createdAt, updatedAt, ...updateData } = req.body;
+  const { _id, isDeleted, deletedAt, deletedBy, createdAt, updatedAt, userId, teacherId, ...updateData } = req.body;
 
   const updatedTeacher = await Teacher.findByIdAndUpdate(
     id,
@@ -136,7 +194,10 @@ export const updateTeacher = handle(async (req, res) => {
       new: true,
       runValidators: true
     }
-  ).select('-__v');
+  )
+    .populate('userId', 'firstName lastName email role status')
+    .populate('departmentId', 'name code')
+    .select('-__v');
 
   res.json({
     success: true,
@@ -147,8 +208,7 @@ export const updateTeacher = handle(async (req, res) => {
 export const deleteTeacher = handle(async (req, res) => {
   const { id } = req.params;
 
-  const teacher = await Teacher.findByIdAndDelete(id);
-
+  const teacher = await Teacher.findById(id);
   if (!teacher) {
     return res.status(404).json({
       success: false,
@@ -156,45 +216,25 @@ export const deleteTeacher = handle(async (req, res) => {
     });
   }
 
+  // Soft-delete teacher
+  teacher.isDeleted = true;
+  teacher.deletedAt = new Date();
+  teacher.deletedBy = req.user._id;
+  await teacher.save();
+
+  // Also soft-delete linked user
+  if (teacher.userId) {
+    await User.findByIdAndUpdate(teacher.userId, {
+      isDeleted: true,
+      deletedAt: new Date(),
+      deletedBy: req.user._id
+    });
+  }
+
   res.json({
     success: true,
     message: "Teacher deleted successfully",
     data: teacher
-  });
-});
-
-export const bulkCreateTeachers = handle(async (req, res) => {
-  const teachers = req.body.teachers || req.body;
-
-  if (!Array.isArray(teachers)) {
-    return res.status(400).json({
-      success: false,
-      message: 'Please provide an array of teachers'
-    });
-  }
-
-  if (teachers.length === 0) {
-    return res.status(400).json({
-      success: false,
-      message: 'Teacher array cannot be empty'
-    });
-  }
-
-  const invalidTeachers = teachers.filter(t => !t.name || !t.department || !t.designation);
-  if (invalidTeachers.length > 0) {
-    return res.status(400).json({
-      success: false,
-      message: 'Each teacher must have name, department and designation',
-      invalidCount: invalidTeachers.length
-    });
-  }
-
-  const createdTeachers = await Teacher.insertMany(teachers);
-
-  res.status(201).json({
-    success: true,
-    count: createdTeachers.length,
-    data: createdTeachers
   });
 });
 
@@ -216,10 +256,28 @@ export const getTeacherStats = handle(async (req, res) => {
     { $match: { isDeleted: { $ne: true } } },
     {
       $group: {
-        _id: '$department',
+        _id: '$departmentId',
         count: { $sum: 1 },
         avgRating: { $avg: '$rating' },
         avgExperience: { $avg: '$experience' }
+      }
+    },
+    {
+      $lookup: {
+        from: 'departments',
+        localField: '_id',
+        foreignField: '_id',
+        as: 'department'
+      }
+    },
+    { $unwind: { path: '$department', preserveNullAndEmptyArrays: true } },
+    {
+      $project: {
+        count: 1,
+        avgRating: 1,
+        avgExperience: 1,
+        departmentName: '$department.name',
+        departmentCode: '$department.code'
       }
     },
     { $sort: { count: -1 } }

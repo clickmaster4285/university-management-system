@@ -6,13 +6,12 @@ export interface Course {
   courseId?: string;
   code: string;
   name: string;
-  department: string;
-  departmentName: string;
+  departmentId: string | { _id: string; name: string; code: string };
   program: string;
+  programId?: string | { _id: string; name: string; code: string };
   credits: number;
   instructor: string;
-  instructorId?: string;
-  instructorEmail?: string;
+  instructorId?: string | { _id: string; name: string; email: string; designation: string };
   semester: number;
   semesterType: 'Fall' | 'Spring' | 'Summer';
   year: number;
@@ -31,12 +30,10 @@ export interface Course {
     room: string;
     building?: string;
   };
-  // Fee related fields
   feePerCredit: number;
   totalFee: number;
   feeType: 'Tuition' | 'Lab' | 'Library' | 'Sports' | 'Transport' | 'Hostel' | 'Other';
   isFeeApplied: boolean;
-  // Additional metadata
   tags?: string[];
   learningOutcomes?: string[];
   textbooks?: {
@@ -53,8 +50,9 @@ export interface Course {
 }
 
 export interface CourseFilters {
-  department?: string;
+  departmentId?: string;
   program?: string;
+  programId?: string;
   semester?: number;
   semesterType?: string;
   year?: number;
@@ -216,7 +214,7 @@ class CourseAPI {
   /**
    * Get active courses only
    */
-  async getActiveCourses(params?: { department?: string; program?: string; semester?: number }) {
+  async getActiveCourses(params?: { departmentId?: string; program?: string; semester?: number }) {
     try {
       const queryParams = new URLSearchParams();
       if (params) {
@@ -238,7 +236,7 @@ class CourseAPI {
   /**
    * Get courses with fee structure (for fee management)
    */
-  async getCoursesWithFee(params?: { department?: string; program?: string; semester?: number }) {
+  async getCoursesWithFee(params?: { departmentId?: string; program?: string; semester?: number }) {
     try {
       const queryParams = new URLSearchParams();
       if (params) {
@@ -286,9 +284,9 @@ class CourseAPI {
   /**
    * Get courses by department
    */
-  async getByDepartment(department: string, isActive: boolean = true) {
+  async getByDepartment(departmentId: string, isActive: boolean = true) {
     try {
-      const response = await api.get(`${this.baseUrl}/department/${department}?isActive=${isActive}`);
+      const response = await api.get(`${this.baseUrl}/department/${departmentId}?isActive=${isActive}`);
       return response.data;
     } catch (error) {
       console.error('Error fetching courses by department:', error);
@@ -323,7 +321,7 @@ class CourseAPI {
   /**
    * Get courses by semester
    */
-  async getBySemester(semester: number, params?: { program?: string; department?: string; isActive?: boolean }) {
+  async getBySemester(semester: number, params?: { program?: string; departmentId?: string; isActive?: boolean }) {
     try {
       const queryParams = new URLSearchParams();
       if (params) {
@@ -373,7 +371,7 @@ class CourseAPI {
   /**
    * Get all course assignments
    */
-  async getAssignments(params?: { department?: string; program?: string; semester?: number; batch?: number }) {
+  async getAssignments(params?: { departmentId?: string; program?: string; semester?: number; batch?: number }) {
     try {
       const queryParams = new URLSearchParams();
       if (params) {
@@ -395,7 +393,7 @@ class CourseAPI {
   /**
    * Get courses available for assignment
    */
-  async getAvailableCourses(params?: { department?: string; program?: string; semester?: number }) {
+  async getAvailableCourses(params?: { departmentId?: string; program?: string; semester?: number }) {
     try {
       const queryParams = new URLSearchParams();
       if (params) {
@@ -490,7 +488,7 @@ class CourseAPI {
   /**
    * Get course fee summary
    */
-  async getFeeSummary(params?: { department?: string; program?: string }): Promise<{ success: boolean; data: FeeSummary[] }> {
+  async getFeeSummary(params?: { departmentId?: string; program?: string }): Promise<{ success: boolean; data: FeeSummary[] }> {
     try {
       const queryParams = new URLSearchParams();
       if (params) {
@@ -540,7 +538,7 @@ class CourseAPI {
   /**
    * Get enrollment statistics
    */
-  async getEnrollmentStats(params?: { department?: string; program?: string }): Promise<{ success: boolean; data: EnrollmentStats }> {
+  async getEnrollmentStats(params?: { departmentId?: string; program?: string }): Promise<{ success: boolean; data: EnrollmentStats }> {
     try {
       const queryParams = new URLSearchParams();
       if (params) {

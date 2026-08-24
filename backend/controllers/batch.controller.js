@@ -5,11 +5,11 @@ import { handle } from "../utils/asyncHandler.js";
 // GET /api/batches - Get all batches
 import { AcademicSession, Batch, Department } from '../models/index.js';
 export const getBatches = handle(async (req, res) => {
-  const { department, program, status } = req.query;
+  const { departmentId, program, status } = req.query;
   const filter = { isDeleted: { $ne: true } };
   
-  if (department) {
-    filter.department = department;
+  if (departmentId) {
+    filter.departmentId = departmentId;
   }
   
   if (program) {
@@ -22,6 +22,8 @@ export const getBatches = handle(async (req, res) => {
   
   const batches = await Batch.find(filter)
     .sort({ year: -1, program: 1 })
+    .populate('departmentId', 'name code')
+    .populate('admissionSessionId', 'name')
     .select('-__v');
   
   res.json({
@@ -50,8 +52,12 @@ export const getBatchById = handle(async (req, res) => {
       message: 'Batch not found'
     });
   }
+
+  const populated = await Batch.findById(batch._id)
+    .populate('departmentId', 'name code')
+    .populate('admissionSessionId', 'name');
   
-  res.json({ success: true, data: batch });
+  res.json({ success: true, data: populated });
 });
 
 // GET /api/batches/stats - Get batch statistics

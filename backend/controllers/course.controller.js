@@ -1,14 +1,12 @@
-// backend/src/controllers/course.controller.js
 import mongoose from 'mongoose';
 import { handle } from "../utils/asyncHandler.js";
-
-// ==================== GET COURSES ====================
+import { Course, Department, Teacher } from '../models/index.js';
+import { generateCourseId } from "../utils/generateCourseId.js";
 
 // GET /api/courses - Get all courses with filters
-import { Course, Department } from '../models/index.js';
 export const getCourses = handle(async (req, res) => {
   const { 
-    department, 
+    departmentId, 
     program,
     status, 
     semester, 
@@ -22,7 +20,7 @@ export const getCourses = handle(async (req, res) => {
   } = req.query;
   
   const filter = { isDeleted: { $ne: true } };
-  if (department) filter.departmentName = department;
+  if (departmentId) filter.departmentId = departmentId;
   if (program) filter.program = program;
   if (status) filter.status = status;
   if (semester) filter.semester = parseInt(semester);
@@ -36,7 +34,6 @@ export const getCourses = handle(async (req, res) => {
       { name: { $regex: search, $options: 'i' } },
       { code: { $regex: search, $options: 'i' } },
       { instructor: { $regex: search, $options: 'i' } },
-      { departmentName: { $regex: search, $options: 'i' } },
       { courseId: { $regex: search, $options: 'i' } }
     ];
   }
@@ -47,7 +44,9 @@ export const getCourses = handle(async (req, res) => {
     .skip(skip)
     .limit(parseInt(limit))
     .sort({ code: 1 })
-    .populate('instructorId', 'name email')
+    .populate('departmentId', 'name code')
+    .populate('programId', 'name code')
+    .populate('instructorId', 'name email designation')
     .populate('prerequisitesCourses', 'code name')
     .select('-__v');
 
@@ -65,16 +64,17 @@ export const getCourses = handle(async (req, res) => {
 
 // GET /api/courses/active - Get active courses only
 export const getActiveCourses = handle(async (req, res) => {
-  const { department, program, semester } = req.query;
+  const { departmentId, program, semester } = req.query;
   
   const filter = { isActive: true, status: 'Active', isDeleted: { $ne: true } };
-  if (department) filter.departmentName = department;
+  if (departmentId) filter.departmentId = departmentId;
   if (program) filter.program = program;
   if (semester) filter.semester = parseInt(semester);
   
   const courses = await Course.find(filter)
     .sort({ code: 1 })
-    .select('code name credits feePerCredit totalFee departmentName program semester instructor capacity enrolledStudents');
+    .populate('departmentId', 'name code')
+    .select('code name credits feePerCredit totalFee program semester instructor capacity enrolledStudents');
   
   res.json({
     success: true,
@@ -85,16 +85,17 @@ export const getActiveCourses = handle(async (req, res) => {
 
 // GET /api/courses/with-fee - Get courses with fee structure
 export const getCoursesWithFee = handle(async (req, res) => {
-  const { department, program, semester } = req.query;
+  const { departmentId, program, semester } = req.query;
   
   const filter = { isActive: true, isFeeApplied: true, isDeleted: { $ne: true } };
-  if (department) filter.departmentName = department;
+  if (departmentId) filter.departmentId = departmentId;
   if (program) filter.program = program;
   if (semester) filter.semester = parseInt(semester);
   
   const courses = await Course.find(filter)
     .sort({ code: 1 })
-    .select('code name credits feePerCredit totalFee feeType departmentName program semester');
+    .populate('departmentId', 'name code')
+    .select('code name credits feePerCredit totalFee feeType program semester');
   
   res.json({
     success: true,
@@ -106,10 +107,12 @@ export const getCoursesWithFee = handle(async (req, res) => {
 // GET /api/courses/:id - Get course by ID
 export const getCourseById = handle(async (req, res) => {
   const course = await Course.findOne({ courseId: req.params.id, isDeleted: { $ne: true } })
-    .populate('instructorId', 'name email')
+    .populate('departmentId', 'name code')
+    .populate('programId', 'name code')
+    .populate('instructorId', 'name email designation')
     .populate('prerequisitesCourses', 'code name')
-    .populate('createdBy', 'name email')
-    .populate('updatedBy', 'name email')
+    .populate('createdBy', 'firstName lastName email')
+    .populate('updatedBy', 'firstName lastName email')
     .select('-__v');
   
   if (!course) {
@@ -131,6 +134,7 @@ export const getCourseByCode = handle(async (req, res) => {
     isActive: true,
     isDeleted: { $ne: true }
   })
+  .populate('departmentId', 'name code')
   .populate('instructorId', 'name email')
   .populate('prerequisitesCourses', 'code name');
   
@@ -144,13 +148,13 @@ export const getCourseByCode = handle(async (req, res) => {
   res.json({ success: true, data: course });
 });
 
-// GET /api/courses/department/:department - Get courses by department
+// GET /api/courses/department/:departmentId - Get courses by department
 export const getCoursesByDepartment = handle(async (req, res) => {
-  const { department } = req.params;
+  const { departmentId } = req.params;
   const { isActive = true } = req.query;
   
   const courses = await Course.find({ 
-    departmentName: department,
+    departmentId,
     isActive: isActive === 'true',
     isDeleted: { $ne: true }
   })
@@ -174,7 +178,8 @@ export const getCoursesByProgram = handle(async (req, res) => {
   
   const courses = await Course.find(filter)
     .sort({ semester: 1, code: 1 })
-    .select('code name credits feePerCredit totalFee semester departmentName');
+    .populate('departmentId', 'name code')
+    .select('code name credits feePerCredit totalFee semester');
   
   res.json({
     success: true,
@@ -186,15 +191,16 @@ export const getCoursesByProgram = handle(async (req, res) => {
 // GET /api/courses/semester/:semester - Get courses by semester
 export const getCoursesBySemester = handle(async (req, res) => {
   const { semester } = req.params;
-  const { program, department, isActive = true } = req.query;
+  const { program, departmentId, isActive = true } = req.query;
   
   const filter = { semester: parseInt(semester), isActive: isActive === 'true', isDeleted: { $ne: true } };
   if (program) filter.program = program;
-  if (department) filter.departmentName = department;
+  if (departmentId) filter.departmentId = departmentId;
   
   const courses = await Course.find(filter)
     .sort({ code: 1 })
-    .select('code name credits feePerCredit totalFee program departmentName');
+    .populate('departmentId', 'name code')
+    .select('code name credits feePerCredit totalFee program');
   
   res.json({
     success: true,
@@ -239,11 +245,21 @@ export const getProgramFeeStructure = handle(async (req, res) => {
         isFeeApplied: true 
       } 
     },
+    {
+      $lookup: {
+        from: 'departments',
+        localField: 'departmentId',
+        foreignField: '_id',
+        as: 'dept'
+      }
+    },
+    { $unwind: { path: '$dept', preserveNullAndEmptyArrays: true } },
     { 
       $group: {
         _id: {
           semester: '$semester',
-          department: '$departmentName'
+          departmentId: '$departmentId',
+          departmentName: '$dept.name'
         },
         courses: { 
           $push: {
@@ -262,7 +278,8 @@ export const getProgramFeeStructure = handle(async (req, res) => {
     { $sort: { '_id.semester': 1 } },
     { 
       $group: {
-        _id: '$_id.department',
+        _id: '$_id.departmentId',
+        departmentName: { $first: '$_id.departmentName' },
         semesters: {
           $push: {
             semester: '$_id.semester',
@@ -285,19 +302,29 @@ export const getProgramFeeStructure = handle(async (req, res) => {
 
 // GET /api/courses/fee-summary - Get course fee summary
 export const getCourseFeeSummary = handle(async (req, res) => {
-  const { department, program } = req.query;
+  const { departmentId, program } = req.query;
   
   const filter = { isActive: true, isFeeApplied: true, isDeleted: { $ne: true } };
-  if (department) filter.departmentName = department;
+  if (departmentId) filter.departmentId = departmentId;
   if (program) filter.program = program;
   
   const summary = await Course.aggregate([
     { $match: { isDeleted: { $ne: true } } },
     { $match: filter },
     {
+      $lookup: {
+        from: 'departments',
+        localField: 'departmentId',
+        foreignField: '_id',
+        as: 'dept'
+      }
+    },
+    { $unwind: { path: '$dept', preserveNullAndEmptyArrays: true } },
+    {
       $group: {
         _id: {
-          department: '$departmentName',
+          departmentId: '$departmentId',
+          departmentName: '$dept.name',
           program: '$program',
           semester: '$semester'
         },
@@ -311,7 +338,8 @@ export const getCourseFeeSummary = handle(async (req, res) => {
     },
     {
       $group: {
-        _id: '$_id.department',
+        _id: '$_id.departmentId',
+        departmentName: { $first: '$_id.departmentName' },
         programs: {
           $push: {
             program: '$_id.program',
@@ -338,10 +366,10 @@ export const getCourseFeeSummary = handle(async (req, res) => {
 
 // GET /api/courses/enrollment-stats - Get course enrollment statistics
 export const getCourseEnrollmentStats = handle(async (req, res) => {
-  const { department, program } = req.query;
+  const { departmentId, program } = req.query;
   
   const filter = { isActive: true, isDeleted: { $ne: true } };
-  if (department) filter.departmentName = department;
+  if (departmentId) filter.departmentId = departmentId;
   if (program) filter.program = program;
   
   const stats = await Course.aggregate([
@@ -367,7 +395,8 @@ export const getCourseEnrollmentStats = handle(async (req, res) => {
   const topCourses = await Course.find(filter)
     .sort({ enrolledStudents: -1 })
     .limit(10)
-    .select('code name enrolledStudents capacity departmentName program');
+    .populate('departmentId', 'name code')
+    .select('code name enrolledStudents capacity program');
   
   res.json({
     success: true,
@@ -412,8 +441,18 @@ export const getCourseStats = handle(async (req, res) => {
   const deptStats = await Course.aggregate([
     { $match: { isDeleted: { $ne: true } } },
     {
+      $lookup: {
+        from: 'departments',
+        localField: 'departmentId',
+        foreignField: '_id',
+        as: 'dept'
+      }
+    },
+    { $unwind: { path: '$dept', preserveNullAndEmptyArrays: true } },
+    {
       $group: {
-        _id: '$departmentName',
+        _id: '$departmentId',
+        departmentName: { $first: '$dept.name' },
         count: { $sum: 1 },
         totalEnrolled: { $sum: '$enrolledStudents' },
         totalFee: { $sum: '$totalFee' }
@@ -552,7 +591,7 @@ export const getCourseEnrollments = handle(async (req, res) => {
         availableSeats: course.capacity - course.enrolledStudents,
         isFull: course.enrolledStudents >= course.capacity
       },
-      students: [] // Would fetch from enrollment model
+      students: []
     }
   });
 });
@@ -564,9 +603,10 @@ export const createCourse = handle(async (req, res) => {
   const { 
     code, 
     name, 
-    department, 
+    departmentId,
     credits, 
     program, 
+    programId,
     semester,
     semesterType,
     year,
@@ -586,9 +626,7 @@ export const createCourse = handle(async (req, res) => {
     schedule
   } = req.body;
 
-  
-  // Validate required fields with proper checks
-  const requiredFields = ['code', 'name', 'department', 'credits', 'program', 'semester'];
+  const requiredFields = ['code', 'name', 'departmentId', 'credits', 'program', 'semester'];
   const missingFields = requiredFields.filter(function(field) {
     const value = req.body[field];
     return value === undefined || value === null || value === '';
@@ -602,11 +640,8 @@ export const createCourse = handle(async (req, res) => {
     });
   }
 
-  // Normalize inputs
   const normalizedCode = String(code).toUpperCase().trim();
   const normalizedName = String(name).trim();
-  const normalizedDepartment = String(department).trim();
-  const normalizedProgram = String(program).toUpperCase().trim();
   const parsedCredits = Number(credits) || 3;
   const parsedSemester = Number(semester) || 1;
   const parsedFeePerCredit = Number(feePerCredit) || 0;
@@ -615,7 +650,7 @@ export const createCourse = handle(async (req, res) => {
   const parsedYear = Number(year) || new Date().getFullYear();
 
   // Check if course code already exists
-  const existingCode = await Course.findOne({ code: normalizedCode });
+  const existingCode = await Course.findOne({ code: normalizedCode, isDeleted: { $ne: true } });
   if (existingCode) {
     return res.status(400).json({
       success: false,
@@ -624,21 +659,34 @@ export const createCourse = handle(async (req, res) => {
   }
 
   // Check if department exists
-  const deptExists = await Department.findOne({ name: normalizedDepartment });
+  const deptExists = await Department.findOne({ _id: departmentId, isDeleted: { $ne: true } });
   if (!deptExists) {
     return res.status(400).json({
       success: false,
-      message: 'Department \'' + normalizedDepartment + '\' not found. Please create the department first.'
+      message: 'Department not found. Please create the department first.'
     });
   }
 
-  // Prepare course data with defaults
+  // Validate instructorId if provided (must be a Teacher)
+  if (instructorId) {
+    const teacherExists = await Teacher.findOne({ _id: instructorId, isDeleted: { $ne: true } });
+    if (!teacherExists) {
+      return res.status(400).json({
+        success: false,
+        message: 'Teacher not found for instructorId'
+      });
+    }
+  }
+
+  const courseId = await generateCourseId();
+
   const courseData = {
+    courseId,
     code: normalizedCode,
     name: normalizedName,
-    department: normalizedDepartment,
-    departmentName: normalizedDepartment,
-    program: normalizedProgram,
+    departmentId,
+    program: String(program).toUpperCase().trim(),
+    programId: programId || null,
     semester: parsedSemester,
     semesterType: semesterType || 'Fall',
     year: parsedYear,
@@ -668,18 +716,21 @@ export const createCourse = handle(async (req, res) => {
       if (schedule.building) trimmedSchedule.building = String(schedule.building).trim();
       return Object.keys(trimmedSchedule).length > 0 ? { schedule: trimmedSchedule } : {};
     })(),
-    createdBy: (req.user && req.user.id) || null,
+    createdBy: (req.user && req.user._id) || null,
     lastUpdatedAt: new Date(),
     totalFee: parsedCredits * parsedFeePerCredit
   };
 
-
   const course = new Course(courseData);
   await course.save();
 
+  const populated = await Course.findById(course._id)
+    .populate('departmentId', 'name code')
+    .populate('instructorId', 'name email designation');
+
   res.status(201).json({
     success: true,
-    data: course,
+    data: populated,
     message: 'Course created successfully'
   });
 });
@@ -703,18 +754,18 @@ export const createBulkCourses = handle(async (req, res) => {
   }
 
   const invalidCourses = courses.filter(function(c) {
-    return !c.code || !c.name || !c.department || !c.credits || !c.program || !c.semester;
+    return !c.code || !c.name || !c.departmentId || !c.credits || !c.program || !c.semester;
   });
   if (invalidCourses.length > 0) {
     return res.status(400).json({
       success: false,
-      message: 'Each course must have code, name, department, credits, program and semester',
+      message: 'Each course must have code, name, departmentId, credits, program and semester',
       invalidCount: invalidCourses.length
     });
   }
 
   const codes = courses.map(function(c) { return c.code.toUpperCase(); });
-  const existingCodes = await Course.find({ code: { $in: codes } });
+  const existingCodes = await Course.find({ code: { $in: codes }, isDeleted: { $ne: true } });
   if (existingCodes.length > 0) {
     return res.status(400).json({
       success: false,
@@ -723,11 +774,11 @@ export const createBulkCourses = handle(async (req, res) => {
     });
   }
 
-  const departments = [...new Set(courses.map(function(c) { return c.department; }))];
-  const existingDepts = await Department.find({ name: { $in: departments } });
-  const existingDeptNames = existingDepts.map(function(d) { return d.name; });
-  const missingDepts = departments.filter(function(d) {
-    return !existingDeptNames.includes(d);
+  const deptIds = [...new Set(courses.map(function(c) { return c.departmentId; }))];
+  const existingDepts = await Department.find({ _id: { $in: deptIds }, isDeleted: { $ne: true } });
+  const existingDeptIds = existingDepts.map(function(d) { return d._id.toString(); });
+  const missingDepts = deptIds.filter(function(d) {
+    return !existingDeptIds.includes(d);
   });
   
   if (missingDepts.length > 0) {
@@ -738,18 +789,26 @@ export const createBulkCourses = handle(async (req, res) => {
     });
   }
 
-  const coursesWithDept = courses.map(function(c) {
+  // Generate courseIds for all courses
+  const lastCourse = await Course.findOne({ isDeleted: { $ne: true } }).sort({ courseId: -1 });
+  let startIndex = 1;
+  if (lastCourse && lastCourse.courseId) {
+    const m = lastCourse.courseId.match(/CRS-(\d+)/);
+    if (m) startIndex = parseInt(m[1], 10) + 1;
+  }
+
+  const coursesWithIds = courses.map(function(c, i) {
     return {
       ...c,
-      departmentName: c.department,
+      courseId: 'CRS-' + String(startIndex + i).padStart(4, '0'),
       code: c.code.toUpperCase(),
-      totalFee: c.credits * (c.feePerCredit || 0),
-      createdBy: (req.user && req.user.id) || null,
+      totalFee: (c.credits || 0) * (c.feePerCredit || 0),
+      createdBy: (req.user && req.user._id) || null,
       lastUpdatedAt: new Date()
     };
   });
 
-  const createdCourses = await Course.insertMany(coursesWithDept);
+  const createdCourses = await Course.insertMany(coursesWithIds);
   
   res.status(201).json({
     success: true,
@@ -776,7 +835,7 @@ export const bulkUpdateCourseFees = handle(async (req, res) => {
     try {
       const { courseId, feePerCredit, isFeeApplied, feeType } = updateData;
       
-      const course = await Course.findOne({ courseId });
+      const course = await Course.findOne({ courseId, isDeleted: { $ne: true } });
       if (!course) {
         errors.push({ courseId: courseId, error: 'Course not found' });
         continue;
@@ -789,7 +848,7 @@ export const bulkUpdateCourseFees = handle(async (req, res) => {
       if (isFeeApplied !== undefined) course.isFeeApplied = isFeeApplied;
       if (feeType !== undefined) course.feeType = feeType;
       
-      course.updatedBy = (req.user && req.user.id) || null;
+      course.updatedBy = (req.user && req.user._id) || null;
       course.lastUpdatedAt = new Date();
       
       await course.save();
@@ -822,9 +881,23 @@ export const assignInstructor = handle(async (req, res) => {
     });
   }
   
-  course.instructorId = instructorId;
-  if (instructorName) course.instructor = instructorName;
-  course.updatedBy = (req.user && req.user.id) || null;
+  if (instructorId) {
+    const teacher = await Teacher.findOne({ _id: instructorId, isDeleted: { $ne: true } });
+    if (!teacher) {
+      return res.status(400).json({
+        success: false,
+        message: 'Teacher not found'
+      });
+    }
+    course.instructorId = instructorId;
+    if (instructorName) course.instructor = instructorName;
+    else course.instructor = teacher.name;
+  } else {
+    course.instructorId = null;
+    course.instructor = instructorName || '';
+  }
+  
+  course.updatedBy = (req.user && req.user._id) || null;
   course.lastUpdatedAt = new Date();
   
   await course.save();
@@ -849,9 +922,8 @@ export const addPrerequisite = handle(async (req, res) => {
     });
   }
   
-  // Add prerequisite by code
   if (prerequisiteCode) {
-    const prereq = await Course.findOne({ code: prerequisiteCode.toUpperCase() });
+    const prereq = await Course.findOne({ code: prerequisiteCode.toUpperCase(), isDeleted: { $ne: true } });
     if (!prereq) {
       return res.status(404).json({
         success: false,
@@ -865,7 +937,7 @@ export const addPrerequisite = handle(async (req, res) => {
       }
     }
   } else if (prerequisiteId) {
-    const prereq = await Course.findOne({ courseId: prerequisiteId });
+    const prereq = await Course.findOne({ courseId: prerequisiteId, isDeleted: { $ne: true } });
     if (!prereq) {
       return res.status(404).json({
         success: false,
@@ -880,7 +952,7 @@ export const addPrerequisite = handle(async (req, res) => {
     }
   }
   
-  course.updatedBy = (req.user && req.user.id) || null;
+  course.updatedBy = (req.user && req.user._id) || null;
   course.lastUpdatedAt = new Date();
   await course.save();
   
@@ -894,7 +966,6 @@ export const addPrerequisite = handle(async (req, res) => {
 // POST /api/courses/:id/enroll - Enroll student in course
 export const enrollStudent = handle(async (req, res) => {
   const { id } = req.params;
-  const { studentId } = req.body;
   
   const course = await Course.findOne({ courseId: id, isDeleted: { $ne: true } });
   if (!course) {
@@ -904,7 +975,6 @@ export const enrollStudent = handle(async (req, res) => {
     });
   }
   
-  // Check if course is full
   if (course.enrolledStudents >= course.capacity) {
     course.waitlistCount += 1;
     await course.save();
@@ -916,7 +986,7 @@ export const enrollStudent = handle(async (req, res) => {
   }
   
   course.enrolledStudents += 1;
-  course.updatedBy = (req.user && req.user.id) || null;
+  course.updatedBy = (req.user && req.user._id) || null;
   course.lastUpdatedAt = new Date();
   await course.save();
   
@@ -944,7 +1014,8 @@ export const updateCourse = handle(async (req, res) => {
   if (req.body.code) {
     const duplicate = await Course.findOne({
       code: req.body.code.toUpperCase(),
-      courseId: { $ne: id }
+      courseId: { $ne: id },
+      isDeleted: { $ne: true }
     });
     if (duplicate) {
       return res.status(400).json({
@@ -954,15 +1025,34 @@ export const updateCourse = handle(async (req, res) => {
     }
   }
 
-  if (req.body.department) {
-    const deptExists = await Department.findOne({ name: req.body.department });
+  if (req.body.departmentId) {
+    const deptExists = await Department.findOne({ _id: req.body.departmentId, isDeleted: { $ne: true } });
     if (!deptExists) {
       return res.status(400).json({
         success: false,
-        message: 'Department \'' + req.body.department + '\' not found'
+        message: 'Department not found'
       });
     }
-    req.body.departmentName = req.body.department;
+  }
+
+  if (req.body.programId) {
+    const programExists = await mongoose.model('Program').findOne({ _id: req.body.programId, isDeleted: { $ne: true } });
+    if (!programExists) {
+      return res.status(400).json({
+        success: false,
+        message: 'Program not found'
+      });
+    }
+  }
+
+  if (req.body.instructorId) {
+    const teacherExists = await Teacher.findOne({ _id: req.body.instructorId, isDeleted: { $ne: true } });
+    if (!teacherExists) {
+      return res.status(400).json({
+        success: false,
+        message: 'Teacher not found for instructorId'
+      });
+    }
   }
 
   // Recalculate total fee if credits or feePerCredit changed
@@ -972,7 +1062,7 @@ export const updateCourse = handle(async (req, res) => {
     req.body.totalFee = credits * feePerCredit;
   }
 
-  req.body.updatedBy = (req.user && req.user.id) || null;
+  req.body.updatedBy = (req.user && req.user._id) || null;
   req.body.lastUpdatedAt = new Date();
 
   const { courseId, isDeleted, deletedAt, deletedBy, _id, createdAt, updatedAt, ...updateData } = req.body;
@@ -982,6 +1072,7 @@ export const updateCourse = handle(async (req, res) => {
     updateData,
     { new: true, runValidators: true }
   )
+  .populate('departmentId', 'name code')
   .populate('instructorId', 'name email')
   .populate('prerequisitesCourses', 'code name')
   .select('-__v');
@@ -1012,7 +1103,7 @@ export const updateCourseFee = handle(async (req, res) => {
   if (isFeeApplied !== undefined) course.isFeeApplied = isFeeApplied;
   if (feeType !== undefined) course.feeType = feeType;
   
-  course.updatedBy = (req.user && req.user.id) || null;
+  course.updatedBy = (req.user && req.user._id) || null;
   course.lastUpdatedAt = new Date();
   
   await course.save();
@@ -1045,7 +1136,7 @@ export const updateCourseCapacity = handle(async (req, res) => {
   }
   
   course.capacity = capacity;
-  course.updatedBy = (req.user && req.user.id) || null;
+  course.updatedBy = (req.user && req.user._id) || null;
   course.lastUpdatedAt = new Date();
   await course.save();
   
@@ -1070,7 +1161,7 @@ export const updateCourseSchedule = handle(async (req, res) => {
   }
   
   course.schedule = schedule;
-  course.updatedBy = (req.user && req.user.id) || null;
+  course.updatedBy = (req.user && req.user._id) || null;
   course.lastUpdatedAt = new Date();
   await course.save();
   
@@ -1095,7 +1186,7 @@ export const toggleCourseStatus = handle(async (req, res) => {
   
   course.isActive = !course.isActive;
   course.status = course.isActive ? 'Active' : 'Inactive';
-  course.updatedBy = (req.user && req.user.id) || null;
+  course.updatedBy = (req.user && req.user._id) || null;
   course.lastUpdatedAt = new Date();
   
   await course.save();
@@ -1120,7 +1211,7 @@ export const bulkUpdateCourseStatus = handle(async (req, res) => {
   
   const updateData = { 
     lastUpdatedAt: new Date(),
-    updatedBy: (req.user && req.user.id) || null 
+    updatedBy: (req.user && req.user._id) || null 
   };
   
   if (status !== undefined) updateData.status = status;
@@ -1158,13 +1249,12 @@ export const applyFeeWaiver = handle(async (req, res) => {
     });
   }
   
-  // Apply waiver by reducing fee per credit
   const originalFee = course.feePerCredit;
   const discountedFee = originalFee * (1 - waiverPercentage / 100);
   course.feePerCredit = Math.round(discountedFee);
   course.totalFee = course.credits * course.feePerCredit;
   
-  course.updatedBy = (req.user && req.user.id) || null;
+  course.updatedBy = (req.user && req.user._id) || null;
   course.lastUpdatedAt = new Date();
   await course.save();
   
@@ -1195,8 +1285,6 @@ export const removeFeeWaiver = handle(async (req, res) => {
     });
   }
   
-  // Restore original fee (you'd need to store original fee in schema)
-  // For now, we'll just set a message
   res.json({
     success: true,
     message: 'Fee waiver removed. Please update fee manually if needed.',
@@ -1209,14 +1297,19 @@ export const removeFeeWaiver = handle(async (req, res) => {
 // DELETE /api/courses/:id - Delete course
 export const deleteCourse = handle(async (req, res) => {
   const { id } = req.params;
-  const course = await Course.findOneAndDelete({ courseId: id });
   
+  const course = await Course.findOne({ courseId: id, isDeleted: { $ne: true } });
   if (!course) {
     return res.status(404).json({
       success: false,
       message: 'Course ' + id + ' not found'
     });
   }
+
+  course.isDeleted = true;
+  course.deletedAt = new Date();
+  course.deletedBy = (req.user && req.user._id) || null;
+  await course.save();
 
   res.json({
     success: true,
@@ -1238,18 +1331,19 @@ export const bulkDeleteCourses = handle(async (req, res) => {
   
   let result;
   if (softDelete) {
-    // Soft delete - mark as inactive
     result = await Course.updateMany(
       { courseId: { $in: courseIds } },
       { 
         isActive: false, 
         status: 'Inactive',
+        isDeleted: true,
+        deletedAt: new Date(),
+        deletedBy: (req.user && req.user._id) || null,
         lastUpdatedAt: new Date(),
-        updatedBy: (req.user && req.user.id) || null
+        updatedBy: (req.user && req.user._id) || null
       }
     );
   } else {
-    // Hard delete - remove permanently
     result = await Course.deleteMany({ courseId: { $in: courseIds } });
   }
   
@@ -1274,7 +1368,7 @@ export const removeInstructor = handle(async (req, res) => {
   
   course.instructorId = null;
   course.instructor = '';
-  course.updatedBy = (req.user && req.user.id) || null;
+  course.updatedBy = (req.user && req.user._id) || null;
   course.lastUpdatedAt = new Date();
   await course.save();
   
@@ -1297,7 +1391,6 @@ export const removePrerequisite = handle(async (req, res) => {
     });
   }
   
-  // Remove from prerequisites array
   const prereq = await Course.findOne({ courseId: prerequisiteId, isDeleted: { $ne: true } });
   if (prereq) {
     course.prerequisites = course.prerequisites.filter(function(p) {
@@ -1308,7 +1401,7 @@ export const removePrerequisite = handle(async (req, res) => {
     });
   }
   
-  course.updatedBy = (req.user && req.user.id) || null;
+  course.updatedBy = (req.user && req.user._id) || null;
   course.lastUpdatedAt = new Date();
   await course.save();
   
@@ -1321,7 +1414,7 @@ export const removePrerequisite = handle(async (req, res) => {
 
 // DELETE /api/courses/:id/drop/:studentId - Drop student from course
 export const dropStudent = handle(async (req, res) => {
-  const { id, studentId } = req.params;
+  const { id } = req.params;
   
   const course = await Course.findOne({ courseId: id, isDeleted: { $ne: true } });
   if (!course) {
@@ -1335,13 +1428,12 @@ export const dropStudent = handle(async (req, res) => {
     course.enrolledStudents -= 1;
   }
   
-  // If there are students on waitlist, enroll the next one
   if (course.waitlistCount > 0) {
     course.waitlistCount -= 1;
     course.enrolledStudents += 1;
   }
   
-  course.updatedBy = (req.user && req.user.id) || null;
+  course.updatedBy = (req.user && req.user._id) || null;
   course.lastUpdatedAt = new Date();
   await course.save();
   
@@ -1367,7 +1459,7 @@ export const removeTextbook = handle(async (req, res) => {
   course.textbooks = course.textbooks.filter(function(_, index) {
     return index.toString() !== textbookId;
   });
-  course.updatedBy = (req.user && req.user.id) || null;
+  course.updatedBy = (req.user && req.user._id) || null;
   course.lastUpdatedAt = new Date();
   await course.save();
   
@@ -1393,7 +1485,7 @@ export const removeLearningOutcome = handle(async (req, res) => {
   course.learningOutcomes = course.learningOutcomes.filter(function(_, index) {
     return index.toString() !== outcomeId;
   });
-  course.updatedBy = (req.user && req.user.id) || null;
+  course.updatedBy = (req.user && req.user._id) || null;
   course.lastUpdatedAt = new Date();
   await course.save();
   
@@ -1420,7 +1512,7 @@ export const addTextbook = handle(async (req, res) => {
   }
   
   course.textbooks.push({ title, author, isbn, edition });
-  course.updatedBy = (req.user && req.user.id) || null;
+  course.updatedBy = (req.user && req.user._id) || null;
   course.lastUpdatedAt = new Date();
   await course.save();
   
@@ -1445,7 +1537,7 @@ export const addLearningOutcome = handle(async (req, res) => {
   }
   
   course.learningOutcomes.push(outcome);
-  course.updatedBy = (req.user && req.user.id) || null;
+  course.updatedBy = (req.user && req.user._id) || null;
   course.lastUpdatedAt = new Date();
   await course.save();
   
@@ -1470,17 +1562,14 @@ export const checkSeeded = handle(async (req, res) => {
 
 // POST /api/courses/seed - Seed all courses
 export const seedAllCourses = handle(async (req, res) => {
-  // Check existing courses. Allow forced reseed with ?force=true
   const count = await Course.countDocuments({ isDeleted: { $ne: true } });
   if (req.query.force === 'true' && count > 0) {
     await Course.deleteMany({});
   }
 
-  // Define all courses - 5 Programs x 8 Semesters x 5 Courses each = 200 courses
   const courseData = [];
 
-  // Helper function to generate courses for a program
-  const generateProgramCourses = function(programCode, programName, department) {
+  const generateProgramCourses = async function(programCode, programName, departmentName) {
     const courses = [];
     const baseFee = {
       'BSCS': { fee: 5000, dept: 'Computer Science' },
@@ -1490,9 +1579,12 @@ export const seedAllCourses = handle(async (req, res) => {
       'BBA': { fee: 4500, dept: 'Business Administration' }
     };
 
-    const feeInfo = baseFee[programCode] || { fee: 4500, dept: department };
-    const deptName = feeInfo.dept;
+    const feeInfo = baseFee[programCode] || { fee: 4500, dept: departmentName };
     const baseFeeAmount = feeInfo.fee;
+
+    // Lookup department by name to get _id
+    const dept = await Department.findOne({ name: feeInfo.dept, isDeleted: { $ne: true } }).lean();
+    const departmentId = dept ? dept._id : null;
 
     const semesterCourses = {
       1: [
@@ -1560,11 +1652,11 @@ export const seedAllCourses = handle(async (req, res) => {
       
       semCourses.forEach(function(course, index) {
         const feePerCredit = baseFeeAmount + (sem > 4 ? 500 : 0) + (index % 2 === 0 ? 0 : -500);
-        const credits = sem === 8 && index === 3 ? 2 : 3; // Professional Practices has 2 credits
+        const credits = sem === 8 && index === 3 ? 2 : 3;
         courses.push({
           code: course.code,
           name: course.name,
-          department: deptName,
+          departmentId: departmentId,
           program: programCode,
           semester: sem,
           credits: credits,
@@ -1575,15 +1667,13 @@ export const seedAllCourses = handle(async (req, res) => {
           capacity: 30,
           enrolledStudents: 0,
           semesterType: semesterType,
-          year: year,
-          departmentName: deptName
+          year: year
         });
       });
     }
     return courses;
   };
 
-  // Generate courses for all programs
   const programs = [
     { code: 'BSCS', name: 'Computer Science' },
     { code: 'BSSE', name: 'Software Engineering' },
@@ -1592,12 +1682,11 @@ export const seedAllCourses = handle(async (req, res) => {
     { code: 'BBA', name: 'Business Administration' }
   ];
 
-  programs.forEach(function(prog) {
-    const courses = generateProgramCourses(prog.code, prog.name, prog.name);
+  for (const prog of programs) {
+    const courses = await generateProgramCourses(prog.code, prog.name, prog.name);
     courseData.push.apply(courseData, courses);
-  });
+  }
 
-  // Prepare courseData: ensure unique courseId, totalFee and timestamps before insertMany
   let startIndex = 1;
   const lastCourse = await Course.findOne({ isDeleted: { $ne: true } }).sort({ courseId: -1 });
   if (lastCourse && lastCourse.courseId) {
@@ -1614,21 +1703,19 @@ export const seedAllCourses = handle(async (req, res) => {
     };
   });
 
-  // Insert all courses using unordered inserts so valid docs still save
   let insertedCount = 0;
   try {
     const result = await Course.insertMany(prepared, { ordered: false });
     insertedCount = result.length;
   } catch (insertErr) {
-    // ordered:false will insert valid docs and throw for duplicates/validation
     console.warn('⚠️ Partial insert during seeding courses:', insertErr.message || insertErr);
-    // Count how many were actually inserted by checking courseId values we generated
     const inserted = await Course.find({ courseId: { $in: prepared.map(function(p) { return p.courseId; }) } });
     insertedCount = inserted.length;
   }
 
-  // Return the courses that now exist for the seeded courseIds
-  const createdCourses = await Course.find({ courseId: { $in: prepared.map(function(p) { return p.courseId; }) } }).sort({ program: 1, semester: 1, code: 1 });
+  const createdCourses = await Course.find({ courseId: { $in: prepared.map(function(p) { return p.courseId; }) } })
+    .populate('departmentId', 'name code')
+    .sort({ program: 1, semester: 1, code: 1 });
 
   res.status(201).json({
     success: true,

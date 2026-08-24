@@ -68,7 +68,8 @@ import address from "./address.js";
 ## Single-University Architecture
 
 - The system manages one university; everything else is campus-scoped.
-- Only `User` and `Campus` carry a `universityId` reference. Other models (Department, Course, Fee, ...) are NOT university/campus-scoped.
+- Only `User` and `Campus` carry a `universityId` reference. Other models (Course, Fee, ...) are NOT university/campus-scoped.
+- `Department` is campus-scoped via `campusId` (ref Campus).
 - Deleting a university soft-deletes it and cascades a soft-delete to all `User` and `Campus` documents with that `universityId`.
 
 ## Soft Delete
@@ -83,12 +84,13 @@ import address from "./address.js";
 
 - Roles: `Admin`, `Teacher`, `Student`, `Staff`. No Super Admin. Default role on user creation is `Student`.
 - Admin is seeded at startup by `backend/scripts/seedAdmin.js` (`seedDefaultAdmin`) from env vars `ADMIN_FIRST_NAME`, `ADMIN_LAST_NAME`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`, with role `Admin` and no `universityId`.
+- `createTeacher` auto-creates a User account (role: 'Teacher') and a Teacher profile. The User and Teacher are linked via `Teacher.userId`.
 - `createUniversity` does NOT create an admin user or JWT. It only creates the university and links existing role-`Admin` users without a `universityId` to it.
 - Auth middleware (`backend/middleware/auth.js`) exposes:
   - `auth` — verifies JWT, attaches `req.user`.
   - `authorize(...roles)` — returns 403 if `req.user.role` is not in the allowed list.
 - Route files apply permissions via `router.use(auth)` and `router.use(auth, authorize("Admin"))`, never inline in controllers.
-  - Admin-only modules: university, campus, settings, finance, hr.
+  - Admin-only modules: university, campus, settings, finance, hr, programs.
   - Admin/Staff: fee, feeStructure.
   - Authenticated only: student, teacher, course, attendance, admissions, assignments, exams, books, transport, events, reports, dashboard, notifications, semesters, batches, academic-sessions.
   - Public: `POST /api/auth/login`, `POST /api/auth/register`, `POST /api/universities`.
@@ -120,10 +122,38 @@ Only four endpoints — no `:id` params because there is exactly one university:
 
 - Role enum: `['Admin', 'Teacher', 'Student', 'Staff']`.
 - Has soft-delete fields (see Soft Delete section).
+- No `campusId`, `department`, or `designation` fields — Teacher/Student carry their own refs.
 
 ## Shared Utilities
 
 - `backend/utils/asyncHandler.js` — wraps all controller functions for centralized error handling
 - `backend/utils/generateUniversityId.js` — atomic sequential ID generation (`UNI-000001`)
 - `backend/utils/generateCampusId.js` — atomic sequential ID generation (`CMP-001`)
+- `backend/utils/generateDepartmentId.js` — atomic sequential ID generation (`DEPT-0001`)
+- `backend/utils/generateTeacherId.js` — atomic sequential ID generation (`FAC-0001`)
+- `backend/utils/generateCourseId.js` — atomic sequential ID generation (`CRS-0001`)
+- `backend/utils/generateProgramId.js` — atomic sequential ID generation (`PRG-0001`)
 - `backend/config/constants.js` — JWT secret and expiry, fails fast if `JWT_SECRET_Key` env var is missing
+
+## Foundational Model Relationships
+
+```
+University
+  └── Campus (universityId ref)
+        └── Department (campusId ref)
+              ├── headId → Teacher (nullable)
+              ├── Program (departmentId ref)
+              │     └── Course (programId ref + program string denormalized)
+              └── Course (departmentId ref)
+                    └── instructorId → Teacher (nullable)
+Teacher (userId ref → User, departmentId ref → Department)
+User (role: Admin | Teacher | Student | Staff)
+```
+
+- **Teacher ↔ User**: creating a Teacher auto-creates a User (role: 'Teacher'). Teacher has `userId` ref. Soft-deleting a Teacher also soft-deletes the linked User.
+- **Department**: belongs to a Campus (`campusId`). Head is a Teacher (`headId`, nullable). Name+campusId and code+campusId are unique together.
+- **Program**: belongs to a Department (`departmentId`). Has `code` (e.g. BSCS), `degreeLevel`, `duration`, `totalCredits`. Program code is globally unique.
+- **Course**: belongs to a Department (`departmentId`) and a Program (`programId`). Instructor is a Teacher (`instructorId`, nullable). `program` string kept as denormalized display name.
+- **Attendance**: has `departmentId` ref (nullable for backward compat) + `department` string denormalized from Student.
+- **Batch**: has `departmentId` ref + `department` string denormalized from Department.
+- **Student**: left for later — still uses hardcoded `department` and `campus` strings, no User link.

@@ -60,7 +60,7 @@ router.get("/stats", getCourseStats);
 router.get("/enrollment-stats", getCourseEnrollmentStats);
 router.get("/fee-summary", getCourseFeeSummary);
 router.get("/with-fee", getCoursesWithFee);
-router.get("/department/:department", getCoursesByDepartment);
+router.get("/department/:departmentId", getCoursesByDepartment);
 router.get("/program/:program", getCoursesByProgram);
 router.get("/semester/:semester", getCoursesBySemester);
 router.get("/instructor/:instructorId", getCoursesByInstructor);

@@ -6,7 +6,6 @@ import {
   createTeacher,
   updateTeacher,
   deleteTeacher,
-  bulkCreateTeachers,
   getTeacherStats
 } from "../controllers/teacher.controller.js";
 
@@ -18,7 +17,6 @@ router.get("/", getTeachers);
 router.get("/stats", getTeacherStats);
 router.get("/:id", getTeacherById);
 router.post("/", createTeacher);
-router.post("/bulk", bulkCreateTeachers);
 router.put("/:id", updateTeacher);
 router.delete("/:id", deleteTeacher);
 

@@ -61,11 +61,7 @@ export function SettingsPage() {
     name: '',
     email: '',
     phone: '',
-    department: '',
-    designation: '',
     bio: '',
-    location: '',
-    profileImage: ''
   });
 
   // Password change state
@@ -119,14 +115,10 @@ export function SettingsPage() {
         setAdminProfile(profileResult.value.data);
         const admin = profileResult.value.data;
         setAdminForm({
-          name: admin.name || '',
+          name: admin.name || `${admin.firstName || ''} ${admin.lastName || ''}`.trim() || '',
           email: admin.email || '',
-          phone: admin.phone || '',
-          department: admin.department || '',
-          designation: admin.designation || '',
+          phone: admin.phoneNumber || admin.phone || '',
           bio: admin.bio || '',
-          location: admin.location || '',
-          profileImage: admin.profileImage || ''
         });
       } else if (profileResult.status === 'rejected') {
         console.warn('Profile refresh failed, continuing with settings view:', profileResult.reason);
@@ -418,7 +410,6 @@ export function SettingsPage() {
           <CardHeader>
             <div className="flex items-center gap-4">
               <Avatar className="h-16 w-16">
-                <AvatarImage src={adminForm.profileImage} />
                 <AvatarFallback className="text-lg gradient-brand text-white">
                   {getInitials(adminForm.name)}
                 </AvatarFallback>
@@ -462,33 +453,6 @@ export function SettingsPage() {
                   value={adminForm.phone} 
                   onChange={handleAdminInput}
                   placeholder="+92 300 1234567"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Department</Label>
-                <Input 
-                  name="department"
-                  value={adminForm.department} 
-                  onChange={handleAdminInput}
-                  placeholder="e.g., Administration"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Designation</Label>
-                <Input 
-                  name="designation"
-                  value={adminForm.designation} 
-                  onChange={handleAdminInput}
-                  placeholder="e.g., System Administrator"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Location</Label>
-                <Input 
-                  name="location"
-                  value={adminForm.location} 
-                  onChange={handleAdminInput}
-                  placeholder="e.g., Islamabad, Pakistan"
                 />
               </div>
               <div className="md:col-span-2 space-y-1.5">

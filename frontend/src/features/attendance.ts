@@ -13,6 +13,7 @@ export interface AttendanceRecord {
   program: string;
   semester: number;
   department: string;
+  departmentId?: string;
   date: string;
   status: Exclude<AttendanceStatus, 'Not Marked'>;
   checkInTime?: string;
@@ -51,7 +52,7 @@ export const attendanceAPI = {
     date?: string;
     program?: string;
     semester?: number;
-    department?: string;
+    departmentId?: string;
     status?: string;
     studentId?: string;
     page?: number;
@@ -61,7 +62,7 @@ export const attendanceAPI = {
     if (params?.date) queryParams.append('date', params.date);
     if (params?.program) queryParams.append('program', params.program);
     if (params?.semester) queryParams.append('semester', params.semester.toString());
-    if (params?.department) queryParams.append('department', params.department);
+    if (params?.departmentId) queryParams.append('departmentId', params.departmentId);
     if (params?.status) queryParams.append('status', params.status);
     if (params?.studentId) queryParams.append('studentId', params.studentId);
     if (params?.page) queryParams.append('page', params.page.toString());
@@ -75,12 +76,12 @@ export const attendanceAPI = {
   getStudentsForAttendance: (params: {
     program: string;
     semester: number;
-    department: string;
+    departmentId: string;
   }) => {
     const queryParams = new URLSearchParams();
     queryParams.append('program', params.program);
     queryParams.append('semester', params.semester.toString());
-    queryParams.append('department', params.department);
+    queryParams.append('departmentId', params.departmentId);
     return apiClient.get(`/attendance/students?${queryParams.toString()}`);
   },
 
@@ -94,7 +95,7 @@ export const attendanceAPI = {
     date?: string;
     program: string;
     semester: number;
-    department: string;
+    departmentId: string;
     markedBy?: string;
     course?: string;
   }) => apiClient.post('/attendance/mark', data),
@@ -112,14 +113,14 @@ export const attendanceAPI = {
   getStats: (params?: {
     program?: string;
     semester?: number;
-    department?: string;
+    departmentId?: string;
     startDate?: string;
     endDate?: string;
   }) => {
     const queryParams = new URLSearchParams();
     if (params?.program) queryParams.append('program', params.program);
     if (params?.semester) queryParams.append('semester', params.semester.toString());
-    if (params?.department) queryParams.append('department', params.department);
+    if (params?.departmentId) queryParams.append('departmentId', params.departmentId);
     if (params?.startDate) queryParams.append('startDate', params.startDate);
     if (params?.endDate) queryParams.append('endDate', params.endDate);
     

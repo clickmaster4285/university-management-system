@@ -5,7 +5,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 
 // Ensure we load the backend .env regardless of current working directory
-import { Course, Department } from '../models/index.js';
+import { Course, Department, Program } from '../models/index.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 dotenv.config({ path: path.join(__dirname, '../../.env') });
@@ -272,8 +272,7 @@ const coursesWithStatus = courseData.map(course => ({
   enrolledStudents: 0,
   semesterType: 'Fall',
   year: new Date().getFullYear(),
-  description: `${course.name} - ${course.code}`,
-  departmentName: course.department
+  description: `${course.name} - ${course.code}`
 }));
 
 export async function seedCourses() {
@@ -286,18 +285,21 @@ export async function seedCourses() {
 
     // Create departments if they don't exist
     const departments = [...new Set(courseData.map(c => c.department))];
+    const deptMap = {};
     for (const deptName of departments) {
-      const existingDept = await Department.findOne({ name: deptName });
+      let existingDept = await Department.findOne({ name: deptName });
       if (!existingDept) {
-        await Department.create({ 
+        existingDept = await Department.create({ 
           name: deptName, 
           code: deptName.substring(0, 3).toUpperCase(),
+          campusId: null,
           isActive: true 
         });
       }
+      deptMap[deptName] = existingDept._id;
     }
 
-    // Prepare courses with unique courseId and totalFee (insertMany bypasses pre-save hooks)
+    // Prepare courses with unique courseId, departmentId, and totalFee
     let startIndex = 1;
     const lastCourse = await Course.findOne().sort({ courseId: -1 });
     if (lastCourse && lastCourse.courseId) {
@@ -308,6 +310,7 @@ export async function seedCourses() {
     const preparedCourses = coursesWithStatus.map((c, i) => ({
       ...c,
       courseId: `CRS-${String(startIndex + i).padStart(4, '0')}`,
+      departmentId: deptMap[c.department] || null,
       totalFee: (c.credits || 0) * (c.feePerCredit || 0),
       lastUpdatedAt: new Date()
     }));

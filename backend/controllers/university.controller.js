@@ -64,6 +64,7 @@ export const createUniversity = handle(async (req, res) => {
       passingGPA: passingGPA || 2.0,
     },
     status: "Active",
+    createdBy: req.user._id,
   });
 
   await university.save();
@@ -122,16 +123,35 @@ export const getUniversity = handle(async (req, res) => {
 
 // 3. UPDATE UNIVERSITY (single update — handles all updates)
 export const updateUniversity = handle(async (req, res) => {
-  const updates = req.body;
+  const body = req.body;
 
-  // Remove fields that shouldn't be updated via the API
-  delete updates._id;
-  delete updates.universityId;
-  delete updates.createdAt;
-  delete updates.updatedAt;
-  delete updates.isDeleted;
-  delete updates.deletedAt;
-  delete updates.deletedBy;
+  // Build nested update object from flat or nested fields
+  const updates = {};
+
+  // Top-level string fields
+  const stringFields = [
+    "universityName", "universityCode", "shortName", "universityType",
+    "registrationNumber", "officialEmail", "phoneNumber", "website", "status",
+  ];
+  for (const field of stringFields) {
+    if (body[field] !== undefined) updates[field] = body[field];
+  }
+
+  // Nested address
+  updates.address = {
+    country: body.country || body.address?.country || "",
+    province: body.province || body.address?.province || "",
+    city: body.city || body.address?.city || "",
+    street: body.address || body.address?.street || "",
+  };
+
+  // Nested academicSettings
+  updates.academicSettings = {
+    academicSystem: body.academicSystem || body.academicSettings?.academicSystem || "Semester",
+    gradingSystem: body.gradingSystem || body.academicSettings?.gradingSystem || "GPA",
+    maxGPA: body.maxGPA ?? body.academicSettings?.maxGPA ?? 4.0,
+    passingGPA: body.passingGPA ?? body.academicSettings?.passingGPA ?? 2.0,
+  };
 
   if (updates.universityCode) {
     updates.universityCode = updates.universityCode.toUpperCase();
@@ -141,9 +161,11 @@ export const updateUniversity = handle(async (req, res) => {
     updates.shortName = updates.shortName.toUpperCase();
   }
 
+  updates.updatedBy = req.user._id;
+
   const university = await University.findOneAndUpdate(
     { isDeleted: { $ne: true } },
-    updates,
+    { $set: updates },
     { new: true, runValidators: true }
   );
 

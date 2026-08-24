@@ -13,7 +13,7 @@ const router = express.Router();
 router.get("/", auth,  getUniversity);
 
 // Protected routes (single-university: no :id params)
-router.post("/", authorize("Admin"), createUniversity);
+router.post("/", auth, authorize("Admin"), createUniversity);
 router.put("/", auth, authorize("Admin"), updateUniversity);
 router.delete("/", auth, authorize("Admin"), deleteUniversity);
 

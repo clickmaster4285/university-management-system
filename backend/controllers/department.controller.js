@@ -1,7 +1,8 @@
 import mongoose from 'mongoose';
 import { handle } from "../utils/asyncHandler.js";
+import { Department, Course, Teacher } from '../models/index.js';
+import { generateDepartmentId } from "../utils/generateDepartmentId.js";
 
-import { Department } from '../models/index.js';
 async function findDepartmentByIdentifier(identifier) {
   const query = [{ departmentId: identifier }];
   if (mongoose.Types.ObjectId.isValid(identifier)) {
@@ -11,12 +12,15 @@ async function findDepartmentByIdentifier(identifier) {
 }
 
 export const getDepartments = handle(async (req, res) => {
-  const { isActive } = req.query;
+  const { campusId, isActive } = req.query;
   const filter = { isDeleted: { $ne: true } };
+  if (campusId) filter.campusId = campusId;
   if (isActive !== undefined) filter.isActive = isActive === 'true';
 
   const departments = await Department.find(filter)
     .sort({ name: 1 })
+    .populate('campusId', 'name campusCode')
+    .populate('headId', 'name email designation')
     .select('-__v');
 
   res.json({
@@ -36,15 +40,20 @@ export const getDepartmentById = handle(async (req, res) => {
     });
   }
 
-  res.json({ success: true, data: department });
+  const populated = await Department.findById(department._id)
+    .populate('campusId', 'name campusCode')
+    .populate('headId', 'name email designation');
+
+  res.json({ success: true, data: populated });
 });
 
 export const createDepartment = handle(async (req, res) => {
   const {
+    campusId,
     name,
     code,
     description,
-    head,
+    headId,
     faculty,
     email,
     phone,
@@ -55,14 +64,25 @@ export const createDepartment = handle(async (req, res) => {
     location
   } = req.body;
 
-  if (!name || !code) {
+  if (!campusId || !name || !code) {
     return res.status(400).json({
       success: false,
-      message: 'Name and code are required'
+      message: 'campusId, name and code are required'
     });
   }
 
+  // Verify campus exists
+  const campus = await mongoose.model('Campus').findOne({ _id: campusId, isDeleted: { $ne: true } });
+  if (!campus) {
+    return res.status(400).json({
+      success: false,
+      message: `Campus ${campusId} not found`
+    });
+  }
+
+  // Check for duplicate name/code within the same campus
   const existing = await Department.findOne({
+    campusId,
     $or: [{ name: name.trim() }, { code: code.toUpperCase().trim() }],
     isDeleted: { $ne: true }
   });
@@ -70,15 +90,30 @@ export const createDepartment = handle(async (req, res) => {
   if (existing) {
     return res.status(400).json({
       success: false,
-      message: 'Department with this name or code already exists'
+      message: 'Department with this name or code already exists in this campus'
     });
   }
 
+  // Verify headId if provided
+  if (headId) {
+    const head = await Teacher.findOne({ _id: headId, isDeleted: { $ne: true } });
+    if (!head) {
+      return res.status(400).json({
+        success: false,
+        message: `Teacher ${headId} not found`
+      });
+    }
+  }
+
+  const departmentId = await generateDepartmentId();
+
   const department = new Department({
+    departmentId,
+    campusId,
     name: name.trim(),
     code: code.toUpperCase().trim(),
     description: description || '',
-    head: head || '',
+    headId: headId || null,
     faculty: faculty || '',
     email: email || '',
     phone: phone || '',
@@ -91,9 +126,13 @@ export const createDepartment = handle(async (req, res) => {
 
   await department.save();
 
+  const populated = await Department.findById(department._id)
+    .populate('campusId', 'name campusCode')
+    .populate('headId', 'name email designation');
+
   res.status(201).json({
     success: true,
-    data: department,
+    data: populated,
     message: 'Department created successfully'
   });
 });
@@ -101,11 +140,12 @@ export const createDepartment = handle(async (req, res) => {
 export const updateDepartment = handle(async (req, res) => {
   const { id } = req.params;
   const {
+    campusId,
     name,
     code,
     description,
     status,
-    head,
+    headId,
     faculty,
     email,
     phone,
@@ -126,6 +166,7 @@ export const updateDepartment = handle(async (req, res) => {
   if (name !== undefined && name !== '') {
     const trimmedName = name.trim();
     const existing = await Department.findOne({
+      campusId: department.campusId,
       name: trimmedName,
       _id: { $ne: department._id },
       isDeleted: { $ne: true }
@@ -133,7 +174,7 @@ export const updateDepartment = handle(async (req, res) => {
     if (existing) {
       return res.status(400).json({
         success: false,
-        message: 'Department name already exists'
+        message: 'Department name already exists in this campus'
       });
     }
     department.name = trimmedName;
@@ -142,6 +183,7 @@ export const updateDepartment = handle(async (req, res) => {
   if (code !== undefined && code !== '') {
     const trimmedCode = code.toUpperCase().trim();
     const existing = await Department.findOne({
+      campusId: department.campusId,
       code: trimmedCode,
       _id: { $ne: department._id },
       isDeleted: { $ne: true }
@@ -149,57 +191,32 @@ export const updateDepartment = handle(async (req, res) => {
     if (existing) {
       return res.status(400).json({
         success: false,
-        message: 'Department code already exists'
+        message: 'Department code already exists in this campus'
       });
     }
     department.code = trimmedCode;
   }
 
-  if (description !== undefined) {
-    department.description = description;
-  }
-
-  if (status !== undefined && status !== '') {
-    department.status = status;
-  }
-
-  if (head !== undefined) {
-    department.head = head;
-  }
-
-  if (faculty !== undefined) {
-    department.faculty = faculty;
-  }
-
-  if (email !== undefined) {
-    department.email = email;
-  }
-
-  if (phone !== undefined) {
-    department.phone = phone;
-  }
-
-  if (establishedDate !== undefined) {
-    department.establishedDate = establishedDate ? new Date(establishedDate) : null;
-  }
-
-  if (facultyCount !== undefined) {
-    department.facultyCount = Number(facultyCount) || 0;
-  }
-
-  if (studentCount !== undefined) {
-    department.studentCount = Number(studentCount) || 0;
-  }
-
-  if (location !== undefined) {
-    department.location = location;
-  }
+  if (description !== undefined) department.description = description;
+  if (status !== undefined && status !== '') department.status = status;
+  if (headId !== undefined) department.headId = headId || null;
+  if (faculty !== undefined) department.faculty = faculty;
+  if (email !== undefined) department.email = email;
+  if (phone !== undefined) department.phone = phone;
+  if (establishedDate !== undefined) department.establishedDate = establishedDate ? new Date(establishedDate) : null;
+  if (facultyCount !== undefined) department.facultyCount = Number(facultyCount) || 0;
+  if (studentCount !== undefined) department.studentCount = Number(studentCount) || 0;
+  if (location !== undefined) department.location = location;
 
   await department.save();
 
+  const populated = await Department.findById(department._id)
+    .populate('campusId', 'name campusCode')
+    .populate('headId', 'name email designation');
+
   res.json({
     success: true,
-    data: department,
+    data: populated,
     message: 'Department updated successfully'
   });
 });
@@ -215,23 +232,14 @@ export const deleteDepartment = handle(async (req, res) => {
     });
   }
 
-  let Course;
-  try {
-    const module = await import('../models/Course.model.js');
-    Course = module.default;
-  } catch (err) {
-    console.warn('Course model not found, skipping course check');
-  }
-
-  if (Course) {
-    const courseCount = await Course.countDocuments({ departmentName: department.name });
-    if (courseCount > 0) {
-      return res.status(400).json({
-        success: false,
-        message: 'Cannot delete department with ' + courseCount + ' courses. Remove courses first or deactivate the department.',
-        courseCount: courseCount
-      });
-    }
+  // Check for courses using this department
+  const courseCount = await Course.countDocuments({ departmentId: department._id, isDeleted: { $ne: true } });
+  if (courseCount > 0) {
+    return res.status(400).json({
+      success: false,
+      message: `Cannot delete department with ${courseCount} courses. Remove courses first or deactivate the department.`,
+      courseCount
+    });
   }
 
   await department.deleteOne();
@@ -243,21 +251,13 @@ export const deleteDepartment = handle(async (req, res) => {
 });
 
 export const getDepartmentStats = handle(async (req, res) => {
-  let Course;
-  try {
-    const module = await import('../models/Course.model.js');
-    Course = module.default;
-  } catch (err) {
-    console.warn('Course model not found, returning basic stats');
-  }
-
   const stats = await Department.aggregate([
     { $match: { isDeleted: { $ne: true } } },
     {
       $lookup: {
         from: 'courses',
-        localField: 'name',
-        foreignField: 'departmentName',
+        localField: '_id',
+        foreignField: 'departmentId',
         as: 'courses'
       }
     },
@@ -265,6 +265,7 @@ export const getDepartmentStats = handle(async (req, res) => {
       $project: {
         name: 1,
         code: 1,
+        campusId: 1,
         isActive: 1,
         courseCount: { $size: '$courses' },
         totalStudents: { $sum: '$courses.enrolledStudents' },
