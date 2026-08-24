@@ -1,12 +1,11 @@
 // backend/src/scripts/seedCourses.js
 import mongoose from 'mongoose';
-import Course from '../models/academic/Course.js';
-import Department from '../models/academic/Department.js';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
 // Ensure we load the backend .env regardless of current working directory
+import { Course, Department } from '../models/index.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 dotenv.config({ path: path.join(__dirname, '../../.env') });

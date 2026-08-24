@@ -1,30 +1,8 @@
-import University from "../models/core/University.js";
-import User from "../models/core/User.js";
-import Campus from "../models/core/Campus.js";
 import { generateUniversityId } from "../utils/generateUniversityId.js";
-
-const handle = (fn) => async (req, res) => {
-  try {
-    await fn(req, res);
-  } catch (error) {
-    console.error(`❌ ${fn.name} Error:`, error);
-    if (error.code === 11000) {
-      return res.status(409).json({
-        success: false,
-        message: "Duplicate value. A record with this value already exists.",
-        error: error.message,
-      });
-    }
-    res.status(500).json({
-      success: false,
-      message: "Internal server error",
-      error: error.message,
-      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined,
-    });
-  }
-};
+import { handle } from "../utils/asyncHandler.js";
 
 // 1. CREATE UNIVERSITY (public)
+import { Campus, University, User } from "../models/index.js";
 export const createUniversity = handle(async (req, res) => {
   const {
     universityName,

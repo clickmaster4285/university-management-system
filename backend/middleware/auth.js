@@ -1,9 +1,8 @@
 // backend/src/middleware/auth.js
 import jwt from "jsonwebtoken";
-import User from "../models/core/User.js";
+import { JWT_SECRET } from "../config/constants.js";
 
-const JWT_SECRET = process.env.JWT_SECRET_Key;
-
+import { User } from "../models/index.js";
 export const auth = async (req, res, next) => {
   try {
     const token = req.headers.authorization?.split(' ')[1];

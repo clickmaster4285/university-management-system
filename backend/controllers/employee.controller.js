@@ -1,153 +1,106 @@
 // backend/src/controllers/employeeController.js
-import Employee from '../models/hr/Employee.js';
+import { handle } from "../utils/asyncHandler.js";
 
-export const getAllEmployees = async (req, res) => {
-  try {
-    const employees = await Employee.find().sort({ createdAt: -1 });
-    
-    res.status(200).json({
-      success: true,
-      data: employees,
-      count: employees.length
-    });
-  } catch (error) {
-    console.error('❌ Error fetching employees:', error);
-    res.status(500).json({
+import { Employee } from "../models/index.js";
+export const getAllEmployees = handle(async (req, res) => {
+  const employees = await Employee.find({ isDeleted: { $ne: true } }).sort({ createdAt: -1 });
+  
+  return res.status(200).json({
+    success: true,
+    data: employees,
+    count: employees.length
+  });
+});
+
+export const getEmployeeById = handle(async (req, res) => {
+  const employee = await Employee.findOne({ _id: req.params.id, isDeleted: { $ne: true } });
+  if (!employee) {
+    return res.status(404).json({
       success: false,
-      message: 'Failed to fetch employees',
-      error: error.message
+      message: 'Employee not found'
     });
   }
-};
+  return res.status(200).json({
+    success: true,
+    data: employee
+  });
+});
 
-export const getEmployeeById = async (req, res) => {
-  try {
-    const employee = await Employee.findById(req.params.id);
-    if (!employee) {
-      return res.status(404).json({
-        success: false,
-        message: 'Employee not found'
-      });
+export const createEmployee = handle(async (req, res) => {
+  const employee = new Employee(req.body);
+  await employee.save();
+  
+  return res.status(201).json({
+    success: true,
+    data: employee,
+    message: 'Employee created successfully'
+  });
+});
+
+export const updateEmployee = handle(async (req, res) => {
+  const updates = { ...req.body };
+  delete updates.isDeleted;
+  delete updates.deletedAt;
+  delete updates.deletedBy;
+  delete updates._id;
+  delete updates.createdAt;
+  delete updates.updatedAt;
+
+  const employee = await Employee.findOneAndUpdate(
+    { _id: req.params.id, isDeleted: { $ne: true } },
+    updates,
+    { new: true, runValidators: true }
+  );
+  if (!employee) {
+    return res.status(404).json({
+      success: false,
+      message: 'Employee not found'
+    });
+  }
+  return res.status(200).json({
+    success: true,
+    data: employee,
+    message: 'Employee updated successfully'
+  });
+});
+
+export const deleteEmployee = handle(async (req, res) => {
+  const employee = await Employee.findByIdAndDelete(req.params.id);
+  if (!employee) {
+    return res.status(404).json({
+      success: false,
+      message: 'Employee not found'
+    });
+  }
+  return res.status(200).json({
+    success: true,
+    message: 'Employee deleted successfully'
+  });
+});
+
+export const getEmployeeStats = handle(async (req, res) => {
+  const total = await Employee.countDocuments({ isDeleted: { $ne: true } });
+  const active = await Employee.countDocuments({ status: 'Active', isDeleted: { $ne: true } });
+  const onLeave = await Employee.countDocuments({ status: 'On Leave', isDeleted: { $ne: true } });
+  const resigned = await Employee.countDocuments({ status: 'Resigned', isDeleted: { $ne: true } });
+  const terminated = await Employee.countDocuments({ status: 'Terminated', isDeleted: { $ne: true } });
+  const onProbation = await Employee.countDocuments({ status: 'On Probation', isDeleted: { $ne: true } });
+  
+  const byDepartment = await Employee.aggregate([
+    { $match: { isDeleted: { $ne: true } } },
+    { $group: { _id: '$department', count: { $sum: 1 } } }
+  ]);
+
+  return res.status(200).json({
+    success: true,
+    data: {
+      total,
+      active,
+      onLeave,
+      resigned,
+      terminated,
+      onProbation,
+      byDepartment
     }
-    res.status(200).json({
-      success: true,
-      data: employee
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: 'Failed to fetch employee',
-      error: error.message
-    });
-  }
-};
-
-export const createEmployee = async (req, res) => {
-  try {
-    const employee = new Employee(req.body);
-    await employee.save();
-    
-    res.status(201).json({
-      success: true,
-      data: employee,
-      message: 'Employee created successfully'
-    });
-  } catch (error) {
-    console.error('❌ Error creating employee:', error);
-    if (error.code === 11000) {
-      return res.status(409).json({
-        success: false,
-        message: 'Employee with this email already exists'
-      });
-    }
-    res.status(500).json({
-      success: false,
-      message: 'Failed to create employee',
-      error: error.message
-    });
-  }
-};
-
-export const updateEmployee = async (req, res) => {
-  try {
-    const employee = await Employee.findByIdAndUpdate(
-      req.params.id,
-      req.body,
-      { new: true, runValidators: true }
-    );
-    if (!employee) {
-      return res.status(404).json({
-        success: false,
-        message: 'Employee not found'
-      });
-    }
-    res.status(200).json({
-      success: true,
-      data: employee,
-      message: 'Employee updated successfully'
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: 'Failed to update employee',
-      error: error.message
-    });
-  }
-};
-
-export const deleteEmployee = async (req, res) => {
-  try {
-    const employee = await Employee.findByIdAndDelete(req.params.id);
-    if (!employee) {
-      return res.status(404).json({
-        success: false,
-        message: 'Employee not found'
-      });
-    }
-    res.status(200).json({
-      success: true,
-      message: 'Employee deleted successfully'
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: 'Failed to delete employee',
-      error: error.message
-    });
-  }
-};
-
-export const getEmployeeStats = async (req, res) => {
-  try {
-    const total = await Employee.countDocuments();
-    const active = await Employee.countDocuments({ status: 'Active' });
-    const onLeave = await Employee.countDocuments({ status: 'On Leave' });
-    const resigned = await Employee.countDocuments({ status: 'Resigned' });
-    const terminated = await Employee.countDocuments({ status: 'Terminated' });
-    const onProbation = await Employee.countDocuments({ status: 'On Probation' });
-    
-    const byDepartment = await Employee.aggregate([
-      { $group: { _id: '$department', count: { $sum: 1 } } }
-    ]);
-
-    res.status(200).json({
-      success: true,
-      data: {
-        total,
-        active,
-        onLeave,
-        resigned,
-        terminated,
-        onProbation,
-        byDepartment
-      }
-    });
-  } catch (error) {
-    console.error('❌ Error fetching stats:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to fetch stats',
-      error: error.message
-    });
-  }
-};
+  });
+});

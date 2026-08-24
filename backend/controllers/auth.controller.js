@@ -1,142 +1,128 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import User from '../models/core/User.js';
+import { JWT_SECRET, JWT_EXPIRES_IN } from '../config/constants.js';
+import { handle } from '../utils/asyncHandler.js';
 
-const JWT_SECRET = process.env.JWT_SECRET_Key;
-const JWT_EXPIRES_IN = '7d';
+import { University, User } from '../models/index.js';
+const buildUser = (user) => ({
+  _id: user._id.toString(),
+  firstName: user.firstName,
+  lastName: user.lastName,
+  email: user.email,
+  role: user.role,
+  phoneNumber: user.phoneNumber || '',
+  universityId: user.universityId || null,
+});
 
-export const login = async (req, res) => {
-  try {
-    const { email, password } = req.body;
-    if (!email || !password) {
-      return res.status(400).json({ success: false, message: 'Email and password are required' });
-    }
-
-    const user = await User.findOne({ email: email.toLowerCase() });
-    if (!user) {
-      return res.status(401).json({ success: false, message: 'Invalid email or password' });
-    }
-
-    const passwordMatch = await bcrypt.compare(password, user.password);
-    if (!passwordMatch) {
-      return res.status(401).json({ success: false, message: 'Invalid email or password' });
-    }
-
-    const token = jwt.sign({ id: user._id.toString() }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
-
-    res.status(200).json({ success: true, data: { user: { _id: user._id.toString(), name: user.name, email: user.email, role: user.role }, token } });
-  } catch (error) {
-    console.error('Login error:', error);
-    res.status(500).json({ success: false, message: 'Failed to login', error: error.message });
+export const login = handle(async (req, res) => {
+  const { email, password } = req.body;
+  if (!email || !password) {
+    return res.status(400).json({ success: false, message: 'Email and password are required' });
   }
-};
 
-export const register = async (req, res) => {
-  try {
-    const { name, email, password, role } = req.body;
-    if (!name || !email || !password) {
-      return res.status(400).json({ success: false, message: 'Name, email, and password are required' });
-    }
-
-    const existingUser = await User.findOne({ email: email.toLowerCase() });
-    if (existingUser) {
-      return res.status(409).json({ success: false, message: 'Email already registered' });
-    }
-
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const user = new User({ name, email: email.toLowerCase(), password: hashedPassword, role: role || 'student' });
-    await user.save();
-
-    const token = jwt.sign({ id: user._id.toString(), email: user.email, name: user.name, role: user.role }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
-
-    res.status(201).json({ success: true, data: { user: { _id: user._id.toString(), name: user.name, email: user.email, role: user.role }, token } });
-  } catch (error) {
-    console.error('Register error:', error);
-    res.status(500).json({ success: false, message: 'Failed to register', error: error.message });
+  const user = await User.findOne({
+    email: email.toLowerCase(),
+    isDeleted: { $ne: true },
+    status: 'Active',
+  });
+  if (!user) {
+    return res.status(401).json({ success: false, message: 'Invalid email or password' });
   }
-};
 
-export const logout = async (req, res) => {
-  try {
-    res.status(200).json({ success: true, message: 'Logged out successfully' });
-  } catch (error) {
-    console.error('Logout error:', error);
-    res.status(500).json({ success: false, message: 'Logout failed', error: error.message });
+  const passwordMatch = await bcrypt.compare(password, user.password);
+  if (!passwordMatch) {
+    return res.status(401).json({ success: false, message: 'Invalid email or password' });
   }
-};
 
-export const getProfile = async (req, res) => {
-  try {
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ success: false, message: 'Authentication required' });
-    }
+  const token = jwt.sign({ id: user._id.toString(), role: user.role }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
 
-    const token = authHeader.split(' ')[1];
-    const decoded = jwt.verify(token, JWT_SECRET);
-    const user = await User.findById(decoded.id);
-    if (!user) {
-      return res.status(404).json({ success: false, message: 'User not found' });
-    }
+  res.status(200).json({ success: true, data: { user: buildUser(user), token } });
+});
 
-    res.status(200).json({ success: true, data: { _id: user._id.toString(), name: user.name, email: user.email, role: user.role, phone: user.phone || '', department: '', designation: '', bio: '', location: '', profileImage: '' } });
-  } catch (error) {
-    console.error('Get profile error:', error);
-    res.status(401).json({ success: false, message: 'Invalid or expired token', error: error.message });
+// Public registration is Student-only. Roles are never accepted from the client.
+export const register = handle(async (req, res) => {
+  const { firstName, lastName, email, password, phoneNumber } = req.body;
+  if (!firstName || !lastName || !email || !password) {
+    return res.status(400).json({ success: false, message: 'First name, last name, email, and password are required' });
   }
-};
 
-export const updateProfile = async (req, res) => {
-  try {
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ success: false, message: 'Authentication required' });
-    }
-
-    const token = authHeader.split(' ')[1];
-    const decoded = jwt.verify(token, JWT_SECRET);
-    const updated = await User.findByIdAndUpdate(decoded.id, req.body, { new: true, runValidators: true });
-    if (!updated) {
-      return res.status(404).json({ success: false, message: 'User not found' });
-    }
-
-    res.status(200).json({ success: true, data: { _id: updated._id.toString(), name: updated.name, email: updated.email, role: updated.role, phone: updated.phone || '', department: '', designation: '', bio: '', location: '', profileImage: '' } });
-  } catch (error) {
-    console.error('Update profile error:', error);
-    res.status(401).json({ success: false, message: 'Invalid or expired token', error: error.message });
+  const existingUser = await User.findOne({ email: email.toLowerCase() });
+  if (existingUser) {
+    return res.status(409).json({ success: false, message: 'Email already registered' });
   }
-};
 
-export const changePassword = async (req, res) => {
-  try {
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ success: false, message: 'Authentication required' });
-    }
+  const hashedPassword = await bcrypt.hash(password, 10);
 
-    const { currentPassword, newPassword } = req.body;
-    if (!currentPassword || !newPassword) {
-      return res.status(400).json({ success: false, message: 'Current and new passwords are required' });
-    }
+  // Link the student to the single university if one exists
+  const university = await University.findOne({ isDeleted: { $ne: true } });
 
-    const token = authHeader.split(' ')[1];
-    const decoded = jwt.verify(token, JWT_SECRET);
-    const user = await User.findById(decoded.id);
-    if (!user) {
-      return res.status(404).json({ success: false, message: 'User not found' });
-    }
+  const user = new User({
+    firstName: firstName.trim(),
+    lastName: lastName.trim(),
+    email: email.toLowerCase(),
+    password: hashedPassword,
+    phoneNumber: phoneNumber || '',
+    role: 'Student',
+    universityId: university?._id || null,
+    status: 'Active',
+  });
+  await user.save();
 
-    const passwordMatch = await bcrypt.compare(currentPassword, user.password);
-    if (!passwordMatch) {
-      return res.status(401).json({ success: false, message: 'Current password is incorrect' });
-    }
+  const token = jwt.sign({ id: user._id.toString(), role: user.role }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
 
-    user.password = await bcrypt.hash(newPassword, 10);
-    await user.save();
+  res.status(201).json({ success: true, data: { user: buildUser(user), token } });
+});
 
-    res.status(200).json({ success: true, message: 'Password changed successfully' });
-  } catch (error) {
-    console.error('Change password error:', error);
-    res.status(401).json({ success: false, message: 'Invalid or expired token', error: error.message });
+export const logout = handle(async (req, res) => {
+  res.status(200).json({ success: true, message: 'Logged out successfully' });
+});
+
+export const getProfile = handle(async (req, res) => {
+  res.status(200).json({ success: true, data: buildUser(req.user) });
+});
+
+export const updateProfile = handle(async (req, res) => {
+  const { firstName, lastName, phoneNumber } = req.body;
+
+  const updates = {};
+  if (firstName !== undefined) updates.firstName = firstName.trim();
+  if (lastName !== undefined) updates.lastName = lastName.trim();
+  if (phoneNumber !== undefined) updates.phoneNumber = phoneNumber;
+
+  const updated = await User.findOneAndUpdate(
+    { _id: req.user._id, isDeleted: { $ne: true } },
+    updates,
+    { new: true, runValidators: true }
+  );
+
+  if (!updated) {
+    return res.status(404).json({ success: false, message: 'User not found' });
   }
-};
+
+  res.status(200).json({ success: true, data: buildUser(updated) });
+});
+
+export const changePassword = handle(async (req, res) => {
+  const { currentPassword, newPassword } = req.body;
+  if (!currentPassword || !newPassword) {
+    return res.status(400).json({ success: false, message: 'Current and new passwords are required' });
+  }
+  if (newPassword.length < 8) {
+    return res.status(400).json({ success: false, message: 'New password must be at least 8 characters' });
+  }
+
+  const user = await User.findOne({ _id: req.user._id, isDeleted: { $ne: true } });
+  if (!user) {
+    return res.status(404).json({ success: false, message: 'User not found' });
+  }
+
+  const passwordMatch = await bcrypt.compare(currentPassword, user.password);
+  if (!passwordMatch) {
+    return res.status(401).json({ success: false, message: 'Current password is incorrect' });
+  }
+
+  user.password = await bcrypt.hash(newPassword, 10);
+  await user.save();
+
+  res.status(200).json({ success: true, message: 'Password changed successfully' });
+});

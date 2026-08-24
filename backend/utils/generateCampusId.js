@@ -1,4 +1,4 @@
-import Counter from "../models/core/Counter.js";
+import { Counter } from "../models/index.js";
 
 export const generateCampusId = async (universityId) => {
   const counter = await Counter.findOneAndUpdate(

@@ -5,7 +5,7 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import connectDB from './config/database.js';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
-import { seedDefaultAdmin } from './scripts/seed.js';
+import { seedDefaultAdmin } from './scripts/seedAdmin.js';
 import { seedCourses } from './scripts/seedCourses.js';
 import apiRoutes from './routes/index.js';
 import './jobs/statusUpdate.js';
