@@ -12,17 +12,30 @@ export default function CampusEditPage() {
   const [campus, setCampus] = useState<Campus | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  const [hasMainCampus, setHasMainCampus] = useState(false);
 
   useEffect(() => {
     const fetchCampus = async () => {
       try {
         setLoading(true);
-        const res = await campusAPI.getById(id!);
-        if (res?.data && !Array.isArray(res.data)) {
-          setCampus(res.data as Campus);
+        const [campusRes, allRes] = await Promise.all([
+          campusAPI.getById(id!),
+          campusAPI.getAll(),
+        ]);
+
+        if (campusRes?.data && !Array.isArray(campusRes.data)) {
+          setCampus(campusRes.data as Campus);
         } else {
           setNotFound(true);
+          return;
         }
+
+        // Check if any OTHER campus is already main
+        const campuses = Array.isArray(allRes?.data) ? allRes.data : [];
+        const mainExists = campuses.some(
+          (c: Campus) => c.isMainCampus && c._id !== id
+        );
+        setHasMainCampus(mainExists);
       } catch (err) {
         setNotFound(true);
       } finally {
@@ -55,5 +68,5 @@ export default function CampusEditPage() {
     );
   }
 
-  return <CampusForm mode="edit" campus={campus} />;
+  return <CampusForm mode="edit" campus={campus} hasMainCampus={hasMainCampus} />;
 }

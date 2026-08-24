@@ -29,9 +29,10 @@ const PROVINCES = ["Punjab", "Sindh", "KPK", "Balochistan", "Islamabad"];
 interface CampusFormProps {
   mode: "create" | "edit";
   campus?: Campus | null;
+  hasMainCampus?: boolean;
 }
 
-export function CampusForm({ mode, campus }: CampusFormProps) {
+export function CampusForm({ mode, campus, hasMainCampus = false }: CampusFormProps) {
   const navigate = useNavigate();
   const [saving, setSaving] = useState(false);
   const [formData, setFormData] = useState<CampusData>({
@@ -182,13 +183,16 @@ export function CampusForm({ mode, campus }: CampusFormProps) {
                   <Switch
                     checked={formData.isMainCampus}
                     onCheckedChange={(checked) => handleChange("isMainCampus", checked)}
+                    disabled={hasMainCampus && !formData.isMainCampus}
                   />
                   <div>
                     <Label className="flex items-center gap-1.5 cursor-pointer">
                       <Star className="h-3.5 w-3.5 text-yellow-500" /> Main Campus
                     </Label>
                     <p className="text-xs text-muted-foreground">
-                      The main campus cannot be deleted while other campuses exist
+                      {hasMainCampus && !formData.isMainCampus
+                        ? "Another campus is already set as main. Uncheck it first."
+                        : "The main campus cannot be deleted while other campuses exist"}
                     </p>
                   </div>
                 </div>

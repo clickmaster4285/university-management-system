@@ -96,22 +96,10 @@ export const campusAPI = {
   
   delete: async (id: string): Promise<CampusResponse> => {
     try {
-      // Remove /api prefix - apiClient already adds it
       const response = await apiClient.delete(`/campuses/${id}`);
       return response.data;
     } catch (error: any) {
       const serverMessage = error?.response?.data?.message || error?.message || "Failed to delete campus";
-      throw new Error(serverMessage);
-    }
-  },
-  
-  setMain: async (id: string): Promise<CampusResponse> => {
-    try {
-      // Remove /api prefix - apiClient already adds it
-      const response = await apiClient.put(`/campuses/${id}/set-main`, {});
-      return response.data;
-    } catch (error: any) {
-      const serverMessage = error?.response?.data?.message || error?.message || "Failed to set main campus";
       throw new Error(serverMessage);
     }
   },

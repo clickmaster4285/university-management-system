@@ -6,7 +6,6 @@ import {
   getCampusById,
   updateCampus,
   deleteCampus,
-  setMainCampus,
 } from "../controllers/campus.controller.js";
 
 const router = express.Router();
@@ -17,6 +16,5 @@ router.get("/", auth, authorize("Admin"), getCampuses);
 router.get("/:id", auth, authorize("Admin"), getCampusById);
 router.put("/:id", auth, authorize("Admin"), updateCampus);
 router.delete("/:id", auth, authorize("Admin"), deleteCampus);
-router.put("/:id/set-main", auth, authorize("Admin"), setMainCampus);
 
 export default router;

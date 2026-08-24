@@ -79,7 +79,7 @@ export function CampusesPage() {
 
   const handleSetMain = async (campus: Campus) => {
     try {
-      await campusAPI.setMain(campus._id);
+      await campusAPI.update(campus._id, { isMainCampus: true });
       toast.success(`"${campus.name}" is now the main campus`);
       fetchCampuses();
     } catch (err: any) {

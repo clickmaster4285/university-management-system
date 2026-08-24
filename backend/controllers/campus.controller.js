@@ -7,6 +7,17 @@ import { Campus, Department, University } from "../models/index.js";
 const getSingleUniversity = async () =>
   University.findOne({ isDeleted: { $ne: true } });
 
+// Check if a main campus already exists (excluding a given campus id)
+const findExistingMain = async (universityId, excludeId = null) => {
+  const query = {
+    universityId,
+    isMainCampus: true,
+    isDeleted: { $ne: true },
+  };
+  if (excludeId) query._id = { $ne: excludeId };
+  return Campus.findOne(query);
+};
+
 // Build nested address object from flat or nested body fields
 const buildAddress = (body) => ({
   street: body.street || body.address?.street || "",
@@ -67,7 +78,20 @@ export const createCampus = handle(async (req, res) => {
     universityId: university._id,
     isDeleted: { $ne: true },
   });
-  const shouldBeMain = Boolean(isMainCampus) || campusCount === 0;
+  const isFirstCampus = campusCount === 0;
+
+  // If requester wants main but one already exists, block it
+  if (Boolean(isMainCampus) && !isFirstCampus) {
+    const existingMain = await findExistingMain(university._id);
+    if (existingMain) {
+      return res.status(400).json({
+        success: false,
+        message: `A main campus already exists (${existingMain.name}). Uncheck it first before setting a new main campus.`,
+      });
+    }
+  }
+
+  const shouldBeMain = Boolean(isMainCampus) || isFirstCampus;
 
   const campus = new Campus({
     campusId: await generateCampusId(university._id),
@@ -150,6 +174,20 @@ export const updateCampus = handle(async (req, res) => {
   if (body.establishedYear !== undefined) updates.establishedYear = body.establishedYear || null;
   if (body.description !== undefined) updates.description = body.description;
   if (body.status !== undefined) updates.status = body.status;
+
+  // Block setting isMainCampus=true if another campus is already main
+  if (updates.isMainCampus === true) {
+    const currentCampus = await Campus.findOne({ _id: id, isDeleted: { $ne: true } }).select("universityId isMainCampus");
+    if (currentCampus && !currentCampus.isMainCampus) {
+      const existingMain = await findExistingMain(currentCampus.universityId, id);
+      if (existingMain) {
+        return res.status(400).json({
+          success: false,
+          message: `A main campus already exists (${existingMain.name}). Uncheck it first before setting a new main campus.`,
+        });
+      }
+    }
+  }
 
   // Address: rebuild from flat fields when any address-related field present
   if (
@@ -249,33 +287,5 @@ export const deleteCampus = handle(async (req, res) => {
   res.json({
     success: true,
     message: "Campus and its departments deleted successfully",
-  });
-});
-
-export const setMainCampus = handle(async (req, res) => {
-  const { id } = req.params;
-
-  const campus = await Campus.findOne({ _id: id, isDeleted: { $ne: true } });
-  if (!campus) {
-    return res.status(404).json({
-      success: false,
-      message: "Campus not found",
-    });
-  }
-
-  // Demote all, then promote target
-  await Campus.updateMany(
-    { universityId: campus.universityId, isDeleted: { $ne: true } },
-    { isMainCampus: false }
-  );
-
-  campus.isMainCampus = true;
-  campus.updatedBy = req.user?._id || null;
-  await campus.save();
-
-  res.json({
-    success: true,
-    message: "Main campus updated successfully",
-    data: campus,
   });
 });
