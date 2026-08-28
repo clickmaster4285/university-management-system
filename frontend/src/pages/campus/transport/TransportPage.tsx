@@ -8,7 +8,6 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { transportAPI, Bus, Driver, Route as TransportRoute } from "@/features/transport";
-import { useAuth } from "@/lib/auth";
 import { 
   Bus as BusIcon,
   Users, 
@@ -45,7 +44,6 @@ import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGri
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#f97316'];
 
 export function TransportPage() {
-  const { user } = useAuth();
   const [buses, setBuses] = useState<Bus[]>([]);
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [routes, setRoutes] = useState<TransportRoute[]>([]);
@@ -107,8 +105,6 @@ export function TransportPage() {
     status: 'Active'
   });
 
-  const isAuthenticated = !!user;
-
   // Fetch all data
   const fetchData = async () => {
     try {
@@ -149,12 +145,8 @@ export function TransportPage() {
   };
 
   useEffect(() => {
-    if (isAuthenticated) {
-      fetchData();
-    } else {
-      setLoading(false);
-    }
-  }, [isAuthenticated]);
+    fetchData();
+  }, []);
 
   // ✅ FIXED: Filter data based on search query - searches through IDs
   const getFilteredData = useMemo(() => {
@@ -709,22 +701,6 @@ export function TransportPage() {
     const itemName = activeTab.slice(0, -1);
     return `${isEditMode ? 'Edit' : 'Add New'} ${itemName.charAt(0).toUpperCase() + itemName.slice(1)}`;
   };
-
-  // Show login prompt if not authenticated
-  if (!isAuthenticated) {
-    return (
-      <div className="flex flex-col items-center justify-center h-96 border-2 border-dashed rounded-lg p-8">
-        <Database className="h-16 w-16 text-muted-foreground mb-4" />
-        <h3 className="text-xl font-semibold mb-2">Login Required</h3>
-        <p className="text-sm text-muted-foreground mb-4 text-center max-w-md">
-          Please login to view and manage transport operations.
-        </p>
-        <Button onClick={() => window.location.href = '/login'} className="gradient-brand text-white border-0">
-          Go to Login
-        </Button>
-      </div>
-    );
-  }
 
   return (
     <>

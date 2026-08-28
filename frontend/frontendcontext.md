@@ -54,10 +54,12 @@ pages/academics/departments/
 
 All routes are defined in `App.tsx` using React Router DOM `<Routes>`. Pages are **lazy-loaded** with `React.lazy()`.
 
-Routes sit under `<AppLayout />` (which renders sidebar + `<Outlet />`):
+Routes sit under `<AppLayout />` (which handles auth + sidebar + topbar + renders `<Outlet />`):
 
 ```
 /                   → DashboardPage
+/login              → LoginPage
+/otp                → OtpPage
 /university         → UniversityProfilePage
 /campuses           → CampusesPage
 /campuses/create    → CampusCreatePage
@@ -92,7 +94,9 @@ Routes sit under `<AppLayout />` (which renders sidebar + `<Outlet />`):
 
 ## Navigation / Sidebar
 
-`src/layouts/sidebar.tsx` contains the `AppSidebar` component with `sidebarNav` config array. Four groups: Overview, Academics, Campus, Operations. Adding a nav link means adding to the relevant `items` array in `sidebarNav`.
+`src/layouts/sidebar.tsx` contains the `AppSidebar` component with `sidebarNav` config array. Seven groups: Overview, Academic Structure, People, Academics, Assessments, Campus Facilities, Finance & Admin.
+
+Groups are collapsible — each group label has a chevron arrow that toggles open/closed. Groups auto-expand when a child route is active. Adding a nav link means adding to the relevant `items` array in `sidebarNav`.
 
 ## API Services (`features/`)
 
@@ -122,12 +126,14 @@ Key barrel export: `features/index.ts` re-exports everything.
 
 Roles defined in frontend: `'Super Admin' | 'Admin' | 'Teacher' | 'Student' | 'Student Affairs' | 'Finance' | 'Transport' | 'Library' | 'HR'` — but backend only has `Admin`, `Teacher`, `Student`, `Staff`.
 
+**Auth is handled by AppLayout** — pages do NOT need to check authentication. AppLayout redirects to `/login` if user is not authenticated. Pages that need the `user` object (e.g., for form defaults) can call `useAuth()` directly — but no auth guard logic is needed.
+
 ## UI Components
 
 - `components/data-table.tsx` — `DataTable<T>` generic table with `Column<T>[]` config (uses `cell` not `render`)
 - `components/dashboard/kpi-card.tsx` — `KpiCard` for stats display (uses `label` not `title`, `icon: LucideIcon`)
 - `components/ui/*` — shadcn/ui primitives (Badge, Button, Input, Label, Dialog, etc.)
-- `layouts/AppLayout.tsx` — wraps sidebar + main content area
+- `layouts/AppLayout.tsx` — auth check + SidebarProvider + AppSidebar + Topbar + `<Outlet />`. Pages render directly without wrappers.
 
 ## Page Conventions
 
@@ -136,6 +142,8 @@ Roles defined in frontend: `'Super Admin' | 'Admin' | 'Teacher' | 'Student' | 'S
 - CRUD pages follow: fetch data → display in DataTable → modal form for create/edit → toast for feedback
 - Large pages (>500 lines) split into `components/` sub-folder (see Page Refactoring Convention)
 - Department/teacher/faculty dropdowns: fetch list on mount, render as `<select>` in form modals
+- Pages do NOT wrap content in any layout component — AppLayout handles the shell
+- Pages that need the `user` object import `useAuth()` directly — no auth guard needed
 
 ## Key Backend→Frontend Field Mapping
 

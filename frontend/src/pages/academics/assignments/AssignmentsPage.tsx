@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useAuth } from "@/lib/auth";
 import { KpiCard } from "@/components/dashboard/kpi-card";
 import { DataTable, type Column } from "@/components/data-table";
 import { Button } from "@/components/ui/button";
@@ -8,7 +9,6 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { assignmentAPI, Assignment } from "@/features/assignment";
 import { courseAPI, Course } from "@/features/courses";
-import { useAuth } from "@/lib/auth";
 import { 
   ClipboardList, 
   CheckCircle2, 
@@ -98,8 +98,6 @@ export function AssignmentsPage() {
     gradingCriteria: '',
     rubric: [{ criterion: '', description: '', maxPoints: 0 }]
   });
-
-  const isAuthenticated = !!user;
 
   // Fetch courses
   const fetchCourses = async () => {
@@ -222,14 +220,10 @@ export function AssignmentsPage() {
   };
 
   useEffect(() => {
-    if (isAuthenticated) {
-      fetchCourses();
-      fetchAssignments();
-      fetchStats();
-    } else {
-      setLoading(false);
-    }
-  }, [isAuthenticated]);
+    fetchCourses();
+    fetchAssignments();
+    fetchStats();
+  }, []);
 
   // Prepare chart data
   const getStatusChartData = () => {
@@ -714,22 +708,6 @@ export function AssignmentsPage() {
       ),
     },
   ];
-
-  // Show login prompt if not authenticated
-  if (!isAuthenticated) {
-    return (
-      <div className="flex flex-col items-center justify-center h-96 border-2 border-dashed rounded-lg p-8">
-        <Database className="h-16 w-16 text-muted-foreground mb-4" />
-        <h3 className="text-xl font-semibold mb-2">Login Required</h3>
-        <p className="text-sm text-muted-foreground mb-4 text-center max-w-md">
-          Please login to view and manage assignments.
-        </p>
-        <Button onClick={() => window.location.href = '/login'} className="gradient-brand text-white border-0">
-          Go to Login
-        </Button>
-      </div>
-    );
-  }
 
   return (
     <>

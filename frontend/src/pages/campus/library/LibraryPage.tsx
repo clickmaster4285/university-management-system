@@ -7,7 +7,6 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { bookAPI, Book as BookType } from "@/features/book";
-import { useAuth } from "@/lib/auth";
 import { 
   Library, 
   BookOpen, 
@@ -57,7 +56,6 @@ interface CategoryStats {
 }
 
 export function LibraryPage() {
-  const { user } = useAuth();
   const [books, setBooks] = useState<BookType[]>([]);
   const [filteredBooks, setFilteredBooks] = useState<BookType[]>([]);
   const [loading, setLoading] = useState(true);
@@ -100,8 +98,6 @@ export function LibraryPage() {
     tags: '',
     status: 'Available'
   });
-
-  const isAuthenticated = !!user;
 
   // Fetch books
   const fetchBooks = async () => {
@@ -168,13 +164,9 @@ export function LibraryPage() {
   };
 
   useEffect(() => {
-    if (isAuthenticated) {
-      fetchBooks();
-      fetchStats();
-    } else {
-      setLoading(false);
-    }
-  }, [isAuthenticated]);
+    fetchBooks();
+    fetchStats();
+  }, []);
 
   // Prepare chart data - FIXED
   const getCategoryChartData = (): { name: string; value: number }[] => {
@@ -563,22 +555,6 @@ export function LibraryPage() {
       ),
     },
   ];
-
-  // Show login prompt if not authenticated
-  if (!isAuthenticated) {
-    return (
-      <div className="flex flex-col items-center justify-center h-96 border-2 border-dashed rounded-lg p-8">
-        <Database className="h-16 w-16 text-muted-foreground mb-4" />
-        <h3 className="text-xl font-semibold mb-2">Login Required</h3>
-        <p className="text-sm text-muted-foreground mb-4 text-center max-w-md">
-          Please login to view and manage library books.
-        </p>
-        <Button onClick={() => window.location.href = '/login'} className="gradient-brand text-white border-0">
-          Go to Login
-        </Button>
-      </div>
-    );
-  }
 
   return (
     <>

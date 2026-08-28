@@ -32,7 +32,6 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useState, useEffect, useMemo, useRef } from "react";
-import { useAuth } from "@/lib/auth";
 
 /* ============================================================
    Inlined chart components (admissions-specific, animated)
@@ -311,7 +310,6 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 export function AdmissionsPage() {
-  const { user } = useAuth();
   const [admissions, setAdmissions] = useState<Admission[]>([]);
   const [filteredAdmissions, setFilteredAdmissions] = useState<Admission[]>([]);
   const [loading, setLoading] = useState(true);
@@ -364,9 +362,6 @@ export function AdmissionsPage() {
     email?: string;
     phone?: string;
   }>({});
-
-  // Check if user is authenticated
-  const isAuthenticated = !!user;
 
   // Fetch admissions
   const fetchAdmissions = async () => {
@@ -439,20 +434,13 @@ export function AdmissionsPage() {
 
   // Load data on mount
   useEffect(() => {
-    // Only fetch if user is authenticated
-    if (isAuthenticated) {
-      fetchAdmissions();
-      fetchStats();
-    } else {
-      setLoading(false);
-    }
-  }, [isAuthenticated]);
+    fetchAdmissions();
+    fetchStats();
+  }, []);
 
   // Handle status filter change
   useEffect(() => {
-    if (isAuthenticated) {
-      fetchAdmissions();
-    }
+    fetchAdmissions();
   }, [selectedStatus]);
 
   // Handle search
@@ -560,10 +548,6 @@ export function AdmissionsPage() {
 
   // Open add modal
   const openAddModal = () => {
-    if (!isAuthenticated) {
-      toast.error('Please login to create an application');
-      return;
-    }
     setIsEditMode(false);
     setEditingId(null);
     setFieldErrors({});
@@ -604,10 +588,6 @@ export function AdmissionsPage() {
 
   // Open edit modal
   const openEditModal = (admission: Admission) => {
-    if (!isAuthenticated) {
-      toast.error('Please login to edit an application');
-      return;
-    }
     setIsEditMode(true);
     setEditingId(admission._id || null);
     setFieldErrors({});
@@ -657,11 +637,6 @@ export function AdmissionsPage() {
   // Handle submit with better error handling
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!isAuthenticated) {
-      toast.error('Please login to submit an application');
-      return;
-    }
     
     setIsSubmitting(true);
     
@@ -848,11 +823,6 @@ export function AdmissionsPage() {
 
   // Handle delete
   const handleDelete = async (id: string, name: string) => {
-    if (!isAuthenticated) {
-      toast.error('Please login to delete an application');
-      return;
-    }
-    
     if (!confirm(`Are you sure you want to delete "${name}"? This action cannot be undone.`)) return;
     
     try {
@@ -989,25 +959,6 @@ export function AdmissionsPage() {
       .map(label => ({ label, value: statusCounts[label] || 0, color: STATUS_COLORS[label] }))
       .filter(d => d.value > 0);
   }, [statusCounts]);
-
-  // Show login prompt if not authenticated
-  if (!isAuthenticated) {
-    return (
-        <div className="flex flex-col items-center justify-center h-96 border-2 border-dashed rounded-lg p-8">
-          <Database className="h-16 w-16 text-muted-foreground mb-4" />
-          <h3 className="text-xl font-semibold mb-2">Login Required</h3>
-          <p className="text-sm text-muted-foreground mb-4 text-center max-w-md">
-            Please login to view and manage admission applications.
-          </p>
-          <Button 
-            onClick={() => window.location.href = '/login'}
-            className="gradient-brand text-white border-0"
-          >
-            Go to Login
-          </Button>
-        </div>
-    );
-  }
 
   return (
     <>

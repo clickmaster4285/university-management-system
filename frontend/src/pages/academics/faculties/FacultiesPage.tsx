@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { facultyAPI, type Faculty } from "@/features/faculties";
 import { campusAPI, type Campus } from "@/features/campus";
 import { teacherAPI, type Teacher } from "@/features/teachers";
@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Building2, Users, BookOpen, RefreshCw, UserPlus, X, Save,
-  Loader2, Pencil, Trash2, Search, GraduationCap
+  Loader2, Pencil, Trash2, GraduationCap
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -40,7 +40,6 @@ export default function FacultiesPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<FacultyFormData>(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
-  const [search, setSearch] = useState("");
   const [stats, setStats] = useState({ total: 0, active: 0, inactive: 0 });
 
   const fetchData = async () => {
@@ -64,14 +63,6 @@ export default function FacultiesPage() {
   };
 
   useEffect(() => { fetchData(); }, []);
-
-  const filtered = useMemo(() => {
-    if (!search) return faculties;
-    const q = search.toLowerCase();
-    return faculties.filter(f =>
-      f.name.toLowerCase().includes(q) || f.code.toLowerCase().includes(q)
-    );
-  }, [faculties, search]);
 
   const getCampusName = (campus: Faculty["campusId"]) => {
     if (!campus) return "—";
@@ -171,15 +162,16 @@ export default function FacultiesPage() {
         <KpiCard label="Inactive" value={stats.inactive} icon={Users} />
       </div>
 
-      <div className="flex items-center gap-2">
-        <Search className="h-4 w-4 text-muted-foreground" />
-        <Input placeholder="Search faculties..." value={search} onChange={(e) => setSearch(e.target.value)} className="max-w-sm" />
-      </div>
-
       {loading ? (
         <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>
       ) : (
-        <DataTable columns={columns} data={filtered} />
+        <DataTable
+          columns={columns}
+          data={faculties}
+          searchKeys={["name", "code"]}
+          addLabel="Create Faculty"
+          onAdd={openCreate}
+        />
       )}
 
       {showForm && (

@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useAuth } from "@/lib/auth";
 import { KpiCard } from "@/components/dashboard/kpi-card";
 import { DataTable, type Column } from "@/components/data-table";
 import { Button } from "@/components/ui/button";
@@ -8,7 +9,6 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { examAPI, Exam } from "@/features/exam";
 import { courseAPI, Course } from "@/features/courses";
-import { useAuth } from "@/lib/auth";
 import { 
   ClipboardCheck, 
   Award, 
@@ -103,8 +103,6 @@ export function ExamsPage() {
     instructions: ''
   });
 
-  const isAuthenticated = !!user;
-
   // Fetch courses
   const fetchCourses = async () => {
     try {
@@ -190,14 +188,10 @@ export function ExamsPage() {
   };
 
   useEffect(() => {
-    if (isAuthenticated) {
-      fetchCourses();
-      fetchExams();
-      fetchStats();
-    } else {
-      setLoading(false);
-    }
-  }, [isAuthenticated]);
+    fetchCourses();
+    fetchExams();
+    fetchStats();
+  }, []);
 
   // Prepare chart data
   const getStatusChartData = () => {
@@ -600,22 +594,6 @@ export function ExamsPage() {
       ),
     },
   ];
-
-  // Show login prompt if not authenticated
-  if (!isAuthenticated) {
-    return (
-      <div className="flex flex-col items-center justify-center h-96 border-2 border-dashed rounded-lg p-8">
-        <Database className="h-16 w-16 text-muted-foreground mb-4" />
-        <h3 className="text-xl font-semibold mb-2">Login Required</h3>
-        <p className="text-sm text-muted-foreground mb-4 text-center max-w-md">
-          Please login to view and manage exams.
-        </p>
-        <Button onClick={() => window.location.href = '/login'} className="gradient-brand text-white border-0">
-          Go to Login
-        </Button>
-      </div>
-    );
-  }
 
   return (
     <>

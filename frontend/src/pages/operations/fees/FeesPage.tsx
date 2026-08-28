@@ -15,7 +15,6 @@ import { feeAPI, Fee } from "@/features/fee";
 import { feeStructureAPI } from "@/features/feeStructure";
 import { studentAPI, Student } from "@/features/students";
 import { courseAPI, Course } from "@/features/courses";
-import { useAuth } from "@/lib/auth";
 import { 
   DollarSign, 
   AlertCircle, 
@@ -179,7 +178,6 @@ interface Payment {
 }
 
 export function FeesPage() {
-  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState("structures");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -287,8 +285,6 @@ export function FeesPage() {
     dueDate: '',
     paymentMethod: 'Cash'
   });
-
-  const isAuthenticated = !!user;
 
   // Filter courses when program or semester changes
   useEffect(() => {
@@ -406,12 +402,8 @@ export function FeesPage() {
   };
 
   useEffect(() => {
-    if (isAuthenticated) {
-      fetchAllData();
-    } else {
-      setLoading(false);
-    }
-  }, [isAuthenticated]);
+    fetchAllData();
+  }, []);
 
   // Handle search
   const handleSearch = (query: string) => {
@@ -1270,22 +1262,6 @@ export function FeesPage() {
       )
     }
   ];
-
-  // Show login prompt if not authenticated
-  if (!isAuthenticated) {
-    return (
-      <div className="flex flex-col items-center justify-center h-96 border-2 border-dashed rounded-lg p-8">
-        <Database className="h-16 w-16 text-muted-foreground mb-4" />
-        <h3 className="text-xl font-semibold mb-2">Login Required</h3>
-        <p className="text-sm text-muted-foreground mb-4 text-center max-w-md">
-          Please login to view and manage fees.
-        </p>
-        <Button onClick={() => window.location.href = '/login'} className="gradient-brand text-white border-0">
-          Go to Login
-        </Button>
-      </div>
-    );
-  }
 
   return (
     <>
