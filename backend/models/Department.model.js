@@ -31,9 +31,10 @@ const departmentSchema = new mongoose.Schema({
     ref: 'Teacher',
     default: null
   },
-  faculty: {
-    type: String,
-    trim: true
+  facultyId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Faculty',
+    default: null
   },
   email: {
     type: String,

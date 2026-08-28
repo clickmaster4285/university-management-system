@@ -9,6 +9,7 @@ export interface Department {
   code: string;
   description?: string;
   headId?: string | { _id: string; name: string; email: string; designation: string };
+  facultyId?: string | { _id: string; name: string; code: string };
   facultyCount?: number;
   studentCount?: number;
   status?: 'Active' | 'Inactive';
@@ -16,7 +17,6 @@ export interface Department {
   email?: string;
   phone?: string;
   establishedDate?: string;
-  faculty?: string;
   createdAt?: string;
   updatedAt?: string;
 }

@@ -27,6 +27,29 @@ frontend/src/
 └── pages/               ← Page components organized by domain
 ```
 
+## Page Refactoring Convention
+
+Pages over ~500 lines are split into sub-components under a `components/` folder within the page directory. The pattern:
+
+```
+pages/academics/departments/
+├── DepartmentsPage.tsx              ← Thin orchestrator (state, data fetching, layout)
+└── components/
+    ├── Charts.tsx                   ← Reusable chart components (AnimatedTrendChart, AnimatedGauge)
+    ├── DepartmentFormModal.tsx      ← Create/edit modal form
+    └── DepartmentViewModal.tsx      ← Read-only detail view modal
+```
+
+**Rules:**
+- Main page owns all state, data fetching, and event handlers
+- Sub-components receive props (data + callbacks) — they are stateless or manage only UI-local state
+- Types and constants (form data, empty defaults, options) live in the component file that uses them
+- Sub-components are exported as named exports, re-imported by the main page
+
+**Refactored example:** `DepartmentsPage.tsx` — 1313 → 370 lines (72% reduction) across 4 files.
+
+**Still pending refactor** (500+ lines): FeesPage (2530), AdmissionsPage (1520), TransportPage (1513), AssignmentsPage (1466), CoursesPage (1331), HrPage (1287), LibraryPage (1198), ExamsPage (1198), EventsPage (1185), StudentsPage (1183), TeachersPage (1046), BatchesPage (1043).
+
 ## Routing
 
 All routes are defined in `App.tsx` using React Router DOM `<Routes>`. Pages are **lazy-loaded** with `React.lazy()`.
@@ -37,6 +60,9 @@ Routes sit under `<AppLayout />` (which renders sidebar + `<Outlet />`):
 /                   → DashboardPage
 /university         → UniversityProfilePage
 /campuses           → CampusesPage
+/campuses/create    → CampusCreatePage
+/campuses/edit/:id  → CampusEditPage
+/faculties          → FacultiesPage
 /ai                 → AiAssistantPage
 /notifications      → NotificationsPage
 /admissions         → AdmissionsPage
@@ -76,12 +102,15 @@ Key barrel export: `features/index.ts` re-exports everything.
 
 ### Updated Files (reflecting backend ref changes)
 
-- **`features/teachers.ts`** — `Teacher` interface: `userId` (ref User), `departmentId` (ref Department). Removed `coursesTeaching`. `getAll` accepts `{ departmentId?, designation?, status?, search?, page?, limit? }`. No `bulkCreate` —教师 creation auto-creates User on backend.
-- **`features/departments.ts`** — `Department` interface: `campusId` (ref Campus), `headId` (ref Teacher). `getAll` accepts optional `campusId` param.
+- **`features/teachers.ts`** — `Teacher` interface: `userId` (ref User), `departmentId` (ref Department). Removed `coursesTeaching`. `getAll` accepts `{ departmentId?, designation?, status?, search?, page?, limit? }`. No `bulkCreate` — teacher creation auto-creates User on backend.
+- **`features/departments.ts`** — `Department` interface: `campusId` (ref Campus), `headId` (ref Teacher), `facultyId` (ref Faculty). `getAll` accepts optional `campusId` param.
 - **`features/courses.ts`** — `Course` interface: `departmentId` (ref Department), `programId` (ref Program), `instructorId` (ref Teacher). All filter methods use `departmentId`. `CourseFilters` uses `departmentId`/`programId`.
 - **`features/attendance.ts`** — `AttendanceRecord` has `departmentId` alongside legacy `department`. API methods use `departmentId` in query params and payloads.
 - **`features/batches.ts`** — `getAll` accepts `departmentId` instead of `department`.
-- **`features/programs.ts`** — NEW file. `Program` interface + `ProgramAPI` class with `getAll`, `getById`, `getStats`, `create`, `update`, `delete`.
+- **`features/programs.ts`** — `Program` interface + `ProgramAPI` class with `getAll`, `getById`, `getStats`, `create`, `update`, `delete`.
+- **`features/faculties.ts`** — `Faculty` interface + `FacultyAPI` class with `getAll`, `getById`, `getStats`, `create`, `update`, `delete`.
+- **`features/campus.ts`** — `campusAPI.getAll()` (no params needed), `.getById(id)`, `.create(data)`, `.update(id, data)`, `.delete(id)`. No separate `setMain` — uses `update(id, { isMainCampus: true })`.
+- **`features/university.ts`** — Single-university pattern: `getUniversity()`, `createUniversity(data)`, `updateUniversity(data)`, `deleteUniversity()`.
 
 ### Still using legacy `department` string (not yet updated)
 
@@ -95,8 +124,8 @@ Roles defined in frontend: `'Super Admin' | 'Admin' | 'Teacher' | 'Student' | 'S
 
 ## UI Components
 
-- `components/data-table.tsx` — `DataTable<T>` generic table with `Column<T>[]` config
-- `components/dashboard/kpi-card.tsx` — `KpiCard` for stats display
+- `components/data-table.tsx` — `DataTable<T>` generic table with `Column<T>[]` config (uses `cell` not `render`)
+- `components/dashboard/kpi-card.tsx` — `KpiCard` for stats display (uses `label` not `title`, `icon: LucideIcon`)
 - `components/ui/*` — shadcn/ui primitives (Badge, Button, Input, Label, Dialog, etc.)
 - `layouts/AppLayout.tsx` — wraps sidebar + main content area
 
@@ -105,8 +134,8 @@ Roles defined in frontend: `'Super Admin' | 'Admin' | 'Teacher' | 'Student' | 'S
 - Each page is a default-exported component
 - Pages manage their own state (no shared store)
 - CRUD pages follow: fetch data → display in DataTable → modal form for create/edit → toast for feedback
-- Department dropdowns: fetch departments list, render as `<select>` in form modals
-- Teacher/program dropdowns: same pattern — fetch list, render select
+- Large pages (>500 lines) split into `components/` sub-folder (see Page Refactoring Convention)
+- Department/teacher/faculty dropdowns: fetch list on mount, render as `<select>` in form modals
 
 ## Key Backend→Frontend Field Mapping
 
@@ -114,13 +143,15 @@ Roles defined in frontend: `'Super Admin' | 'Admin' | 'Teacher' | 'Student' | 'S
 |---|---|---|
 | `Teacher.userId` (ref User) | `Teacher.userId` | Populated on read |
 | `Teacher.departmentId` (ref Department) | `Teacher.departmentId` | Was `department` string |
-| `Department.campusId` (ref Campus) | `Department.campusId` | New — required on create |
-| `Department.headId` (ref Teacher) | `Department.headId` | New — optional |
+| `Department.campusId` (ref Campus) | `Department.campusId` | Required on create |
+| `Department.headId` (ref Teacher) | `Department.headId` | Optional |
+| `Department.facultyId` (ref Faculty) | `Department.facultyId` | Was `faculty` string |
 | `Course.departmentId` (ref Department) | `Course.departmentId` | Was `department` string |
 | `Course.programId` (ref Program) | `Course.programId` | New |
 | `Course.instructorId` (ref Teacher) | `Course.instructorId` | Was ref User |
 | `Attendance.departmentId` (ref Department) | `AttendanceRecord.departmentId` | New — alongside legacy `department` |
-| `Program` (new model) | `Program` | Full CRUD API service exists |
+| `Program` (model) | `Program` | Full CRUD API service exists |
+| `Faculty` (model) | `Faculty` | Full CRUD API service exists |
 | `University` (single) | `University` | Only 4 endpoints: GET/POST/PUT/DELETE `/universities` (no :id) |
 
 ## University API (single-university pattern)
@@ -129,43 +160,42 @@ Only 4 endpoints — no `:id` params because there is exactly one university:
 
 | Method | Endpoint | Auth | Purpose |
 |--------|----------|------|---------|
-| `GET /api/universities` | Auth | Returns the single university + stats (campusCount, userCount, role counts) |
-| `POST /api/universities` | Admin | Create university + link seeded Admins. **No user/token created.** |
+| `GET /api/universities` | Auth | Returns the single university + stats |
+| `POST /api/universities` | Admin | Create university + link seeded Admins |
 | `PUT /api/universities` | Admin | Update university fields |
 | `DELETE /api/universities` | Admin | Soft-delete university + cascade to Users + Campuses |
 
-Frontend API (`features/university.ts`): `getUniversity()`, `createUniversity(data)`, `updateUniversity(data)`, `deleteUniversity()`. Legacy compat wrappers (`getUniversities`, `getUniversityById`, `updateUniversityById`) redirect to the single-university versions.
-
-`UniversityProfilePage.tsx`: fetches on mount; if university exists → read-only view + Edit button; if 404 → create form. No admin account fields (admin pre-seeded).
-
 ## Campus System
 
-Real campus CRUD lives in `/campuses` endpoints (`campus.controller.js`) — NOT in settings. The old fake campus CRUD inside settings controller/routes was **removed**.
-
 Backend behavior:
-- Controller auto-resolves `universityId` from the single university — no need to send it.
-- Accepts flat address fields (`street`, `city`, `province`, `country`, `postalCode`) and maps them into nested `address`.
-- First created campus automatically becomes main (`isMainCampus`).
-- Delete cascades soft-delete to Departments scoped to that campus.
-- Main campus cannot be deleted while other campuses exist; `PUT /campuses/:id/set-main` promotes one.
-- Has `createdBy`/`updatedBy` audit fields.
+- Controller auto-resolves `universityId` from the single university
+- Accepts flat address fields (`street`, `city`, `province`, `country`, `postalCode`) and maps them into nested `address`
+- First created campus automatically becomes main (`isMainCampus`)
+- Only one campus can be main — `updateCampus` blocks `isMainCampus: true` if another is already main (returns 400)
+- Delete cascades soft-delete to Departments scoped to that campus
+- Main campus cannot be deleted while other campuses exist
 
 Frontend pages (separate pages, NOT modals):
-- `/campuses` → `pages/university/campuses/CampusesPage.tsx` — card grid list, search, dropdown actions (Edit / Set as Main / Delete), status+type badges
+- `/campuses` → `CampusesPage.tsx` — card grid list, search, dropdown actions
 - `/campuses/create` → `CampusCreatePage.tsx`
 - `/campuses/edit/:id` → `CampusEditPage.tsx`
-- Shared form component: `pages/university/campuses/CampusForm.tsx` (mode: "create" | "edit")
+- Shared form: `CampusForm.tsx` (mode: "create" | "edit") — disables main switch if another is already main
 
-Frontend API (`features/campus.ts`): `campusAPI.getAll()` (no params needed), `.getById(id)`, `.create(data)`, `.update(id, data)`, `.delete(id)`, `.setMain(id)`.
+## Faculty System
 
-SettingsPage no longer manages campuses — profile (name/email/phone/bio only), password change, preferences remain.
+Backend:
+- `Faculty` model: `campusId` (ref Campus), `headId` (ref Teacher), soft-delete
+- `Department` model: `facultyId` (ref Faculty) — was `faculty` string
+- Controller validates campus/teacher, blocks duplicate name/code per campus, blocks delete if departments exist
+- All routes require `auth + authorize("Admin")`
+
+Frontend:
+- `features/faculties.ts` — `FacultyAPI` class
+- `FacultiesPage.tsx` — DataTable + KpiCards + modal form
+- `DepartmentsPage.tsx` — faculty dropdown fetches real faculties from API
 
 ## What's NOT Done Yet (frontend)
 
-- **DepartmentsPage** — campusId/headId form fields added, but view modal may still reference `dept.head`
-- **TeachersPage** — needs departmentId dropdown, remove bulk create UI
-- **CoursesPage** — needs departmentId/programId dropdowns, remove hardcoded program list
-- **AttendancePage** — needs department filter changed to departmentId dropdown
-- **BatchesPage** — needs department filter changed to departmentId dropdown
 - **Student pages** — left for later (student model not refactored yet)
-- **Compilation verification** — not yet run `npx tsc --noEmit` after all changes
+- **Legacy `department` string** in some features — students, admissions, assignment, exam, book, fee, feeStructure, finance, hr, auth
+- **Large page refactoring** — FeesPage, AdmissionsPage, TransportPage, AssignmentsPage, CoursesPage, HrPage, LibraryPage, ExamsPage, EventsPage, StudentsPage, TeachersPage, BatchesPage all still 1000+ lines

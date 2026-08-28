@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
 import { handle } from "../utils/asyncHandler.js";
-import { Department, Course, Teacher } from '../models/index.js';
+import { Department, Course, Teacher, Faculty } from '../models/index.js';
 import { generateDepartmentId } from "../utils/generateDepartmentId.js";
 
 async function findDepartmentByIdentifier(identifier) {
@@ -20,6 +20,7 @@ export const getDepartments = handle(async (req, res) => {
   const departments = await Department.find(filter)
     .sort({ name: 1 })
     .populate('campusId', 'name campusCode')
+    .populate('facultyId', 'name code')
     .populate('headId', 'name email designation')
     .select('-__v');
 
@@ -42,6 +43,7 @@ export const getDepartmentById = handle(async (req, res) => {
 
   const populated = await Department.findById(department._id)
     .populate('campusId', 'name campusCode')
+    .populate('facultyId', 'name code')
     .populate('headId', 'name email designation');
 
   res.json({ success: true, data: populated });
@@ -54,7 +56,7 @@ export const createDepartment = handle(async (req, res) => {
     code,
     description,
     headId,
-    faculty,
+    facultyId,
     email,
     phone,
     establishedDate,
@@ -105,6 +107,17 @@ export const createDepartment = handle(async (req, res) => {
     }
   }
 
+  // Verify facultyId if provided
+  if (facultyId) {
+    const faculty = await Faculty.findOne({ _id: facultyId, isDeleted: { $ne: true } });
+    if (!faculty) {
+      return res.status(400).json({
+        success: false,
+        message: `Faculty ${facultyId} not found`
+      });
+    }
+  }
+
   const departmentId = await generateDepartmentId();
 
   const department = new Department({
@@ -114,7 +127,7 @@ export const createDepartment = handle(async (req, res) => {
     code: code.toUpperCase().trim(),
     description: description || '',
     headId: headId || null,
-    faculty: faculty || '',
+    facultyId: facultyId || null,
     email: email || '',
     phone: phone || '',
     establishedDate: establishedDate ? new Date(establishedDate) : null,
@@ -128,6 +141,7 @@ export const createDepartment = handle(async (req, res) => {
 
   const populated = await Department.findById(department._id)
     .populate('campusId', 'name campusCode')
+    .populate('facultyId', 'name code')
     .populate('headId', 'name email designation');
 
   res.status(201).json({
@@ -146,7 +160,7 @@ export const updateDepartment = handle(async (req, res) => {
     description,
     status,
     headId,
-    faculty,
+    facultyId,
     email,
     phone,
     establishedDate,
@@ -200,7 +214,7 @@ export const updateDepartment = handle(async (req, res) => {
   if (description !== undefined) department.description = description;
   if (status !== undefined && status !== '') department.status = status;
   if (headId !== undefined) department.headId = headId || null;
-  if (faculty !== undefined) department.faculty = faculty;
+  if (facultyId !== undefined) department.facultyId = facultyId || null;
   if (email !== undefined) department.email = email;
   if (phone !== undefined) department.phone = phone;
   if (establishedDate !== undefined) department.establishedDate = establishedDate ? new Date(establishedDate) : null;
@@ -212,6 +226,7 @@ export const updateDepartment = handle(async (req, res) => {
 
   const populated = await Department.findById(department._id)
     .populate('campusId', 'name campusCode')
+    .populate('facultyId', 'name code')
     .populate('headId', 'name email designation');
 
   res.json({

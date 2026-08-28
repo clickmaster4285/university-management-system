@@ -14,6 +14,7 @@ export { default as Driver } from "./Driver.model.js";
 export { default as Employee } from "./Employee.model.js";
 export { default as Event } from "./Event.model.js";
 export { default as Exam } from "./Exam.model.js";
+export { default as Faculty } from "./Faculty.model.js";
 export { default as Fee } from "./Fee.model.js";
 export { default as FeeStructure } from "./FeeStructure.model.js";
 export { default as Finance } from "./Finance.model.js";
