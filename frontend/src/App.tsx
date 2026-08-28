@@ -27,6 +27,8 @@ const CampusEditPage = lazy(() => import("./pages/university/campuses/CampusEdit
 // Academics Modular Pages
 const AdmissionsPage = lazy(() => import("./pages/academics/admissions/AdmissionsPage"));
 const DepartmentsPage = lazy(() => import("./pages/academics/departments/DepartmentsPage"));
+const DepartmentCreatePage = lazy(() => import("./pages/academics/departments/DepartmentCreatePage"));
+const DepartmentEditPage = lazy(() => import("./pages/academics/departments/DepartmentEditPage"));
 const ProgramsPage = lazy(() => import("./pages/academics/programs/ProgramsPage"));
 const FacultiesPage = lazy(() => import("./pages/academics/faculties/FacultiesPage"));
 const CoursesPage = lazy(() => import("./pages/academics/courses/CoursesPage"));
@@ -96,6 +98,8 @@ export const App = () => (
                 {/* Academics */}
                 <Route path="admissions" element={<AdmissionsPage />} />
                 <Route path="departments" element={<DepartmentsPage />} />
+                <Route path="departments/create" element={<DepartmentCreatePage />} />
+                <Route path="departments/edit/:id" element={<DepartmentEditPage />} />
                 <Route path="programs" element={<ProgramsPage />} />
                 <Route path="faculties" element={<FacultiesPage />} />
                 <Route path="courses" element={<CoursesPage />} />

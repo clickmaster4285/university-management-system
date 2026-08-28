@@ -1,147 +1,107 @@
 import { useState, useEffect, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { DataTable, type Column } from "@/components/data-table";
 import { KpiCard } from "@/components/dashboard/kpi-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { departmentAPI, type Department } from "@/features/departments";
 import { campusAPI, type Campus } from "@/features/campus";
-import { teacherAPI, type Teacher } from "@/features/teachers";
 import { facultyAPI, type Faculty } from "@/features/faculties";
-import { AnimatedTrendChart, AnimatedGauge } from "./Charts";
-import { DepartmentFormModal, type DepartmentFormData, EMPTY_FORM } from "./DepartmentFormModal";
 import { DepartmentViewModal } from "./DepartmentViewModal";
 import {
-  Building2, Users, RefreshCw, UserPlus, Search,
-  Eye, Pencil, Trash2, MapPin, User, Mail, ThumbsUp, AlertCircle,
+  Building2, Users, BookOpen, Loader2,
+  Eye, Pencil, Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
 
+const getDepartmentRecordId = (dept: Department) => dept._id || dept.departmentId || "";
+
+const resolveRefId = (value: string | { _id: string } | null | undefined) => {
+  if (!value) return "";
+  if (typeof value === "object") return value._id || "";
+  return value;
+};
+
 export default function DepartmentsPage() {
+  const navigate = useNavigate();
   const [departments, setDepartments] = useState<Department[]>([]);
-  const [filteredDepartments, setFilteredDepartments] = useState<Department[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
   const [campuses, setCampuses] = useState<Campus[]>([]);
-  const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [faculties, setFaculties] = useState<Faculty[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState({ total: 0, active: 0, inactive: 0 });
+  const [campusFilter, setCampusFilter] = useState("all");
+  const [facultyFilter, setFacultyFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
 
-  // Form modal state
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isEditMode, setIsEditMode] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [formData, setFormData] = useState<DepartmentFormData>(EMPTY_FORM);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  // View modal state
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [viewingDepartment, setViewingDepartment] = useState<Department | null>(null);
 
-  // ── Data fetching ──────────────────────────────────────────
-  const fetchDepartments = async () => {
+  const fetchData = async () => {
     try {
       setLoading(true);
-      setError(null);
-      const response = await departmentAPI.getAll();
-      if (response?.data) {
-        setDepartments(response.data);
-        setFilteredDepartments(response.data);
-      } else {
-        setDepartments([]);
-        setFilteredDepartments([]);
-        setError("No data received");
-      }
-    } catch (err: any) {
-      const msg = err.message?.includes("Failed to fetch")
-        ? "Cannot connect to backend. Make sure backend is running on http://localhost:4000"
-        : "Failed to load departments";
-      setError(msg);
-      toast.error(msg);
+      const [deptRes, campusRes, facRes, statsRes] = await Promise.all([
+        departmentAPI.getAll(),
+        campusAPI.getAll(),
+        facultyAPI.getAll(),
+        departmentAPI.getStats(),
+      ]);
+      setDepartments(deptRes?.data || []);
+      setCampuses(Array.isArray(campusRes?.data) ? campusRes.data : []);
+      setFaculties(Array.isArray(facRes?.data) ? facRes.data : []);
+      setStats(statsRes?.data || { total: 0, active: 0, inactive: 0 });
+    } catch {
+      toast.error("Failed to load departments");
       setDepartments([]);
-      setFilteredDepartments([]);
     } finally {
       setLoading(false);
     }
   };
 
-  const fetchRelated = async () => {
-    try {
-      const [campusRes, teacherRes, facRes] = await Promise.all([
-        campusAPI.getAll(),
-        teacherAPI.getAll(),
-        facultyAPI.getAll(),
-      ]);
-      setCampuses(Array.isArray(campusRes?.data) ? campusRes.data : []);
-      setTeachers(teacherRes || []);
-      setFaculties(Array.isArray(facRes?.data) ? facRes.data : []);
-    } catch (err) {
-      console.error("Failed to fetch related data:", err);
-    }
-  };
-
   useEffect(() => {
-    fetchDepartments();
-    fetchRelated();
+    fetchData();
   }, []);
 
-  // ── Search ─────────────────────────────────────────────────
-  const handleSearch = (query: string) => {
-    setSearchQuery(query);
-    if (!query.trim()) {
-      setFilteredDepartments(departments);
-      return;
-    }
-    const q = query.toLowerCase().trim();
-    setFilteredDepartments(
-      departments.filter((d) => {
-        const headName = typeof d.headId === "object" ? d.headId.name : "";
-        return (
-          d.departmentId?.toLowerCase().includes(q) ||
-          d.name?.toLowerCase().includes(q) ||
-          d.code?.toLowerCase().includes(q) ||
-          headName?.toLowerCase().includes(q) ||
-          d.location?.toLowerCase().includes(q)
-        );
-      })
-    );
-  };
-
-  // ── Stats ──────────────────────────────────────────────────
-  const totalDepartments = departments.length;
-  const activeDepartments = departments.filter((d) => d.status === "Active").length;
-  const activeRate = totalDepartments > 0 ? Math.round((activeDepartments / totalDepartments) * 100) : 0;
-
-  // ── Form handlers ──────────────────────────────────────────
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const openAddModal = () => {
-    setIsEditMode(false);
-    setEditingId(null);
-    setFormData(EMPTY_FORM);
-    setIsModalOpen(true);
-  };
-
-  const openEditModal = (dept: Department) => {
-    setIsEditMode(true);
-    setEditingId(dept.departmentId || dept._id || null);
-    setFormData({
-      name: dept.name || "",
-      code: dept.code || "",
-      description: dept.description || "",
-      campusId: typeof dept.campusId === "object" ? dept.campusId._id : dept.campusId || "",
-      headId: typeof dept.headId === "object" ? dept.headId._id : dept.headId || "",
-      facultyId: typeof dept.facultyId === "object" ? dept.facultyId._id : dept.facultyId || "",
-      status: dept.status || "Active",
-      location: dept.location || "",
-      email: dept.email || "",
-      phone: dept.phone || "",
-      establishedDate: dept.establishedDate || "",
+  const filteredDepartments = useMemo(() => {
+    return departments.filter((d) => {
+      if (statusFilter !== "all" && (d.status || "Active") !== statusFilter) return false;
+      if (campusFilter !== "all") {
+        const campusId = resolveRefId(d.campusId as string | { _id: string } | null | undefined);
+        if (campusId !== campusFilter) return false;
+      }
+      if (facultyFilter !== "all") {
+        const facultyId = resolveRefId(d.facultyId as string | { _id: string } | null | undefined);
+        if (facultyId !== facultyFilter) return false;
+      }
+      return true;
     });
-    setIsModalOpen(true);
+  }, [departments, campusFilter, facultyFilter, statusFilter]);
+
+  const campusFaculties = useMemo(() => {
+    if (campusFilter === "all") return faculties;
+    return faculties.filter(
+      (f) => resolveRefId(f.campusId as string | { _id: string } | null | undefined) === campusFilter
+    );
+  }, [faculties, campusFilter]);
+
+  const clearFilters = () => {
+    setCampusFilter("all");
+    setFacultyFilter("all");
+    setStatusFilter("all");
+  };
+
+  const getCampusName = (campus: Department["campusId"]) => {
+    if (!campus) return "—";
+    if (typeof campus === "object") return campus.name;
+    const found = campuses.find((c) => c._id === campus);
+    return found?.name || campus;
+  };
+
+  const getFacultyName = (faculty: Department["facultyId"]) => {
+    if (!faculty) return "—";
+    if (typeof faculty === "object") return faculty.name;
+    const found = faculties.find((f) => f._id === faculty);
+    return found?.name || faculty;
   };
 
   const openViewModal = (dept: Department) => {
@@ -149,229 +109,162 @@ export default function DepartmentsPage() {
     setIsViewModalOpen(true);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-    try {
-      if (!formData.name || !formData.code) {
-        toast.error("Name and Code are required");
-        return;
-      }
-      if (isEditMode && editingId) {
-        await departmentAPI.update(editingId, formData);
-        toast.success(`Department ${formData.name} updated successfully!`);
-      } else {
-        await departmentAPI.create(formData);
-        toast.success(`Department ${formData.name} created successfully!`);
-      }
-      setIsModalOpen(false);
-      await fetchDepartments();
-      setSearchQuery("");
-    } catch (err: any) {
-      const msg = err.message?.includes("duplicate")
-        ? "Duplicate entry. Name or Code already exists."
-        : isEditMode ? "Failed to update department" : "Failed to create department";
-      toast.error(msg);
-    } finally {
-      setIsSubmitting(false);
+  const goToEdit = (dept: Department) => {
+    const id = getDepartmentRecordId(dept);
+    if (!id) {
+      toast.error("Cannot edit department: missing ID");
+      return;
     }
+    navigate(`/departments/edit/${id}`);
   };
 
-  const handleDelete = async (id: string, name: string) => {
-    if (!confirm(`Are you sure you want to delete "${name}"?`)) return;
+  const handleDelete = async (dept: Department) => {
+    const id = getDepartmentRecordId(dept);
+    if (!id) {
+      toast.error("Cannot delete department: missing ID");
+      return;
+    }
+    if (!confirm(`Delete "${dept.name}"?`)) return;
     try {
       await departmentAPI.delete(id);
-      toast.success(`Department ${name} deleted successfully`);
-      await fetchDepartments();
-      setSearchQuery("");
-    } catch {
-      toast.error("Failed to delete department");
+      toast.success("Department deleted");
+      fetchData();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || "Delete failed");
     }
   };
 
-  // ── Table columns ──────────────────────────────────────────
-  const getDepartmentId = (dept: Department) => dept.departmentId || dept._id?.slice(-8).toUpperCase() || "N/A";
-
-  const cols: Column<Department>[] = [
+  const columns: Column<Department>[] = [
+    { key: "code", header: "Code", cell: (d) => <span className="font-mono font-semibold">{d.code}</span> },
+    { key: "name", header: "Name" },
+    { key: "campusId", header: "Campus", cell: (d) => getCampusName(d.campusId) },
+    { key: "facultyId", header: "Faculty", cell: (d) => getFacultyName(d.facultyId) },
     {
-      key: "name",
-      header: "Department",
-      cell: (r) => (
-        <div>
-          <div className="font-medium">{r.name}</div>
-          <div className="text-xs text-muted-foreground">
-            <span className="font-mono bg-muted px-1.5 py-0.5 rounded">ID: {getDepartmentId(r)}</span> · Code: {r.code}
-          </div>
-        </div>
+      key: "headId",
+      header: "Head",
+      cell: (d) => (
+        <span>{typeof d.headId === "object" && d.headId ? d.headId.name : "—"}</span>
       ),
     },
-    { key: "code", header: "Code", cell: (r) => <Badge variant="secondary">{r.code}</Badge> },
-    {
-      key: "head",
-      header: "Head of Department",
-      cell: (r) => (
-        <div className="flex items-center gap-2">
-          <User className="h-3 w-3 text-muted-foreground" />
-          <span>{typeof r.headId === "object" ? r.headId?.name || "—" : "—"}</span>
-        </div>
-      ),
-    },
-    {
-      key: "location",
-      header: "Location",
-      cell: (r) => (
-        <div className="flex items-center gap-1">
-          <MapPin className="h-3 w-3 text-muted-foreground" />
-          <span className="text-sm">{r.location || "—"}</span>
-        </div>
-      ),
-    },
-    {
-      key: "email",
-      header: "Email",
-      cell: (r) => (
-        <div className="flex items-center gap-1">
-          <Mail className="h-3 w-3 text-muted-foreground" />
-          <span className="text-sm">{r.email || "—"}</span>
-        </div>
-      ),
-    },
+    { key: "email", header: "Email", cell: (d) => d.email || "—" },
     {
       key: "status",
       header: "Status",
-      cell: (r) => {
-        const s = r.status || "Active";
-        return <Badge variant={s === "Active" ? "default" : "outline"}>{s}</Badge>;
-      },
+      cell: (d) => (
+        <Badge variant={d.status === "Active" ? "default" : "secondary"}>
+          {d.status || "Active"}
+        </Badge>
+      ),
     },
     {
-      key: "actions",
+      key: "_id",
       header: "Actions",
-      cell: (r) => (
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={() => openViewModal(r)} className="hover:bg-blue-50">
-            <Eye className="h-3 w-3 mr-1" /> View
+      cell: (d) => (
+        <div className="flex gap-1">
+          <Button type="button" size="sm" variant="ghost" onClick={() => openViewModal(d)} title="View department">
+            <Eye className="h-4 w-4" />
           </Button>
-          <Button variant="outline" size="sm" onClick={() => openEditModal(r)} className="hover:bg-blue-50">
-            <Pencil className="h-3 w-3 mr-1" /> Edit
+          <Button type="button" size="sm" variant="ghost" onClick={() => goToEdit(d)} title="Edit department">
+            <Pencil className="h-4 w-4" />
           </Button>
-          <Button variant="destructive" size="sm" onClick={() => handleDelete(r.departmentId || r._id || "", r.name)}>
-            <Trash2 className="h-3 w-3 mr-1" /> Delete
+          <Button type="button" size="sm" variant="ghost" onClick={() => handleDelete(d)} title="Delete department">
+            <Trash2 className="h-4 w-4 text-destructive" />
           </Button>
         </div>
       ),
     },
   ];
 
-  // ── Render ─────────────────────────────────────────────────
   return (
     <>
-        {/* KPI Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-          <KpiCard label="Total Departments" value={totalDepartments} icon={Building2} tone="brand" />
-          <KpiCard label="Active Departments" value={activeDepartments} icon={Building2} tone="success" />
-          <KpiCard label="Active Rate" value={`${activeRate}%`} icon={ThumbsUp} tone="warning" />
+      <div className="grid gap-4 md:grid-cols-3">
+        <KpiCard label="Total Departments" value={stats.total} icon={Building2} />
+        <KpiCard label="Active" value={stats.active} icon={BookOpen} />
+        <KpiCard label="Inactive" value={stats.inactive} icon={Users} />
+      </div>
+
+      {loading ? (
+        <div className="flex justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>
-
-        {/* Charts */}
-        {!loading && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            <div className="lg:col-span-2">
-              <AnimatedTrendChart title="Department Growth" seriesALabel="Faculty" seriesBLabel="Students" />
-            </div>
-            <AnimatedGauge title="Active Department Rate" value={activeRate} />
-          </div>
-        )}
-
-        {/* Search */}
-        <div className="mb-4 flex flex-wrap items-center gap-4">
-          <div className="relative flex-1 min-w-[200px] max-w-md">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input placeholder="Search by ID, Name, Code, Head..." value={searchQuery} onChange={(e) => handleSearch(e.target.value)} className="pl-9" />
-          </div>
-          {searchQuery && (
-            <div className="text-sm text-muted-foreground flex items-center gap-2">
-              Found {filteredDepartments.length} of {departments.length} departments
-              <Button variant="ghost" size="sm" onClick={() => handleSearch("")} className="h-7 px-2">✕ Clear</Button>
+      ) : (
+        <DataTable
+          title="All Departments"
+          description={`${filteredDepartments.length} of ${departments.length} department${departments.length === 1 ? "" : "s"} shown`}
+          columns={columns}
+          data={filteredDepartments}
+          searchKeys={["name", "code"]}
+          pageSize={10}
+          addLabel="Add department"
+          onAdd={() => navigate("/departments/create")}
+          filterPanel={(
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="dept-campus-filter">Campus</Label>
+                <select
+                  id="dept-campus-filter"
+                  className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm"
+                  value={campusFilter}
+                  onChange={(e) => {
+                    setCampusFilter(e.target.value);
+                    setFacultyFilter("all");
+                  }}
+                >
+                  <option value="all">All campuses</option>
+                  {campuses.map((c) => (
+                    <option key={c._id} value={c._id}>{c.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="dept-faculty-filter">Faculty</Label>
+                <select
+                  id="dept-faculty-filter"
+                  className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm"
+                  value={facultyFilter}
+                  onChange={(e) => setFacultyFilter(e.target.value)}
+                  disabled={campusFilter !== "all" && campusFaculties.length === 0}
+                >
+                  <option value="all">All faculties</option>
+                  {campusFaculties.map((f) => (
+                    <option key={f._id} value={f._id}>{f.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="dept-status-filter">Status</Label>
+                <select
+                  id="dept-status-filter"
+                  className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm"
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                >
+                  <option value="all">All statuses</option>
+                  <option value="Active">Active</option>
+                  <option value="Inactive">Inactive</option>
+                </select>
+              </div>
+              <div className="flex items-end">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full sm:w-auto"
+                  onClick={clearFilters}
+                  disabled={campusFilter === "all" && facultyFilter === "all" && statusFilter === "all"}
+                >
+                  Clear filters
+                </Button>
+              </div>
             </div>
           )}
-        </div>
+        />
+      )}
 
-        {/* Error */}
-        {error && (
-          <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg flex items-start gap-3">
-            <AlertCircle className="h-5 w-5 mt-0.5 flex-shrink-0" />
-            <div>
-              <p className="font-medium">Failed to load data</p>
-              <p className="text-sm">{error}</p>
-              <Button variant="outline" size="sm" className="mt-2" onClick={fetchDepartments}>
-                <RefreshCw className="h-3 w-3 mr-2" /> Retry
-              </Button>
-            </div>
-          </div>
-        )}
-
-        {/* Loading */}
-        {loading && (
-          <div className="flex justify-center items-center h-64">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto" />
-              <p className="mt-4 text-muted-foreground">Loading departments from database...</p>
-            </div>
-          </div>
-        )}
-
-        {/* DataTable */}
-        {!loading && !error && (
-          <div className="relative">
-            <style>{`.data-table .data-table-search-wrapper,.data-table .search-wrapper,.data-table [data-slot="search"],.data-table .relative input[placeholder*="Search"]{display:none!important;}`}</style>
-            <DataTable
-              title="All Departments"
-              description={`${filteredDepartments.length} departments found${searchQuery ? ` (filtered from ${departments.length})` : ""}`}
-              data={filteredDepartments}
-              columns={cols}
-              pageSize={10}
-              addLabel="Add department"
-              onAdd={openAddModal}
-            />
-          </div>
-        )}
-
-        {/* Empty state */}
-        {!loading && !error && filteredDepartments.length === 0 && (
-          <div className="flex flex-col items-center justify-center h-64 border-2 border-dashed rounded-lg">
-            {searchQuery ? (
-              <>
-                <p className="text-muted-foreground mb-2">No departments match your search</p>
-                <Button variant="outline" onClick={() => handleSearch("")}>Clear Search</Button>
-              </>
-            ) : (
-              <>
-                <p className="text-muted-foreground mb-4">No departments found in database</p>
-                <Button onClick={openAddModal}><UserPlus className="h-4 w-4 mr-2" /> Add First Department</Button>
-              </>
-            )}
-          </div>
-        )}
-
-      {/* Modals */}
-      <DepartmentFormModal
-        isOpen={isModalOpen}
-        isEditMode={isEditMode}
-        formData={formData}
-        isSubmitting={isSubmitting}
-        campuses={campuses}
-        teachers={teachers}
-        faculties={faculties}
-        onChange={handleInputChange}
-        onSubmit={handleSubmit}
-        onClose={() => setIsModalOpen(false)}
-      />
       <DepartmentViewModal
         isOpen={isViewModalOpen}
         department={viewingDepartment}
         onClose={() => setIsViewModalOpen(false)}
-        onEdit={openEditModal}
+        onEdit={goToEdit}
       />
     </>
   );

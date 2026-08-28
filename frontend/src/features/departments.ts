@@ -1,4 +1,3 @@
-// src/lib/api/departments.ts
 import api from './axios';
 
 export interface Department {
@@ -10,8 +9,6 @@ export interface Department {
   description?: string;
   headId?: string | { _id: string; name: string; email: string; designation: string };
   facultyId?: string | { _id: string; name: string; code: string };
-  facultyCount?: number;
-  studentCount?: number;
   status?: 'Active' | 'Inactive';
   location?: string;
   email?: string;
@@ -28,8 +25,10 @@ export interface DepartmentStats {
   departments: Array<{
     name: string;
     code: string;
-    isActive: boolean;
+    status: string;
     courseCount: number;
+    programCount: number;
+    teacherCount: number;
     totalStudents: number;
     totalCredits: number;
   }>;
@@ -38,13 +37,22 @@ export interface DepartmentStats {
 class DepartmentAPI {
   private baseUrl = '/departments';
 
-  async getAll(params?: { campusId?: string; isActive?: boolean }) {
+  async getAll(params?: {
+    campusId?: string;
+    facultyId?: string;
+    status?: string;
+    search?: string;
+    page?: number;
+    limit?: number;
+  }) {
     try {
       const queryParams = new URLSearchParams();
       if (params?.campusId) queryParams.append('campusId', params.campusId);
-      if (params?.isActive !== undefined) {
-        queryParams.append('isActive', String(params.isActive));
-      }
+      if (params?.facultyId) queryParams.append('facultyId', params.facultyId);
+      if (params?.status) queryParams.append('status', params.status);
+      if (params?.search) queryParams.append('search', params.search);
+      if (params?.page) queryParams.append('page', params.page.toString());
+      if (params?.limit) queryParams.append('limit', params.limit.toString());
       const url = queryParams.toString() ? `${this.baseUrl}?${queryParams}` : this.baseUrl;
       const response = await api.get(url);
       return response.data;
@@ -86,30 +94,17 @@ class DepartmentAPI {
 
   async update(id: string, data: Partial<Department>) {
     try {
-      
       const response = await api.put(`${this.baseUrl}/${id}`, data);
-      
-      
-      // Ensure we return the data in a consistent format
       if (response.data && response.data.success !== undefined) {
         return response.data;
       }
-      
-      // If the API doesn't return a success flag, wrap it
       return {
         success: true,
         data: response.data,
-        message: 'Department updated successfully'
+        message: 'Department updated successfully',
       };
-    } catch (error: any) {
-      console.error('❌ Error updating department:', error);
-      
-      // Log more details about the error
-      if (error.response) {
-        console.error('Response status:', error.response.status);
-        console.error('Response data:', error.response.data);
-      }
-      
+    } catch (error) {
+      console.error('Error updating department:', error);
       throw error;
     }
   }

@@ -22,11 +22,11 @@ export interface Column<T> {
 
 export function DataTable<T>({
   title, description, data, columns, searchKeys, pageSize = 8,
-  actions, addLabel, onAdd, filterPanel,
+  actions, addLabel, onAdd, filterPanel, hideSearch = false,
 }: {
   title?: string; description?: string; data: T[]; columns: Column<T>[];
   searchKeys?: (keyof T)[]; pageSize?: number; actions?: ReactNode;
-  addLabel?: string; onAdd?: () => void; filterPanel?: ReactNode;
+  addLabel?: string; onAdd?: () => void; filterPanel?: ReactNode; hideSearch?: boolean;
 }) {
   const [q, setQ] = useState("");
   const [page, setPage] = useState(1);
@@ -43,7 +43,7 @@ export function DataTable<T>({
   const showHeader = Boolean(title || description || addLabel || actions);
 
   return (
-    <Card className="glass">
+    <Card className="glass mt-4">
       {showHeader && (
         <CardHeader className="flex flex-row items-start justify-between gap-4">
           <div>
@@ -65,10 +65,12 @@ export function DataTable<T>({
       )}
       <CardContent className="space-y-4">
         <div className="flex flex-wrap gap-2 items-center">
-          <div className="relative flex-1 min-w-[200px] max-w-sm">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input value={q} onChange={(e) => { setQ(e.target.value); setPage(1); }} placeholder="Search…" className="pl-9" />
-          </div>
+          {!hideSearch && (
+            <div className="relative flex-1 min-w-[200px] max-w-sm">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input value={q} onChange={(e) => { setQ(e.target.value); setPage(1); }} placeholder="Search…" className="pl-9" />
+            </div>
+          )}
           {filterPanel && (
             <Button
               variant={showFilters ? "default" : "outline"}

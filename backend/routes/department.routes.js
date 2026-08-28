@@ -1,24 +1,21 @@
-// backend/src/routes/department.routes.js
 import { Router } from "express";
-import { auth } from "../middleware/auth.js";
+import { auth, authorize } from "../middleware/auth.js";
 import {
   getDepartments,
   getDepartmentById,
   createDepartment,
   updateDepartment,
   deleteDepartment,
-  getDepartmentStats
+  getDepartmentStats,
 } from "../controllers/department.controller.js";
 
 const router = Router();
 
-router.use(auth);
-
-router.get("/", getDepartments);
-router.get("/stats", getDepartmentStats);
-router.get("/:id", getDepartmentById);
-router.post("/", createDepartment);
-router.put("/:id", updateDepartment);
-router.delete("/:id", deleteDepartment);
+router.post("/", auth, authorize("Admin"), createDepartment);
+router.get("/", auth, authorize("Admin"), getDepartments);
+router.get("/stats", auth, authorize("Admin"), getDepartmentStats);
+router.get("/:id", auth, authorize("Admin"), getDepartmentById);
+router.put("/:id", auth, authorize("Admin"), updateDepartment);
+router.delete("/:id", auth, authorize("Admin"), deleteDepartment);
 
 export default router;

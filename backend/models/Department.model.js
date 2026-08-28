@@ -1,8 +1,8 @@
 // backend/src/models/Department.js
 import mongoose from 'mongoose';
 
-const departmentSchema = new mongoose.Schema({
-  departmentId: {
+const departmentSchema = new mongoose.Schema({ 
+   departmentId: {
     type: String,
     unique: true
   },
