@@ -18,6 +18,7 @@ backend/models/
 ├── Counter.model.js
 ├── Course.model.js
 ├── Department.model.js
+├── Faculty.model.js
 ├── Driver.model.js
 ├── Employee.model.js
 ├── Event.model.js
@@ -28,6 +29,7 @@ backend/models/
 ├── Leave.model.js
 ├── Notification.model.js
 ├── Payroll.model.js
+├── Program.model.js
 ├── Recruitment.model.js
 ├── Report.model.js
 ├── Route.model.js
@@ -90,9 +92,9 @@ import address from "./address.js";
   - `auth` — verifies JWT, attaches `req.user`.
   - `authorize(...roles)` — returns 403 if `req.user.role` is not in the allowed list.
 - Route files apply permissions via `router.use(auth)` and `router.use(auth, authorize("Admin"))`, never inline in controllers.
-  - Admin-only modules: university, campus, settings, finance, hr, programs.
+  - Admin-only modules: university, campus, faculty, department, settings, finance, hr, programs (writes).
   - Admin/Staff: fee, feeStructure.
-  - Authenticated only: student, teacher, course, attendance, admissions, assignments, exams, books, transport, events, reports, dashboard, notifications, semesters, batches, academic-sessions.
+  - Authenticated only: student, teacher, course, attendance, admissions, assignments, exams, books, transport, events, reports, dashboard, notifications, semesters, batches, academic-sessions. Program GET routes are auth-only; program mutations require Admin.
   - Public: `POST /api/auth/login`, `POST /api/auth/register`, `POST /api/universities`.
 
 ## University API (single-university)
@@ -140,20 +142,36 @@ Only four endpoints — no `:id` params because there is exactly one university:
 ```
 University
   └── Campus (universityId ref)
-        └── Department (campusId ref)
-              ├── headId → Teacher (nullable)
-              ├── Program (departmentId ref)
-              │     └── Course (programId ref + program string denormalized)
-              └── Course (departmentId ref)
-                    └── instructorId → Teacher (nullable)
+        └── Faculty (campusId ref)
+              └── Department (campusId ref, facultyId ref)
+                    ├── Program (departmentId ref)
+                    │     └── Course (programId ref + program string denormalized)
+                    └── Course (departmentId ref)
+                          └── instructorId → Teacher (nullable)
 Teacher (userId ref → User, departmentId ref → Department)
 User (role: Admin | Teacher | Student | Staff)
 ```
 
+- **Faculty**: belongs to Campus (`campusId`). Head is Teacher (`headId`, nullable). Name+code unique per campus. Soft-delete.
+- **Department**: belongs to Campus (`campusId`) and optionally Faculty (`facultyId`). Head is Teacher (`headId`, nullable). Name+code unique per campus. Soft-delete. Delete blocked if programs, courses, teachers, or batches are linked.
+- **Program**: belongs to Department (`departmentId`). Has `code` (globally unique), `degreeLevel`, `duration`, `totalCredits`, `status`. Soft-delete fields on model; controller delete still hard-deletes (needs fix). Course link uses both `programId` ref and denormalized `program` code string.
 - **Teacher ↔ User**: creating a Teacher auto-creates a User (role: 'Teacher'). Teacher has `userId` ref. Soft-deleting a Teacher also soft-deletes the linked User.
-- **Department**: belongs to a Campus (`campusId`). Head is a Teacher (`headId`, nullable). Name+campusId and code+campusId are unique together.
-- **Program**: belongs to a Department (`departmentId`). Has `code` (e.g. BSCS), `degreeLevel`, `duration`, `totalCredits`. Program code is globally unique.
-- **Course**: belongs to a Department (`departmentId`) and a Program (`programId`). Instructor is a Teacher (`instructorId`, nullable). `program` string kept as denormalized display name.
+- **Course**: belongs to Department and Program. Instructor is Teacher (`instructorId`, nullable). `program` string kept as denormalized display name.
 - **Attendance**: has `departmentId` ref (nullable for backward compat) + `department` string denormalized from Student.
-- **Batch**: has `departmentId` ref + `department` string denormalized from Department.
+- **Batch**: has `departmentId` ref + `department`/`program` strings denormalized.
 - **Student**: left for later — still uses hardcoded `department` and `campus` strings, no User link.
+
+## Department API (updated)
+
+- List: `GET /api/departments?campusId&facultyId&status&search&page&limit`
+- Stats: `GET /api/departments/stats` — returns `{ total, active, inactive, departments[] }` using `status`
+- Create/update validate `facultyId` belongs to same campus as department
+- Soft delete with `deletedBy`; duplicate check includes soft-deleted records (409 with clear message)
+- All routes: `auth + authorize("Admin")`
+
+## Program API (current — needs fixes)
+
+- List: `GET /api/programs?departmentId&degreeLevel&status&search&page&limit` (auth only)
+- Stats: `GET /api/programs/stats` (auth only)
+- Mutations: `POST/PUT/DELETE` require Admin
+- **Known issues**: hard delete, `Object.assign` mass-update, delete guard uses `Course.program` string not `programId`, stats lookup same issue, no batch guard on delete

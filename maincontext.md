@@ -27,6 +27,28 @@ University (The entire institution)
 
 - **AppLayout** (`layouts/AppLayout.tsx`) — handles auth check, renders SidebarProvider + AppSidebar + Topbar + `<Outlet />`
 - Pages are self-contained — no wrapper component needed. Each page renders its own content with a header div.
-- **AppShell** was removed — all 30 pages updated to remove the wrapper.
+- **AppShell** was removed — all pages updated to remove the wrapper.
 - **Sidebar** (`layouts/sidebar.tsx`) — collapsible groups with chevron arrows. Groups auto-expand when a child route is active.
 - Individual pages no longer check authentication — AppLayout redirects to `/login` if not authenticated.
+
+## Academic CRUD UI Pattern (established)
+
+List pages for structural entities (Faculty, Department) follow:
+
+1. **KPI row** — Total / Active / Inactive from stats API
+2. **DataTable** — search inside table, Filter panel, Add button in header
+3. **Create/Edit** — separate routes with one shared form component (Campus and Department)
+
+```
+/campuses          → list (card grid)
+/campuses/create   → CampusForm mode="create"
+/campuses/edit/:id → CampusForm mode="edit"
+
+/faculties         → list (DataTable + modal form — programs next may use routes instead)
+
+/departments       → list (DataTable + view modal)
+/departments/create → DepartmentForm mode="create"
+/departments/edit/:id → DepartmentForm mode="edit"
+
+/programs          → list (pending: align with department pattern)
+```

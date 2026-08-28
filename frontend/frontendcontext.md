@@ -33,20 +33,23 @@ Pages over ~500 lines are split into sub-components under a `components/` folder
 
 ```
 pages/academics/departments/
-├── DepartmentsPage.tsx              ← Thin orchestrator (state, data fetching, layout)
-└── components/
-    ├── Charts.tsx                   ← Reusable chart components (AnimatedTrendChart, AnimatedGauge)
-    ├── DepartmentFormModal.tsx      ← Create/edit modal form
-    └── DepartmentViewModal.tsx      ← Read-only detail view modal
+├── DepartmentsPage.tsx              ← List: KPIs + DataTable + filters + view modal
+├── DepartmentCreatePage.tsx         ← Thin wrapper → DepartmentForm mode="create"
+├── DepartmentEditPage.tsx           ← Loads by id → DepartmentForm mode="edit"
+├── DepartmentForm.tsx             ← Shared create/edit form (single source of truth)
+└── DepartmentViewModal.tsx        ← Read-only detail view
 ```
 
 **Rules:**
-- Main page owns all state, data fetching, and event handlers
+- Main list page owns table state, filters, and navigation to create/edit routes
+- Create/edit use **separate routes** + **one shared form component** (see Campus and Department patterns)
 - Sub-components receive props (data + callbacks) — they are stateless or manage only UI-local state
-- Types and constants (form data, empty defaults, options) live in the component file that uses them
+- Types and constants live in the form component file that uses them
 - Sub-components are exported as named exports, re-imported by the main page
 
-**Refactored example:** `DepartmentsPage.tsx` — 1313 → 370 lines (72% reduction) across 4 files.
+**Refactored examples:**
+- `DepartmentsPage.tsx` — list aligned with Faculties (KPI cards, DataTable search/filters, icon actions)
+- `CampusesPage.tsx` — card grid + `CampusForm.tsx` on `/campuses/create` and `/campuses/edit/:id`
 
 **Still pending refactor** (500+ lines): FeesPage (2530), AdmissionsPage (1520), TransportPage (1513), AssignmentsPage (1466), CoursesPage (1331), HrPage (1287), LibraryPage (1198), ExamsPage (1198), EventsPage (1185), StudentsPage (1183), TeachersPage (1046), BatchesPage (1043).
 
@@ -69,6 +72,8 @@ Routes sit under `<AppLayout />` (which handles auth + sidebar + topbar + render
 /notifications      → NotificationsPage
 /admissions         → AdmissionsPage
 /departments        → DepartmentsPage
+/departments/create → DepartmentCreatePage
+/departments/edit/:id → DepartmentEditPage
 /programs           → ProgramsPage
 /courses            → CoursesPage
 /academic-sessions  → AcademicSessionsPage
@@ -107,7 +112,7 @@ Key barrel export: `features/index.ts` re-exports everything.
 ### Updated Files (reflecting backend ref changes)
 
 - **`features/teachers.ts`** — `Teacher` interface: `userId` (ref User), `departmentId` (ref Department). Removed `coursesTeaching`. `getAll` accepts `{ departmentId?, designation?, status?, search?, page?, limit? }`. No `bulkCreate` — teacher creation auto-creates User on backend.
-- **`features/departments.ts`** — `Department` interface: `campusId` (ref Campus), `headId` (ref Teacher), `facultyId` (ref Faculty). `getAll` accepts optional `campusId` param.
+- **`features/departments.ts`** — `Department` interface: `campusId`, `headId`, `facultyId` refs. `getAll` accepts `{ campusId?, facultyId?, status?, search?, page?, limit? }`. Stats use `status` (not `isActive`).
 - **`features/courses.ts`** — `Course` interface: `departmentId` (ref Department), `programId` (ref Program), `instructorId` (ref Teacher). All filter methods use `departmentId`. `CourseFilters` uses `departmentId`/`programId`.
 - **`features/attendance.ts`** — `AttendanceRecord` has `departmentId` alongside legacy `department`. API methods use `departmentId` in query params and payloads.
 - **`features/batches.ts`** — `getAll` accepts `departmentId` instead of `department`.
@@ -130,7 +135,7 @@ Roles defined in frontend: `'Super Admin' | 'Admin' | 'Teacher' | 'Student' | 'S
 
 ## UI Components
 
-- `components/data-table.tsx` — `DataTable<T>` generic table with `Column<T>[]` config (uses `cell` not `render`)
+- `components/data-table.tsx` — `DataTable<T>` generic table with `Column<T>[]` config (uses `cell` not `render`). Supports `searchKeys`, `filterPanel`, `hideSearch`, `addLabel`/`onAdd`. Filter button only shows when `filterPanel` is passed. Create button shows when `title`/`description`/`addLabel`/`actions` provided.
 - `components/dashboard/kpi-card.tsx` — `KpiCard` for stats display (uses `label` not `title`, `icon: LucideIcon`)
 - `components/ui/*` — shadcn/ui primitives (Badge, Button, Input, Label, Dialog, etc.)
 - `layouts/AppLayout.tsx` — auth check + SidebarProvider + AppSidebar + Topbar + `<Outlet />`. Pages render directly without wrappers.
@@ -139,11 +144,11 @@ Roles defined in frontend: `'Super Admin' | 'Admin' | 'Teacher' | 'Student' | 'S
 
 - Each page is a default-exported component
 - Pages manage their own state (no shared store)
-- CRUD pages follow: fetch data → display in DataTable → modal form for create/edit → toast for feedback
-- Large pages (>500 lines) split into `components/` sub-folder (see Page Refactoring Convention)
-- Department/teacher/faculty dropdowns: fetch list on mount, render as `<select>` in form modals
+- **List pages** (Faculty, Department): KPI cards → DataTable with built-in search + filter panel → icon actions
+- **CRUD with forms**: use separate routes + shared form component (Campus, Department pattern) — not modals
+- Large pages (>500 lines) split into sub-folder or separate form/page files
+- Department/teacher/faculty dropdowns: fetch list on mount, render as `<select>` in forms; filter faculties by campus when relevant
 - Pages do NOT wrap content in any layout component — AppLayout handles the shell
-- Pages that need the `user` object import `useAuth()` directly — no auth guard needed
 
 ## Key Backend→Frontend Field Mapping
 
@@ -193,17 +198,39 @@ Frontend pages (separate pages, NOT modals):
 
 Backend:
 - `Faculty` model: `campusId` (ref Campus), `headId` (ref Teacher), soft-delete
-- `Department` model: `facultyId` (ref Faculty) — was `faculty` string
-- Controller validates campus/teacher, blocks duplicate name/code per campus, blocks delete if departments exist
+- Controller validates campus/teacher, blocks duplicate name/code per campus, soft-deletes
 - All routes require `auth + authorize("Admin")`
 
 Frontend:
 - `features/faculties.ts` — `FacultyAPI` class
-- `FacultiesPage.tsx` — DataTable + KpiCards + modal form
-- `DepartmentsPage.tsx` — faculty dropdown fetches real faculties from API
+- `FacultiesPage.tsx` — KPI cards + DataTable (search, campus/status filters) + create/edit modal (portal)
+
+## Department System
+
+Backend (updated):
+- `Department` model: `campusId`, `facultyId`, `headId`, `status` Active/Inactive, soft-delete
+- Controller: validates faculty same campus, soft delete, blocks delete if programs/courses/teachers/batches linked
+- List API: `campusId`, `facultyId`, `status`, `search`, pagination
+- All routes require `auth + authorize("Admin")`
+
+Frontend:
+- `features/departments.ts` — aligned with backend (`status` filter, stats)
+- `DepartmentsPage.tsx` — matches Faculties layout (KPI, DataTable search/filters, icon actions, view modal)
+- `/departments/create`, `/departments/edit/:id` — shared `DepartmentForm.tsx`
+
+## Program System (next — in progress)
+
+Backend:
+- `Program` model: `departmentId`, `code` (globally unique), `degreeLevel`, `duration`, `totalCredits`, `status`, soft-delete
+- Controller exists but needs fixes (see backend context) — hard delete, unsafe update, course lookup by string
+
+Frontend:
+- `features/programs.ts` — full CRUD API exists
+- `ProgramsPage.tsx` — **needs alignment**: separate routes + shared form, DataTable filters, fix modal/edit bugs
 
 ## What's NOT Done Yet (frontend)
 
+- **Programs page** — backend review done; frontend refactor pending (follow Department pattern)
 - **Student pages** — left for later (student model not refactored yet)
 - **Legacy `department` string** in some features — students, admissions, assignment, exam, book, fee, feeStructure, finance, hr, auth
 - **Large page refactoring** — FeesPage, AdmissionsPage, TransportPage, AssignmentsPage, CoursesPage, HrPage, LibraryPage, ExamsPage, EventsPage, StudentsPage, TeachersPage, BatchesPage all still 1000+ lines
