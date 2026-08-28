@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { Search, Filter, Download, Plus, MoreHorizontal } from "lucide-react";
+import { Search, Filter, Download, Plus } from "lucide-react";
 import { useMemo, useState, type ReactNode } from "react";
 import {
   Pagination, PaginationContent, PaginationItem, PaginationLink,
@@ -22,13 +22,15 @@ export interface Column<T> {
 
 export function DataTable<T>({
   title, description, data, columns, searchKeys, pageSize = 8,
-  actions, addLabel, onAdd,
+  actions, addLabel, onAdd, filterPanel,
 }: {
   title?: string; description?: string; data: T[]; columns: Column<T>[];
-  searchKeys?: (keyof T)[]; pageSize?: number; actions?: ReactNode; addLabel?: string; onAdd?: () => void;
+  searchKeys?: (keyof T)[]; pageSize?: number; actions?: ReactNode;
+  addLabel?: string; onAdd?: () => void; filterPanel?: ReactNode;
 }) {
   const [q, setQ] = useState("");
   const [page, setPage] = useState(1);
+  const [showFilters, setShowFilters] = useState(false);
 
   const filtered = useMemo(() => {
     if (!q || !searchKeys) return data;
@@ -38,16 +40,17 @@ export function DataTable<T>({
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const pageData = filtered.slice((page - 1) * pageSize, page * pageSize);
+  const showHeader = Boolean(title || description || addLabel || actions);
 
   return (
     <Card className="glass">
-      {(title || description) && (
+      {showHeader && (
         <CardHeader className="flex flex-row items-start justify-between gap-4">
           <div>
             {title && <CardTitle>{title}</CardTitle>}
             {description && <CardDescription>{description}</CardDescription>}
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 ml-auto">
             {actions}
             <Button variant="outline" size="sm" onClick={() => toast.success("Exported to CSV")}>
               <Download className="h-3.5 w-3.5" /> Export
@@ -66,9 +69,22 @@ export function DataTable<T>({
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input value={q} onChange={(e) => { setQ(e.target.value); setPage(1); }} placeholder="Search…" className="pl-9" />
           </div>
-          <Button variant="outline" size="sm"><Filter className="h-3.5 w-3.5" /> Filter</Button>
+          {filterPanel && (
+            <Button
+              variant={showFilters ? "default" : "outline"}
+              size="sm"
+              onClick={() => setShowFilters((open) => !open)}
+            >
+              <Filter className="h-3.5 w-3.5" /> Filter
+            </Button>
+          )}
           <Badge variant="secondary" className="ml-auto">{filtered.length} records</Badge>
         </div>
+        {showFilters && filterPanel && (
+          <div className="rounded-lg border bg-muted/30 p-4">
+            {filterPanel}
+          </div>
+        )}
         <div className="rounded-lg border overflow-x-auto scrollbar-thin">
           <Table>
             <TableHeader>
@@ -76,7 +92,6 @@ export function DataTable<T>({
                 {columns.map((c) => (
                   <TableHead key={String(c.key)} className={c.className}>{c.header}</TableHead>
                 ))}
-                <TableHead className="w-12"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -87,16 +102,11 @@ export function DataTable<T>({
                       {c.cell ? c.cell(row) : String((row as Record<string, unknown>)[c.key as string] ?? "")}
                     </TableCell>
                   ))}
-                  <TableCell>
-                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => toast.info("Row actions")}>
-                      <MoreHorizontal className="h-4 w-4" />
-                    </Button>
-                  </TableCell>
                 </TableRow>
               ))}
               {pageData.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={columns.length + 1} className="text-center py-10 text-muted-foreground text-sm">
+                  <TableCell colSpan={columns.length} className="text-center py-10 text-muted-foreground text-sm">
                     No results found
                   </TableCell>
                 </TableRow>
@@ -104,6 +114,7 @@ export function DataTable<T>({
             </TableBody>
           </Table>
         </div>
+        {/* Pagination */}
         {totalPages > 1 && (
           <Pagination>
             <PaginationContent>

@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
+import { createPortal } from "react-dom";
 import { facultyAPI, type Faculty } from "@/features/faculties";
 import { campusAPI, type Campus } from "@/features/campus";
 import { teacherAPI, type Teacher } from "@/features/teachers";
@@ -9,10 +10,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Building2, Users, BookOpen, RefreshCw, UserPlus, X, Save,
-  Loader2, Pencil, Trash2, GraduationCap
-} from "lucide-react";
+import { Building2, Users, BookOpen, X, Save,
+  Loader2, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 type FacultyFormData = {
@@ -31,6 +30,25 @@ const EMPTY_FORM: FacultyFormData = {
   description: "", email: "", phone: "", status: "Active"
 };
 
+const getFacultyId = (faculty: Faculty) => faculty._id || faculty.facultyId || "";
+
+const resolveRefId = (value: string | { _id: string } | null | undefined) => {
+  if (!value) return "";
+  if (typeof value === "object") return value._id || "";
+  return value;
+};
+
+const buildPayload = (form: FacultyFormData): Partial<Faculty> => ({
+  name: form.name.trim(),
+  code: form.code.trim(),
+  campusId: form.campusId,
+  description: form.description.trim(),
+  email: form.email.trim(),
+  phone: form.phone.trim(),
+  status: form.status,
+  headId: form.headId || undefined,
+});
+
 export default function FacultiesPage() {
   const [faculties, setFaculties] = useState<Faculty[]>([]);
   const [campuses, setCampuses] = useState<Campus[]>([]);
@@ -41,6 +59,8 @@ export default function FacultiesPage() {
   const [form, setForm] = useState<FacultyFormData>(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
   const [stats, setStats] = useState({ total: 0, active: 0, inactive: 0 });
+  const [campusFilter, setCampusFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
 
   const fetchData = async () => {
     try {
@@ -52,7 +72,7 @@ export default function FacultiesPage() {
       ]);
       setFaculties(facRes?.data || []);
       setCampuses(Array.isArray(campRes?.data) ? campRes.data : []);
-      setTeachers(teachRes?.data || []);
+      setTeachers(Array.isArray(teachRes) ? teachRes : teachRes?.data || []);
       const facStats = await facultyAPI.getStats();
       setStats(facStats?.data || { total: 0, active: 0, inactive: 0 });
     } catch (err) {
@@ -63,6 +83,22 @@ export default function FacultiesPage() {
   };
 
   useEffect(() => { fetchData(); }, []);
+
+  const filteredFaculties = useMemo(() => {
+    return faculties.filter((f) => {
+      if (statusFilter !== "all" && (f.status || "Active") !== statusFilter) return false;
+      if (campusFilter !== "all") {
+        const campusId = resolveRefId(f.campusId as string | { _id: string } | null | undefined);
+        if (campusId !== campusFilter) return false;
+      }
+      return true;
+    });
+  }, [faculties, campusFilter, statusFilter]);
+
+  const clearFilters = () => {
+    setCampusFilter("all");
+    setStatusFilter("all");
+  };
 
   const getCampusName = (campus: Faculty["campusId"]) => {
     if (!campus) return "—";
@@ -85,18 +121,29 @@ export default function FacultiesPage() {
   };
 
   const openEdit = (f: Faculty) => {
+    const id = getFacultyId(f);
+    if (!id) {
+      toast.error("Cannot edit faculty: missing ID");
+      return;
+    }
     setForm({
       name: f.name,
       code: f.code,
-      campusId: typeof f.campusId === "object" ? f.campusId._id : (f.campusId || ""),
-      headId: typeof f.headId === "object" ? f.headId._id : (f.headId || ""),
+      campusId: resolveRefId(f.campusId as string | { _id: string } | null | undefined),
+      headId: resolveRefId(f.headId as string | { _id: string } | null | undefined),
       description: f.description || "",
       email: f.email || "",
       phone: f.phone || "",
       status: f.status || "Active"
     });
-    setEditingId(f._id!);
+    setEditingId(id);
     setShowForm(true);
+  };
+
+  const closeForm = () => {
+    setShowForm(false);
+    setEditingId(null);
+    setForm(EMPTY_FORM);
   };
 
   const handleSave = async () => {
@@ -106,14 +153,15 @@ export default function FacultiesPage() {
     }
     try {
       setSaving(true);
+      const payload = buildPayload(form);
       if (editingId) {
-        await facultyAPI.update(editingId, form);
+        await facultyAPI.update(editingId, payload);
         toast.success("Faculty updated");
       } else {
-        await facultyAPI.create(form);
+        await facultyAPI.create(payload);
         toast.success("Faculty created");
       }
-      setShowForm(false);
+      closeForm();
       fetchData();
     } catch (err: any) {
       toast.error(err?.response?.data?.message || "Save failed");
@@ -122,7 +170,12 @@ export default function FacultiesPage() {
     }
   };
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (faculty: Faculty) => {
+    const id = getFacultyId(faculty);
+    if (!id) {
+      toast.error("Cannot delete faculty: missing ID");
+      return;
+    }
     if (!confirm("Delete this faculty? Departments under it will be unaffected.")) return;
     try {
       await facultyAPI.delete(id);
@@ -147,8 +200,18 @@ export default function FacultiesPage() {
       key: "_id", header: "Actions",
       cell: (f) => (
         <div className="flex gap-1">
-          <Button size="sm" variant="ghost" onClick={() => openEdit(f)}><Pencil className="h-4 w-4" /></Button>
-          <Button size="sm" variant="ghost" onClick={() => handleDelete(f._id!)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            onClick={(e) => { e.stopPropagation(); openEdit(f); }}
+            title="Edit faculty"
+          >
+            <Pencil className="h-4 w-4" />
+          </Button>
+          <Button type="button" size="sm" variant="ghost" onClick={() => handleDelete(f)} title="Delete faculty">
+            <Trash2 className="h-4 w-4 text-destructive" />
+          </Button>
         </div>
       )
     }
@@ -166,20 +229,67 @@ export default function FacultiesPage() {
         <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>
       ) : (
         <DataTable
+          title="All Faculties"
+          description={`${filteredFaculties.length} of ${faculties.length} facult${faculties.length === 1 ? "y" : "ies"} shown`}
           columns={columns}
-          data={faculties}
+          data={filteredFaculties}
           searchKeys={["name", "code"]}
           addLabel="Create Faculty"
           onAdd={openCreate}
+          filterPanel={(
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="faculty-campus-filter">Campus</Label>
+                <select
+                  id="faculty-campus-filter"
+                  className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm"
+                  value={campusFilter}
+                  onChange={(e) => setCampusFilter(e.target.value)}
+                >
+                  <option value="all">All campuses</option>
+                  {campuses.map((c) => (
+                    <option key={c._id} value={c._id}>{c.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="faculty-status-filter">Status</Label>
+                <select
+                  id="faculty-status-filter"
+                  className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm"
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                >
+                  <option value="all">All statuses</option>
+                  <option value="Active">Active</option>
+                  <option value="Inactive">Inactive</option>
+                </select>
+              </div>
+              <div className="flex items-end">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full sm:w-auto"
+                  onClick={clearFilters}
+                  disabled={campusFilter === "all" && statusFilter === "all"}
+                >
+                  Clear filters
+                </Button>
+              </div>
+            </div>
+          )}
         />
       )}
 
-      {showForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-background rounded-lg shadow-lg w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
+      {showForm && createPortal(
+        <div
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+          onClick={(e) => { if (e.target === e.currentTarget) closeForm(); }}
+        >
+          <div className="bg-background rounded-lg shadow-lg w-full max-w-lg max-h-[90vh] overflow-y-auto border">
             <div className="flex items-center justify-between p-4 border-b">
               <h2 className="text-lg font-semibold">{editingId ? "Edit Faculty" : "Create Faculty"}</h2>
-              <Button variant="ghost" size="sm" onClick={() => setShowForm(false)}><X className="h-4 w-4" /></Button>
+              <Button type="button" variant="ghost" size="sm" onClick={closeForm}><X className="h-4 w-4" /></Button>
             </div>
             <div className="p-4 space-y-4">
               <div className="grid grid-cols-2 gap-4">
@@ -243,14 +353,15 @@ export default function FacultiesPage() {
               </div>
             </div>
             <div className="flex justify-end gap-2 p-4 border-t">
-              <Button variant="outline" onClick={() => setShowForm(false)}>Cancel</Button>
-              <Button onClick={handleSave} disabled={saving}>
+              <Button type="button" variant="outline" onClick={closeForm}>Cancel</Button>
+              <Button type="button" onClick={handleSave} disabled={saving}>
                 {saving ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Save className="h-4 w-4 mr-1" />}
                 {editingId ? "Update" : "Create"}
               </Button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );
