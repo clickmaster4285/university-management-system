@@ -66,7 +66,6 @@ const facultySchema = new mongoose.Schema({
 });
 
 facultySchema.index({ campusId: 1, name: 1 }, { unique: true });
-facultySchema.index({ campusId: 1, code: 1 }, { unique: true });
 facultySchema.index({ name: 'text', code: 'text' });
 
 const Faculty = mongoose.model('Faculty', facultySchema);

@@ -23,6 +23,12 @@ University (The entire institution)
                                             ├── Admin Staff (Advisors, registrars, coordinators)
                                             └── Students (The learners)
 
+## Academic architecture (target)
+
+See **`academic-architecture-plan.md`** for the approved direction: **Subject** catalog → **ProgramCurriculum** → **SubjectFeeHistory** → **CourseOffering** + **Enrollment** with per-registration `feeSnapshot` and optional **BatchFeePolicy** for continuing students.
+
+The current `Course` model is legacy; migrate in phases (do not expand it further).
+
 ## Frontend Layout System
 
 - **AppLayout** (`layouts/AppLayout.tsx`) — handles auth check, renders SidebarProvider + AppSidebar + Topbar + `<Outlet />`

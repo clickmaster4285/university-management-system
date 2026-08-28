@@ -77,7 +77,6 @@ const departmentSchema = new mongoose.Schema({
 });
 
 departmentSchema.index({ campusId: 1, name: 1 }, { unique: true });
-departmentSchema.index({ campusId: 1, code: 1 }, { unique: true });
 departmentSchema.index({ name: 'text', code: 'text' });
 
 const Department = mongoose.model('Department', departmentSchema);

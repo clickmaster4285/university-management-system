@@ -156,8 +156,40 @@ User (role: Admin | Teacher | Student | Staff)
 - **Department**: belongs to Campus (`campusId`) and optionally Faculty (`facultyId`). Head is Teacher (`headId`, nullable). Name+code unique per campus. Soft-delete. Delete blocked if programs, courses, teachers, or batches are linked.
 - **Program**: belongs to Department (`departmentId`). Has `code` (globally unique), `degreeLevel`, `duration`, `totalCredits`, `status`. Soft-delete fields on model; controller delete still hard-deletes (needs fix). Course link uses both `programId` ref and denormalized `program` code string.
 - **Teacher ↔ User**: creating a Teacher auto-creates a User (role: 'Teacher'). Teacher has `userId` ref. Soft-deleting a Teacher also soft-deletes the linked User.
-- **Course**: belongs to Department and Program. Instructor is Teacher (`instructorId`, nullable). `program` string kept as denormalized display name.
-- **Attendance**: has `departmentId` ref (nullable for backward compat) + `department` string denormalized from Student.
+- **Course** (legacy): monolithic model being replaced — see `academic-architecture-plan.md`. Target: **Subject**, **ProgramCurriculum**, **SubjectFeeHistory**, **CourseOffering**, **Enrollment**.
+
+## Course API (lean — legacy `Course` model; see academic-architecture-plan.md)
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| GET | `/api/courses` | List + filters (`departmentId`, `programId`, `program`, `instructorId`, `code`, `status`, `semester`, `feeApplied`, `search`, pagination) |
+| GET | `/api/courses/stats` | KPIs + breakdowns + enrollment summary (replaces separate enrollment-stats / fee-summary list endpoints) |
+| GET | `/api/courses/:id` | Single course (includes schedule, fees, instructor — no sub-routes) |
+| POST | `/api/courses` | Create |
+| PUT | `/api/courses/:id` | Update any field (fee, capacity, schedule, instructor, status, prerequisites, etc.) |
+| DELETE | `/api/courses/:id` | Soft delete |
+| POST/PATCH/DELETE | `/api/courses/bulk` | Bulk create / status update / delete |
+| POST/DELETE | `/api/courses/:id/enroll` | Student enroll / drop (workflow endpoint) |
+
+**Removed redundant routes** — use query params or `PUT /:id` instead:
+- `GET /active` → `GET /?status=Active`
+- `GET /department/:id` → `GET /?departmentId=`
+- `GET /program/:code` → `GET /?program=` or `programId=`
+- `PUT /:id/fee`, `/capacity`, `/schedule`, `assign-instructor` → `PUT /:id` with body fields
+- `PATCH /:id/toggle` → `PUT /:id` with `{ status }`
+
+Mutations require `auth + authorize("Admin")`.
+
+## Program API (updated)
+
+- List: `GET /api/programs?departmentId&degreeLevel&status&search&page&limit` (auth only)
+- Stats: `GET /api/programs/stats` (auth only)
+- Mutations: `POST/PUT/DELETE` require Admin
+- Soft delete with delete guards for linked courses and batches
+
+## Attendance / Batch / Student (legacy notes)
+
+- **Attendance**: has `departmentId` ref (nullable) + `department` string denormalized from Student.
 - **Batch**: has `departmentId` ref + `department`/`program` strings denormalized.
 - **Student**: left for later — still uses hardcoded `department` and `campus` strings, no User link.
 
@@ -168,10 +200,3 @@ User (role: Admin | Teacher | Student | Staff)
 - Create/update validate `facultyId` belongs to same campus as department
 - Soft delete with `deletedBy`; duplicate check includes soft-deleted records (409 with clear message)
 - All routes: `auth + authorize("Admin")`
-
-## Program API (current — needs fixes)
-
-- List: `GET /api/programs?departmentId&degreeLevel&status&search&page&limit` (auth only)
-- Stats: `GET /api/programs/stats` (auth only)
-- Mutations: `POST/PUT/DELETE` require Admin
-- **Known issues**: hard delete, `Object.assign` mass-update, delete guard uses `Course.program` string not `programId`, stats lookup same issue, no batch guard on delete

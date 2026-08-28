@@ -9,7 +9,7 @@ const campusSchema = new mongoose.Schema({
     required: [true, 'University ID is required'],
     index: true,
   },
-  
+
   // Campus Identification
   campusId: {
     type: String,
@@ -21,7 +21,7 @@ const campusSchema = new mongoose.Schema({
     uppercase: true,
     trim: true,
   },
-  
+
   // Basic Information
   name: {
     type: String,
@@ -37,10 +37,10 @@ const campusSchema = new mongoose.Schema({
     type: Boolean,
     default: false,
   },
-  
+
   // Location
   address: address,
-  
+
   // Contact
   phone: {
     type: String,
@@ -50,7 +50,7 @@ const campusSchema = new mongoose.Schema({
     lowercase: true,
     trim: true,
   },
-  
+
   // Additional
   establishedYear: {
     type: Number,
@@ -59,7 +59,7 @@ const campusSchema = new mongoose.Schema({
     type: String,
     trim: true,
   },
-  
+
   // Status
   status: {
     type: String,
@@ -92,9 +92,7 @@ const campusSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 // Ensure unique campus code and ID within a university
-campusSchema.index({ universityId: 1, campusCode: 1 }, { unique: true });
-campusSchema.index({ universityId: 1, name: 1 }, { unique: true });
-campusSchema.index({ universityId: 1, campusId: 1 }, { unique: true });
+campusSchema.index({ universityId: 1, campusCode: 1, name: 1, campusId: 1 }, { unique: true });
 
 const Campus = mongoose.model('Campus', campusSchema);
 export default Campus;
