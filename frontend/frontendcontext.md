@@ -75,6 +75,8 @@ Routes sit under `<AppLayout />` (which handles auth + sidebar + topbar + render
 /departments/create → DepartmentCreatePage
 /departments/edit/:id → DepartmentEditPage
 /programs           → ProgramsPage
+/programs/create    → ProgramCreatePage
+/programs/edit/:id  → ProgramEditPage
 /courses            → CoursesPage
 /academic-sessions  → AcademicSessionsPage
 /semesters          → SemestersPage
@@ -218,19 +220,19 @@ Frontend:
 - `DepartmentsPage.tsx` — matches Faculties layout (KPI, DataTable search/filters, icon actions, view modal)
 - `/departments/create`, `/departments/edit/:id` — shared `DepartmentForm.tsx`
 
-## Program System (next — in progress)
+## Program System
 
 Backend:
 - `Program` model: `departmentId`, `code` (globally unique), `degreeLevel`, `duration`, `totalCredits`, `status`, soft-delete
-- Controller exists but needs fixes (see backend context) — hard delete, unsafe update, course lookup by string
+- Controller: soft delete, explicit field updates, delete guards (courses/batches), stats API, duplicate code 409
 
 Frontend:
-- `features/programs.ts` — full CRUD API exists
-- `ProgramsPage.tsx` — **needs alignment**: separate routes + shared form, DataTable filters, fix modal/edit bugs
+- `features/programs.ts` — full CRUD API + stats
+- `/programs` — list with KPI cards, DataTable search/filters (department, degree level, status), icon actions
+- `/programs/create`, `/programs/edit/:id` — shared `ProgramForm.tsx`
 
 ## What's NOT Done Yet (frontend)
 
-- **Programs page** — backend review done; frontend refactor pending (follow Department pattern)
 - **Student pages** — left for later (student model not refactored yet)
 - **Legacy `department` string** in some features — students, admissions, assignment, exam, book, fee, feeStructure, finance, hr, auth
 - **Large page refactoring** — FeesPage, AdmissionsPage, TransportPage, AssignmentsPage, CoursesPage, HrPage, LibraryPage, ExamsPage, EventsPage, StudentsPage, TeachersPage, BatchesPage all still 1000+ lines

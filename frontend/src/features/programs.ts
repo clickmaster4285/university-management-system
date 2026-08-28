@@ -6,11 +6,11 @@ export interface Program {
   name: string;
   code: string;
   departmentId: string | { _id: string; name: string; code: string };
-  degreeLevel: string;
+  degreeLevel: 'BS' | 'MS' | 'PhD' | 'BBA' | 'MBA' | 'LLB' | 'Other';
   duration: number;
   totalCredits?: number;
   description?: string;
-  status?: string;
+  status?: 'Active' | 'Inactive';
   createdAt?: string;
   updatedAt?: string;
 }
@@ -26,6 +26,7 @@ export interface ProgramStats {
     degreeLevel: string;
     status: string;
     courseCount: number;
+    batchCount: number;
     totalStudents: number;
   }>;
 }
@@ -33,7 +34,14 @@ export interface ProgramStats {
 class ProgramAPI {
   private baseUrl = '/programs';
 
-  async getAll(params?: { departmentId?: string; degreeLevel?: string; status?: string; search?: string; page?: number; limit?: number }) {
+  async getAll(params?: {
+    departmentId?: string;
+    degreeLevel?: string;
+    status?: string;
+    search?: string;
+    page?: number;
+    limit?: number;
+  }) {
     try {
       const queryParams = new URLSearchParams();
       if (params?.departmentId) queryParams.append('departmentId', params.departmentId);

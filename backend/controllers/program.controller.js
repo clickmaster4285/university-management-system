@@ -1,19 +1,43 @@
 import mongoose from 'mongoose';
 import { handle } from "../utils/asyncHandler.js";
-import { Program, Department, Course } from '../models/index.js';
+import { Program, Department, Course, Batch } from '../models/index.js';
 import { generateProgramId } from "../utils/generateProgramId.js";
+
+const DEGREE_LEVELS = ['BS', 'MS', 'PhD', 'BBA', 'MBA', 'LLB', 'Other'];
+const notDeleted = { $ne: true };
 
 async function findProgramByIdentifier(identifier) {
   const query = [{ programId: identifier }];
   if (mongoose.Types.ObjectId.isValid(identifier)) {
     query.unshift({ _id: identifier });
   }
-  return Program.findOne({ $or: query, isDeleted: { $ne: true } });
+  return Program.findOne({ $or: query, isDeleted: notDeleted });
+}
+
+function courseLinkFilter(program) {
+  return {
+    isDeleted: notDeleted,
+    $or: [
+      { programId: program._id },
+      { program: program.code },
+    ],
+  };
+}
+
+function batchLinkFilter(program) {
+  return {
+    isDeleted: notDeleted,
+    $or: [
+      { programId: program._id.toString() },
+      { programId: program.programId },
+      { program: program.code },
+    ],
+  };
 }
 
 export const getPrograms = handle(async (req, res) => {
-  const { departmentId, degreeLevel, status, search, page = 1, limit = 10 } = req.query;
-  const filter = { isDeleted: { $ne: true } };
+  const { departmentId, degreeLevel, status, search, page = 1, limit = 100 } = req.query;
+  const filter = { isDeleted: notDeleted };
   if (departmentId) filter.departmentId = departmentId;
   if (degreeLevel) filter.degreeLevel = degreeLevel;
   if (status) filter.status = status;
@@ -21,15 +45,16 @@ export const getPrograms = handle(async (req, res) => {
   if (search) {
     filter.$or = [
       { name: { $regex: search, $options: 'i' } },
-      { code: { $regex: search, $options: 'i' } }
+      { code: { $regex: search, $options: 'i' } },
+      { programId: { $regex: search, $options: 'i' } },
     ];
   }
 
-  const skip = (parseInt(page) - 1) * parseInt(limit);
+  const skip = (parseInt(page, 10) - 1) * parseInt(limit, 10);
 
   const programs = await Program.find(filter)
     .skip(skip)
-    .limit(parseInt(limit))
+    .limit(parseInt(limit, 10))
     .sort({ name: 1 })
     .populate('departmentId', 'name code')
     .select('-__v');
@@ -40,9 +65,9 @@ export const getPrograms = handle(async (req, res) => {
     success: true,
     count: programs.length,
     total: totalCount,
-    page: parseInt(page),
-    totalPages: Math.ceil(totalCount / parseInt(limit)),
-    data: programs
+    page: parseInt(page, 10),
+    totalPages: Math.ceil(totalCount / parseInt(limit, 10)),
+    data: programs,
   });
 });
 
@@ -52,7 +77,7 @@ export const getProgramById = handle(async (req, res) => {
   if (!program) {
     return res.status(404).json({
       success: false,
-      message: 'Program not found'
+      message: 'Program not found',
     });
   }
 
@@ -63,44 +88,60 @@ export const getProgramById = handle(async (req, res) => {
 });
 
 export const createProgram = handle(async (req, res) => {
-  const { name, code, departmentId, degreeLevel, duration, totalCredits, description } = req.body;
+  const {
+    name,
+    code,
+    departmentId,
+    degreeLevel,
+    duration,
+    totalCredits,
+    description,
+    status,
+  } = req.body;
 
   if (!name || !code || !departmentId || !degreeLevel) {
     return res.status(400).json({
       success: false,
-      message: 'name, code, departmentId and degreeLevel are required'
+      message: 'name, code, departmentId and degreeLevel are required',
     });
   }
 
-  // Verify department exists
-  const dept = await Department.findOne({ _id: departmentId, isDeleted: { $ne: true } });
+  if (!DEGREE_LEVELS.includes(degreeLevel)) {
+    return res.status(400).json({
+      success: false,
+      message: `degreeLevel must be one of: ${DEGREE_LEVELS.join(', ')}`,
+    });
+  }
+
+  const dept = await Department.findOne({ _id: departmentId, isDeleted: notDeleted });
   if (!dept) {
     return res.status(400).json({
       success: false,
-      message: `Department ${departmentId} not found`
+      message: `Department ${departmentId} not found`,
     });
   }
 
-  // Check for duplicate code
-  const existing = await Program.findOne({ code: code.toUpperCase().trim(), isDeleted: { $ne: true } });
-  if (existing) {
-    return res.status(400).json({
-      success: false,
-      message: `Program with code ${code} already exists`
-    });
+  const trimmedCode = code.toUpperCase().trim();
+  const duplicate = await Program.findOne({ code: trimmedCode });
+  if (duplicate) {
+    const message = duplicate.isDeleted
+      ? 'A program with this code was previously deleted. Use a different code.'
+      : `Program with code ${trimmedCode} already exists`;
+    return res.status(duplicate.isDeleted ? 409 : 400).json({ success: false, message });
   }
 
-  const programId = await generateProgramId();
+  const displayId = await generateProgramId();
 
   const program = new Program({
-    programId,
+    programId: displayId,
     name: name.trim(),
-    code: code.toUpperCase().trim(),
+    code: trimmedCode,
     departmentId,
     degreeLevel,
-    duration: duration || 8,
-    totalCredits: totalCredits || 0,
-    description: description || ''
+    duration: duration ? Number(duration) : 8,
+    totalCredits: totalCredits ? Number(totalCredits) : 0,
+    description: description || '',
+    status: status || 'Active',
   });
 
   await program.save();
@@ -111,51 +152,76 @@ export const createProgram = handle(async (req, res) => {
   res.status(201).json({
     success: true,
     data: populated,
-    message: 'Program created successfully'
+    message: 'Program created successfully',
   });
 });
 
 export const updateProgram = handle(async (req, res) => {
   const { id } = req.params;
+  const {
+    name,
+    code,
+    departmentId,
+    degreeLevel,
+    duration,
+    totalCredits,
+    description,
+    status,
+  } = req.body;
 
   const program = await findProgramByIdentifier(id);
   if (!program) {
     return res.status(404).json({
       success: false,
-      message: 'Program not found'
+      message: 'Program not found',
     });
   }
 
-  if (req.body.code) {
-    const trimmedCode = req.body.code.toUpperCase().trim();
-    const existing = await Program.findOne({
+  if (name !== undefined && name !== '') {
+    program.name = name.trim();
+  }
+
+  if (code !== undefined && code !== '') {
+    const trimmedCode = code.toUpperCase().trim();
+    const duplicate = await Program.findOne({
       code: trimmedCode,
       _id: { $ne: program._id },
-      isDeleted: { $ne: true }
     });
-    if (existing) {
-      return res.status(400).json({
-        success: false,
-        message: 'Program code already exists'
-      });
+    if (duplicate) {
+      const message = duplicate.isDeleted
+        ? 'A program with this code was previously deleted. Use a different code.'
+        : 'Program code already exists';
+      return res.status(duplicate.isDeleted ? 409 : 400).json({ success: false, message });
     }
     program.code = trimmedCode;
   }
 
-  if (req.body.departmentId) {
-    const dept = await Department.findOne({ _id: req.body.departmentId, isDeleted: { $ne: true } });
+  if (departmentId !== undefined && departmentId !== '') {
+    const dept = await Department.findOne({ _id: departmentId, isDeleted: notDeleted });
     if (!dept) {
       return res.status(400).json({
         success: false,
-        message: 'Department not found'
+        message: 'Department not found',
       });
     }
-    program.departmentId = req.body.departmentId;
+    program.departmentId = departmentId;
   }
 
-  const { _id, isDeleted, deletedAt, deletedBy, createdAt, updatedAt, programId, ...updateData } = req.body;
+  if (degreeLevel !== undefined && degreeLevel !== '') {
+    if (!DEGREE_LEVELS.includes(degreeLevel)) {
+      return res.status(400).json({
+        success: false,
+        message: `degreeLevel must be one of: ${DEGREE_LEVELS.join(', ')}`,
+      });
+    }
+    program.degreeLevel = degreeLevel;
+  }
 
-  Object.assign(program, updateData);
+  if (duration !== undefined) program.duration = Number(duration) || 8;
+  if (totalCredits !== undefined) program.totalCredits = Number(totalCredits) || 0;
+  if (description !== undefined) program.description = description;
+  if (status !== undefined && status !== '') program.status = status;
+
   await program.save();
 
   const populated = await Program.findById(program._id)
@@ -164,7 +230,7 @@ export const updateProgram = handle(async (req, res) => {
   res.json({
     success: true,
     data: populated,
-    message: 'Program updated successfully'
+    message: 'Program updated successfully',
   });
 });
 
@@ -175,38 +241,82 @@ export const deleteProgram = handle(async (req, res) => {
   if (!program) {
     return res.status(404).json({
       success: false,
-      message: 'Program not found'
+      message: 'Program not found',
     });
   }
 
-  // Check for courses using this program
-  const courseCount = await Course.countDocuments({ program: program.code, isDeleted: { $ne: true } });
-  if (courseCount > 0) {
+  const [courseCount, batchCount] = await Promise.all([
+    Course.countDocuments(courseLinkFilter(program)),
+    Batch.countDocuments(batchLinkFilter(program)),
+  ]);
+
+  if (courseCount > 0 || batchCount > 0) {
     return res.status(400).json({
       success: false,
-      message: `Cannot delete program with ${courseCount} courses. Remove courses first or deactivate the program.`,
-      courseCount
+      message: 'Cannot delete program while courses or batches are still linked. Remove or reassign them first, or deactivate the program.',
+      courseCount,
+      batchCount,
     });
   }
 
-  await program.deleteOne();
+  const now = new Date();
+  const deletedBy = req.user?._id || null;
+
+  await program.updateOne({
+    isDeleted: true,
+    deletedAt: now,
+    deletedBy,
+  });
 
   res.json({
     success: true,
-    message: 'Program deleted successfully'
+    message: 'Program deleted successfully',
   });
 });
 
 export const getProgramStats = handle(async (req, res) => {
   const stats = await Program.aggregate([
-    { $match: { isDeleted: { $ne: true } } },
+    { $match: { isDeleted: notDeleted } },
     {
       $lookup: {
         from: 'courses',
-        localField: 'code',
-        foreignField: 'program',
-        as: 'courses'
-      }
+        let: { programObjectId: '$_id', programCode: '$code' },
+        pipeline: [
+          {
+            $match: {
+              $expr: {
+                $or: [
+                  { $eq: ['$programId', '$$programObjectId'] },
+                  { $eq: ['$program', '$$programCode'] },
+                ],
+              },
+              isDeleted: notDeleted,
+            },
+          },
+        ],
+        as: 'courses',
+      },
+    },
+    {
+      $lookup: {
+        from: 'batches',
+        let: { programObjectId: { $toString: '$_id' }, programDisplayId: '$programId', programCode: '$code' },
+        pipeline: [
+          {
+            $match: {
+              $expr: {
+                $or: [
+                  { $eq: ['$programId', '$$programObjectId'] },
+                  { $eq: ['$programId', '$$programDisplayId'] },
+                  { $eq: ['$program', '$$programCode'] },
+                ],
+              },
+              isDeleted: notDeleted,
+            },
+          },
+        ],
+        as: 'batches',
+      },
     },
     {
       $project: {
@@ -216,14 +326,15 @@ export const getProgramStats = handle(async (req, res) => {
         degreeLevel: 1,
         status: 1,
         courseCount: { $size: '$courses' },
-        totalStudents: { $sum: '$courses.enrolledStudents' }
-      }
+        batchCount: { $size: '$batches' },
+        totalStudents: { $sum: '$courses.enrolledStudents' },
+      },
     },
-    { $sort: { courseCount: -1 } }
+    { $sort: { courseCount: -1 } },
   ]);
 
-  const totalPrograms = await Program.countDocuments({ isDeleted: { $ne: true } });
-  const activePrograms = await Program.countDocuments({ status: 'Active', isDeleted: { $ne: true } });
+  const totalPrograms = await Program.countDocuments({ isDeleted: notDeleted });
+  const activePrograms = await Program.countDocuments({ status: 'Active', isDeleted: notDeleted });
 
   res.json({
     success: true,
@@ -231,7 +342,7 @@ export const getProgramStats = handle(async (req, res) => {
       total: totalPrograms,
       active: activePrograms,
       inactive: totalPrograms - activePrograms,
-      programs: stats
-    }
+      programs: stats,
+    },
   });
 });
