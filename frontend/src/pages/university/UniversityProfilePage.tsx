@@ -1,6 +1,5 @@
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
-import { AppShell } from "@/layouts";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -129,11 +128,9 @@ export function UniversityProfilePage() {
 
   if (loading) {
     return (
-      <AppShell title="University Profile" subtitle="Loading...">
-        <div className="flex justify-center py-20">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-        </div>
-      </AppShell>
+      <div className="flex justify-center py-20">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
     );
   }
 
@@ -144,16 +141,6 @@ export function UniversityProfilePage() {
     : `${university?.universityName} · ${university?.universityId}`;
 
   return (
-    <AppShell
-      title={title}
-      subtitle={subtitle}
-      actions={
-        <Button variant="outline" onClick={() => navigate("/")}>
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Back to Dashboard
-        </Button>
-      }
-    >
       <Card className="border shadow-sm">
         <CardContent className="p-6 md:p-8">
           <form onSubmit={handleSubmit} className="space-y-8">
@@ -494,7 +481,6 @@ export function UniversityProfilePage() {
           </form>
         </CardContent>
       </Card>
-    </AppShell>
   );
 }
 

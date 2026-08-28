@@ -1,6 +1,5 @@
 // src/routes/app.attendance.tsx
 import { useState, useEffect } from "react";
-import { AppShell } from "@/layouts";
 import { KpiCard } from "@/components/dashboard/kpi-card";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -414,28 +413,7 @@ export function AttendancePage() {
   };
 
   return (
-    <AppShell
-      title="Attendance"
-      subtitle={`${overallTodayStats.total} total · ${overallTodayStats.present} present today`}
-      actions={
-        <>
-          <Button 
-            onClick={() => setIsFormOpen(!isFormOpen)}
-            className="gradient-brand text-white border-0 hover:opacity-90"
-          >
-            <UserPlus className="h-4 w-4 mr-2" /> 
-            {isFormOpen ? 'Close Form' : 'Mark Attendance'}
-          </Button>
-          <Button 
-            variant="outline" 
-            onClick={refreshData}
-            disabled={loading}
-          >
-            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-          </Button>
-        </>
-      }
-    >
+      <>
       {/* KPI Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <KpiCard 
@@ -963,7 +941,7 @@ export function AttendancePage() {
           )}
         </CardContent>
       </Card>
-    </AppShell>
+    </>
   );
 }
 

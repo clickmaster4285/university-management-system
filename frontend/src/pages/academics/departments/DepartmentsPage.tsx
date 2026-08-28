@@ -1,5 +1,4 @@
 import { useState, useEffect, useMemo } from "react";
-import { AppShell } from "@/layouts";
 import { DataTable, type Column } from "@/components/data-table";
 import { KpiCard } from "@/components/dashboard/kpi-card";
 import { Badge } from "@/components/ui/badge";
@@ -267,20 +266,6 @@ export default function DepartmentsPage() {
   // ── Render ─────────────────────────────────────────────────
   return (
     <>
-      <AppShell
-        title="Departments"
-        subtitle={`${totalDepartments} departments · ${activeDepartments} active`}
-        actions={
-          <>
-            <Button onClick={openAddModal} className="gradient-brand text-white border-0 hover:opacity-90">
-              <UserPlus className="h-4 w-4 mr-2" /> Add Department
-            </Button>
-            <Button variant="outline" onClick={fetchDepartments} disabled={loading}>
-              <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-            </Button>
-          </>
-        }
-      >
         {/* KPI Cards */}
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
           <KpiCard label="Total Departments" value={totalDepartments} icon={Building2} tone="brand" />
@@ -368,7 +353,6 @@ export default function DepartmentsPage() {
             )}
           </div>
         )}
-      </AppShell>
 
       {/* Modals */}
       <DepartmentFormModal

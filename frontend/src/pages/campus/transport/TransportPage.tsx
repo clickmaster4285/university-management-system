@@ -1,6 +1,5 @@
 // src/routes/app.transport.tsx
 import { useState, useEffect, useMemo } from "react";
-import { AppShell } from "@/layouts";
 import { KpiCard } from "@/components/dashboard/kpi-card";
 import { DataTable, type Column } from "@/components/data-table";
 import { Button } from "@/components/ui/button";
@@ -41,7 +40,6 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, PieChart as RePieChart, Pie, Cell, Legend, LineChart, Line, AreaChart, Area, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from "recharts";
-
 
 // Colors for charts
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#f97316'];
@@ -715,36 +713,21 @@ export function TransportPage() {
   // Show login prompt if not authenticated
   if (!isAuthenticated) {
     return (
-      <AppShell title="Transport" subtitle="Please login to manage transport">
-        <div className="flex flex-col items-center justify-center h-96 border-2 border-dashed rounded-lg p-8">
-          <Database className="h-16 w-16 text-muted-foreground mb-4" />
-          <h3 className="text-xl font-semibold mb-2">Login Required</h3>
-          <p className="text-sm text-muted-foreground mb-4 text-center max-w-md">
-            Please login to view and manage transport operations.
-          </p>
-          <Button onClick={() => window.location.href = '/login'} className="gradient-brand text-white border-0">
-            Go to Login
-          </Button>
-        </div>
-      </AppShell>
+      <div className="flex flex-col items-center justify-center h-96 border-2 border-dashed rounded-lg p-8">
+        <Database className="h-16 w-16 text-muted-foreground mb-4" />
+        <h3 className="text-xl font-semibold mb-2">Login Required</h3>
+        <p className="text-sm text-muted-foreground mb-4 text-center max-w-md">
+          Please login to view and manage transport operations.
+        </p>
+        <Button onClick={() => window.location.href = '/login'} className="gradient-brand text-white border-0">
+          Go to Login
+        </Button>
+      </div>
     );
   }
 
   return (
-    <AppShell
-      title="Transport"
-      subtitle={stats ? `${stats.buses?.total || 0} buses · ${stats.routes?.active || 0} routes · ${stats.drivers?.total || 0} drivers` : 'Loading...'}
-      actions={
-        <>
-          <Button onClick={openAddModal} className="gradient-brand text-white border-0">
-            <Plus className="h-4 w-4 mr-2" /> Add {activeTab.slice(0, -1)}
-          </Button>
-          <Button variant="outline" onClick={fetchData} disabled={loading}>
-            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-          </Button>
-        </>
-      }
-    >
+    <>
       {/* KPI Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <KpiCard 
@@ -1557,7 +1540,7 @@ export function TransportPage() {
           </div>
         </div>
       )}
-    </AppShell>
+    </>
   );
 }
 

@@ -1,6 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { AppShell } from "@/layouts";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -94,21 +93,7 @@ export function CampusesPage() {
   };
 
   return (
-    <AppShell
-      title="Campuses"
-      subtitle={`${campuses.length} campus${campuses.length === 1 ? "" : "es"} in your university`}
-      actions={
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={fetchCampuses}>
-            <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-          </Button>
-          <Button size="sm" onClick={() => navigate("/campuses/create")}>
-            <Plus className="h-4 w-4 mr-1" />
-            Add Campus
-          </Button>
-        </div>
-      }
-    >
+      <>
       <div className="mb-4 relative max-w-sm">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
@@ -240,7 +225,7 @@ export function CampusesPage() {
           ))}
         </div>
       )}
-    </AppShell>
+      </>
   );
 }
 

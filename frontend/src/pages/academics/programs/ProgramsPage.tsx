@@ -154,18 +154,7 @@ export default function ProgramsPage() {
   ];
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Programs</h1>
-          <p className="text-muted-foreground">Manage academic programs</p>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={fetchData}><RefreshCw className="h-4 w-4 mr-1" />Refresh</Button>
-          <Button size="sm" onClick={openCreate}><UserPlus className="h-4 w-4 mr-1" />Add Program</Button>
-        </div>
-      </div>
-
+    <>
       <div className="grid gap-4 md:grid-cols-3">
         <KpiCard label="Total Programs" value={stats.total} icon={Layers} />
         <KpiCard label="Active" value={stats.active} icon={BookOpen} />
@@ -249,6 +238,6 @@ export default function ProgramsPage() {
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }

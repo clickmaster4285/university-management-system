@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { AppShell } from "@/layouts";
 import { KpiCard } from "@/components/dashboard/kpi-card";
 import { DataTable, type Column } from "@/components/data-table";
 import { Button } from "@/components/ui/button";
@@ -40,7 +39,6 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, PieChart as RePieChart, Pie, Cell, Legend, AreaChart, Area, Treemap } from "recharts";
-
 
 // Constants
 const bookCategories = ['Computer Science', 'Programming', 'Artificial Intelligence', 'Data Science', 'Mathematics', 'Physics', 'Chemistry', 'Biology', 'Engineering', 'Business', 'Economics', 'Law', 'Medicine', 'Literature', 'History', 'Philosophy', 'Psychology', 'Education'];
@@ -375,7 +373,6 @@ export function LibraryPage() {
         status: formData.status
       };
 
-
       let response;
       if (isEditMode && editingId) {
         response = await bookAPI.update(editingId, bookData);
@@ -570,43 +567,21 @@ export function LibraryPage() {
   // Show login prompt if not authenticated
   if (!isAuthenticated) {
     return (
-      <AppShell title="Library" subtitle="Please login to manage library">
-        <div className="flex flex-col items-center justify-center h-96 border-2 border-dashed rounded-lg p-8">
-          <Database className="h-16 w-16 text-muted-foreground mb-4" />
-          <h3 className="text-xl font-semibold mb-2">Login Required</h3>
-          <p className="text-sm text-muted-foreground mb-4 text-center max-w-md">
-            Please login to view and manage library books.
-          </p>
-          <Button onClick={() => window.location.href = '/login'} className="gradient-brand text-white border-0">
-            Go to Login
-          </Button>
-        </div>
-      </AppShell>
+      <div className="flex flex-col items-center justify-center h-96 border-2 border-dashed rounded-lg p-8">
+        <Database className="h-16 w-16 text-muted-foreground mb-4" />
+        <h3 className="text-xl font-semibold mb-2">Login Required</h3>
+        <p className="text-sm text-muted-foreground mb-4 text-center max-w-md">
+          Please login to view and manage library books.
+        </p>
+        <Button onClick={() => window.location.href = '/login'} className="gradient-brand text-white border-0">
+          Go to Login
+        </Button>
+      </div>
     );
   }
 
   return (
-    <AppShell
-      title="Library"
-      subtitle={stats ? `${stats.total || 0} total books · ${stats.available || 0} available · ${stats.checkedOut || 0} checked out` : 'Loading...'}
-      actions={
-        <>
-          <Button onClick={openAddModal} className="gradient-brand text-white border-0">
-            <Plus className="h-4 w-4 mr-2" /> Add Book
-          </Button>
-          <Button 
-            variant="outline" 
-            onClick={() => {
-              fetchBooks();
-              fetchStats();
-            }}
-            disabled={loading}
-          >
-            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-          </Button>
-        </>
-      }
-    >
+    <>
       {/* KPI Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <KpiCard 
@@ -1264,7 +1239,7 @@ export function LibraryPage() {
           </div>
         </div>
       )}
-    </AppShell>
+    </>
   );
 }
 

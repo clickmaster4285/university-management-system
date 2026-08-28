@@ -1,4 +1,3 @@
-import { AppShell } from "@/layouts";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -61,7 +60,6 @@ export function AiAssistantPage() {
   };
 
   return (
-    <AppShell title="AI Assistant" subtitle="Powered by ScholarOS Intelligence">
       <div className="grid lg:grid-cols-[280px_1fr] gap-4 h-[calc(100vh-16rem)] min-h-[500px]">
         <Card className="glass">
           <CardContent className="p-4">
@@ -116,7 +114,6 @@ export function AiAssistantPage() {
           </div>
         </Card>
       </div>
-    </AppShell>
   );
 }
 

@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { AppShell } from "@/layouts";
 import { KpiCard } from "@/components/dashboard/kpi-card";
 import { DataTable, type Column } from "@/components/data-table";
 import { Button } from "@/components/ui/button";
@@ -719,43 +718,21 @@ export function AssignmentsPage() {
   // Show login prompt if not authenticated
   if (!isAuthenticated) {
     return (
-      <AppShell title="Assignments" subtitle="Please login to manage assignments">
-        <div className="flex flex-col items-center justify-center h-96 border-2 border-dashed rounded-lg p-8">
-          <Database className="h-16 w-16 text-muted-foreground mb-4" />
-          <h3 className="text-xl font-semibold mb-2">Login Required</h3>
-          <p className="text-sm text-muted-foreground mb-4 text-center max-w-md">
-            Please login to view and manage assignments.
-          </p>
-          <Button onClick={() => window.location.href = '/login'} className="gradient-brand text-white border-0">
-            Go to Login
-          </Button>
-        </div>
-      </AppShell>
+      <div className="flex flex-col items-center justify-center h-96 border-2 border-dashed rounded-lg p-8">
+        <Database className="h-16 w-16 text-muted-foreground mb-4" />
+        <h3 className="text-xl font-semibold mb-2">Login Required</h3>
+        <p className="text-sm text-muted-foreground mb-4 text-center max-w-md">
+          Please login to view and manage assignments.
+        </p>
+        <Button onClick={() => window.location.href = '/login'} className="gradient-brand text-white border-0">
+          Go to Login
+        </Button>
+      </div>
     );
   }
 
   return (
-    <AppShell
-      title="Assignments"
-      subtitle={stats ? `${stats.total || 0} total · ${stats.open || 0} open · ${stats.grading || 0} grading` : 'Loading...'}
-      actions={
-        <>
-          <Button onClick={openAddModal} className="gradient-brand text-white border-0">
-            <Plus className="h-4 w-4 mr-2" /> New Assignment
-          </Button>
-          <Button 
-            variant="outline" 
-            onClick={() => {
-              fetchAssignments();
-              fetchStats();
-            }}
-            disabled={loading}
-          >
-            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-          </Button>
-        </>
-      }
-    >
+    <>
       {/* KPI Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <KpiCard 
@@ -1534,7 +1511,7 @@ export function AssignmentsPage() {
           </div>
         </div>
       )}
-    </AppShell>
+    </>
   );
 }
 

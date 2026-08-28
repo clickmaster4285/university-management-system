@@ -1,5 +1,4 @@
 // src/routes/app.admissions.tsx
-import { AppShell } from "@/layouts";
 import { KpiCard } from "@/components/dashboard/kpi-card";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -994,10 +993,6 @@ export function AdmissionsPage() {
   // Show login prompt if not authenticated
   if (!isAuthenticated) {
     return (
-      <AppShell 
-        title="Online Admissions" 
-        subtitle="Please login to manage admissions"
-      >
         <div className="flex flex-col items-center justify-center h-96 border-2 border-dashed rounded-lg p-8">
           <Database className="h-16 w-16 text-muted-foreground mb-4" />
           <h3 className="text-xl font-semibold mb-2">Login Required</h3>
@@ -1011,35 +1006,11 @@ export function AdmissionsPage() {
             Go to Login
           </Button>
         </div>
-      </AppShell>
     );
   }
 
   return (
-    <AppShell 
-      title="Online Admissions" 
-      subtitle={stats ? `${stats.total || 0} total applications · ${stats.pending || 0} pending · ${stats.accepted || 0} accepted` : 'Loading...'}
-      actions={
-        <>
-          <Button 
-            onClick={openAddModal}
-            className="gradient-brand text-white border-0"
-          >
-            <UserPlus className="h-4 w-4 mr-2" /> New Application
-          </Button>
-          <Button 
-            variant="outline" 
-            onClick={() => {
-              fetchAdmissions();
-              fetchStats();
-            }}
-            disabled={loading}
-          >
-            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-          </Button>
-        </>
-      }
-    >
+    <>
       {/* KPI Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <KpiCard 
@@ -1608,7 +1579,7 @@ export function AdmissionsPage() {
           </div>
         </div>
       )}
-    </AppShell>
+    </>
   );
 }
 

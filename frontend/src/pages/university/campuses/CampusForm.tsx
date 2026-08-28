@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { AppShell } from "@/layouts";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -103,20 +102,6 @@ export function CampusForm({ mode, campus, hasMainCampus = false }: CampusFormPr
   };
 
   return (
-    <AppShell
-      title={mode === "create" ? "Create Campus" : `Edit ${campus?.name}`}
-      subtitle={
-        mode === "create"
-          ? "Add a new campus to your university"
-          : `${campus?.campusId ?? ""} · ${campus?.campusCode ?? ""}`
-      }
-      actions={
-        <Button variant="outline" onClick={() => navigate("/campuses")}>
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Back to Campuses
-        </Button>
-      }
-    >
       <Card className="border shadow-sm">
         <CardContent className="p-6 md:p-8">
           <form onSubmit={handleSubmit} className="space-y-8">
@@ -362,7 +347,6 @@ export function CampusForm({ mode, campus, hasMainCampus = false }: CampusFormPr
           </form>
         </CardContent>
       </Card>
-    </AppShell>
   );
 }
 

@@ -1,6 +1,5 @@
 // src/routes/app.students.tsx
 import { useState, useEffect } from "react";
-import { AppShell } from "@/layouts";
 import { DataTable, type Column } from "@/components/data-table";
 import { KpiCard } from "@/components/dashboard/kpi-card";
 import { Badge } from "@/components/ui/badge";
@@ -610,43 +609,7 @@ export function StudentsPage() {
 
   return (
     <>
-      <AppShell
-        title="Students"
-        subtitle={totalStudents > 0 ? `${totalStudents} total · ${activeStudents} active · Avg GPA: ${avgGPA.toFixed(2)}` : 'No students found'}
-        actions={
-          <>
-            <Button 
-              onClick={openAddModal}
-              className="gradient-brand text-white border-0 hover:opacity-90"
-            >
-              <UserPlus className="h-4 w-4 mr-2" /> Add Student
-            </Button>
-            <Button 
-              variant="outline" 
-              onClick={() => {
-                toast.success("Student ID cards printed");
-              }}
-            >
-              <QrCode className="h-4 w-4 mr-2" /> Print ID cards
-            </Button>
-            <Button 
-              variant="outline" 
-              onClick={() => {
-                toast.success("Transcripts downloaded");
-              }}
-            >
-              <Download className="h-4 w-4 mr-2" /> Transcripts
-            </Button>
-            <Button 
-              variant="outline" 
-              onClick={fetchStudents}
-              disabled={loading}
-            >
-              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-            </Button>
-          </>
-        }
-      >
+
         {/* KPI Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <KpiCard 
@@ -917,9 +880,7 @@ export function StudentsPage() {
             )}
           </div>
         )}
-      </AppShell>
-
-      {/* Add/Edit Student Modal */}
+      
       {isModalOpen && (
         <div 
           className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"

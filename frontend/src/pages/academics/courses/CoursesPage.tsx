@@ -1,6 +1,5 @@
 // src/routes/app.courses.tsx
 import { useState, useEffect } from "react";
-import { AppShell } from "@/layouts";
 import { DataTable, type Column } from "@/components/data-table";
 import { KpiCard } from "@/components/dashboard/kpi-card";
 import { Badge } from "@/components/ui/badge";
@@ -607,39 +606,16 @@ export function CoursesPage() {
   // Show loading state while auto-seeding
   if (isAutoSeeding) {
     return (
-      <AppShell title="Courses" subtitle="Loading courses...">
-        <div className="flex flex-col items-center justify-center h-96">
-          <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
-          <p className="text-lg font-medium">Loading courses...</p>
-          <p className="text-sm text-muted-foreground">This may take a moment</p>
-        </div>
-      </AppShell>
+      <div className="flex flex-col items-center justify-center h-96">
+        <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
+        <p className="text-lg font-medium">Loading courses...</p>
+        <p className="text-sm text-muted-foreground">This may take a moment</p>
+      </div>
     );
   }
 
   return (
     <>
-      <AppShell
-        title="Course Catalog"
-        subtitle={`${totalCourses} courses · ${activeCourses} active · ${uniquePrograms} programs · ${uniqueDepartments} departments`}
-        actions={
-          <div className="flex gap-2">
-            <Button 
-              onClick={openAddModal}
-              className="gradient-brand text-white border-0 hover:opacity-90"
-            >
-              <UserPlus className="h-4 w-4 mr-2" /> Add Course
-            </Button>
-            <Button 
-              variant="outline" 
-              onClick={fetchData}
-              disabled={loading}
-            >
-              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-            </Button>
-          </div>
-        }
-      >
         {/* KPI Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <KpiCard 
@@ -1092,7 +1068,6 @@ export function CoursesPage() {
             </Card>
           </TabsContent>
         </Tabs>
-      </AppShell>
 
       {/* Add/Edit Course Modal */}
       {isModalOpen && (

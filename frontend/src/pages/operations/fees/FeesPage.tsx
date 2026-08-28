@@ -1,6 +1,5 @@
 // src/routes/app.fees.tsx
 import { useState, useEffect } from "react";
-import { AppShell } from "@/layouts";
 import { KpiCard } from "@/components/dashboard/kpi-card";
 import { DataTable, type Column } from "@/components/data-table";
 import { Button } from "@/components/ui/button";
@@ -67,7 +66,6 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, PieChart as RePieChart, Pie, Cell, Legend, LineChart, Line } from "recharts";
-
 
 // Constants
 const departments = ['Computer Science', 'Software Engineering', 'Information Technology', 'Electrical Engineering', 'Business Administration'];
@@ -1276,42 +1274,21 @@ export function FeesPage() {
   // Show login prompt if not authenticated
   if (!isAuthenticated) {
     return (
-      <AppShell title="Fees Management" subtitle="Please login to manage fees">
-        <div className="flex flex-col items-center justify-center h-96 border-2 border-dashed rounded-lg p-8">
-          <Database className="h-16 w-16 text-muted-foreground mb-4" />
-          <h3 className="text-xl font-semibold mb-2">Login Required</h3>
-          <p className="text-sm text-muted-foreground mb-4 text-center max-w-md">
-            Please login to view and manage fees.
-          </p>
-          <Button onClick={() => window.location.href = '/login'} className="gradient-brand text-white border-0">
-            Go to Login
-          </Button>
-        </div>
-      </AppShell>
+      <div className="flex flex-col items-center justify-center h-96 border-2 border-dashed rounded-lg p-8">
+        <Database className="h-16 w-16 text-muted-foreground mb-4" />
+        <h3 className="text-xl font-semibold mb-2">Login Required</h3>
+        <p className="text-sm text-muted-foreground mb-4 text-center max-w-md">
+          Please login to view and manage fees.
+        </p>
+        <Button onClick={() => window.location.href = '/login'} className="gradient-brand text-white border-0">
+          Go to Login
+        </Button>
+      </div>
     );
   }
 
   return (
-    <AppShell
-      title="Fees Management"
-      subtitle="Manage fee structures, generate student fees, and track payments"
-      actions={
-        <>
-          {activeTab === "structures" && (
-            <Button onClick={openAddStructure} className="gradient-brand text-white border-0">
-              <Plus className="h-4 w-4 mr-2" /> Create Fee Structure
-            </Button>
-          )}
-          <Button 
-            variant="outline" 
-            onClick={fetchAllData}
-            disabled={loading}
-          >
-            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-          </Button>
-        </>
-      }
-    >
+    <>
       {/* Stats Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
         <KpiCard 
@@ -2639,7 +2616,7 @@ export function FeesPage() {
           </div>
         </div>
       )}
-    </AppShell>
+    </>
   );
 }
 

@@ -1,6 +1,5 @@
 // src/routes/app.batches.tsx
 import { useState, useEffect } from "react";
-import { AppShell } from "@/layouts";
 import { DataTable, type Column } from "@/components/data-table";
 import { KpiCard } from "@/components/dashboard/kpi-card";
 import { Badge } from "@/components/ui/badge";
@@ -532,27 +531,7 @@ export function BatchesPage() {
 
   return (
     <>
-      <AppShell
-        title="Batches"
-        subtitle={`${totalBatches} batches · ${activeBatches} active · ${upcomingBatches} upcoming · ${completedBatches} completed`}
-        actions={
-          <>
-            <Button 
-              onClick={openAddModal}
-              className="gradient-brand text-white border-0 hover:opacity-90"
-            >
-              <Plus className="h-4 w-4 mr-2" /> Create Batch
-            </Button>
-            <Button 
-              variant="outline" 
-              onClick={() => { fetchBatches(); fetchStats(); }}
-              disabled={loading}
-            >
-              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-            </Button>
-          </>
-        }
-      >
+
         {/* KPI Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <KpiCard 
@@ -719,9 +698,7 @@ export function BatchesPage() {
             )}
           </div>
         )}
-      </AppShell>
-
-      {/* Add/Edit Batch Modal */}
+      
       {isModalOpen && (
         <div 
           className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"

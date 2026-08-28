@@ -1,6 +1,5 @@
 // src/routes/app.semesters.tsx
 import { useState, useEffect } from "react";
-import { AppShell } from "@/layouts";
 import { DataTable, type Column } from "@/components/data-table";
 import { KpiCard } from "@/components/dashboard/kpi-card";
 import { Badge } from "@/components/ui/badge";
@@ -470,27 +469,6 @@ export function SemestersPage() {
 
   return (
     <>
-      <AppShell
-        title="Semesters"
-        subtitle={`${totalSemesters} semesters · ${activeSemesters} active · ${upcomingSemesters} upcoming · ${completedSemesters} completed`}
-        actions={
-          <>
-            <Button 
-              onClick={openAddModal}
-              className="gradient-brand text-white border-0 hover:opacity-90"
-            >
-              <Plus className="h-4 w-4 mr-2" /> Create Semester
-            </Button>
-            <Button 
-              variant="outline" 
-              onClick={() => { fetchSemesters(); fetchStats(); }}
-              disabled={loading}
-            >
-              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-            </Button>
-          </>
-        }
-      >
         {/* KPI Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <KpiCard 
@@ -643,7 +621,6 @@ export function SemestersPage() {
             )}
           </div>
         )}
-      </AppShell>
 
       {/* Add/Edit Semester Modal */}
       {isModalOpen && (

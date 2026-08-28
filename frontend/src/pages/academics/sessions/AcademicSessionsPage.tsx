@@ -1,6 +1,5 @@
 // src/routes/app.academic-sessions.tsx
 import { useState, useEffect } from "react";
-import { AppShell } from "@/layouts";
 import { DataTable, type Column } from "@/components/data-table";
 import { KpiCard } from "@/components/dashboard/kpi-card";
 import { Badge } from "@/components/ui/badge";
@@ -434,27 +433,6 @@ export function AcademicSessionsPage() {
 
   return (
     <>
-      <AppShell
-        title="Academic Sessions"
-        subtitle={`${totalSessions} sessions · ${activeSessions} active · ${currentSession ? `Current: ${currentSession.name}` : 'No current session'}`}
-        actions={
-          <>
-            <Button 
-              onClick={openAddModal}
-              className="gradient-brand text-white border-0 hover:opacity-90"
-            >
-              <Plus className="h-4 w-4 mr-2" /> Create Session
-            </Button>
-            <Button 
-              variant="outline" 
-              onClick={() => { fetchSessions(); fetchStats(); }}
-              disabled={loading}
-            >
-              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-            </Button>
-          </>
-        }
-      >
         {/* KPI Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <KpiCard 
@@ -600,7 +578,6 @@ export function AcademicSessionsPage() {
             )}
           </div>
         )}
-      </AppShell>
 
       {/* Add/Edit Session Modal */}
       {isModalOpen && (

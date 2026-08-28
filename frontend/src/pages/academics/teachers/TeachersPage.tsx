@@ -1,6 +1,5 @@
 // src/routes/app.teachers.tsx
 import { useState, useEffect } from "react";
-import { AppShell } from "@/layouts";
 import { DataTable, type Column } from "@/components/data-table";
 import { KpiCard } from "@/components/dashboard/kpi-card";
 import { Badge } from "@/components/ui/badge";
@@ -455,27 +454,7 @@ export function TeachersPage() {
 
   return (
     <>
-      <AppShell 
-        title="Teachers" 
-        subtitle={totalTeachers > 0 ? `${totalTeachers} faculty · ${professors} professors · ⭐ ${avgRating.toFixed(1)} avg rating` : 'No teachers found'}
-        actions={
-          <>
-            <Button 
-              onClick={openAddModal}
-              className="gradient-brand text-white border-0 hover:opacity-90"
-            >
-              <UserPlus className="h-4 w-4 mr-2" /> Add Teacher
-            </Button>
-            <Button 
-              variant="outline" 
-              onClick={fetchTeachers}
-              disabled={loading}
-            >
-              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-            </Button>
-          </>
-        }
-      >
+
         {/* Analytics Dashboard - Modern Card Layout */}
         {teachers.length > 0 && (
           <div className="mb-6 space-y-4">
@@ -838,9 +817,7 @@ export function TeachersPage() {
             )}
           </div>
         )}
-      </AppShell>
-
-      {/* Add/Edit Teacher Modal */}
+      
       {isModalOpen && (
         <div 
           className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"

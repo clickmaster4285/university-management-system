@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import { AppShell } from "@/layouts";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
@@ -47,24 +46,20 @@ export default function CampusEditPage() {
 
   if (loading) {
     return (
-      <AppShell title="Edit Campus" subtitle="Loading...">
-        <div className="flex justify-center py-20">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-        </div>
-      </AppShell>
+      <div className="flex justify-center py-20">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
     );
   }
 
   if (notFound || !campus) {
     return (
-      <AppShell title="Edit Campus" subtitle="Campus not found">
-        <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
-          <p className="mb-4">The campus you are looking for does not exist.</p>
-          <Button variant="outline" onClick={() => window.history.back()}>
-            Go Back
-          </Button>
-        </div>
-      </AppShell>
+      <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
+        <p className="mb-4">The campus you are looking for does not exist.</p>
+        <Button variant="outline" onClick={() => window.history.back()}>
+          Go Back
+        </Button>
+      </div>
     );
   }
 

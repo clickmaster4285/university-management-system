@@ -1,5 +1,4 @@
 // src/routes/app.settings.tsx
-import { AppShell } from "@/layouts";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,7 +19,6 @@ import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { settingsAPI, Settings } from "@/features/settings";
 import { authAPI } from "@/features/auth";
-
 
 export function SettingsPage() {
   const [settings, setSettings] = useState<Settings | null>(null);
@@ -202,42 +200,30 @@ export function SettingsPage() {
 
   if (loading) {
     return (
-      <AppShell title="Settings" subtitle="Loading settings...">
-        <div className="flex justify-center items-center h-64">
-          <div className="text-center">
-            <Loader2 className="h-8 w-8 text-primary animate-spin mx-auto mb-4" />
-            <p className="text-muted-foreground">Loading settings...</p>
-          </div>
+      <div className="flex justify-center items-center h-64">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 text-primary animate-spin mx-auto mb-4" />
+          <p className="text-muted-foreground">Loading settings...</p>
         </div>
-      </AppShell>
+      </div>
     );
   }
 
   if (error) {
     return (
-      <AppShell title="Settings" subtitle="Error loading data">
-        <div className="flex flex-col items-center justify-center h-96 border-2 border-dashed rounded-lg p-8">
-          <AlertCircle className="h-16 w-16 text-destructive mb-4" />
-          <h3 className="text-xl font-semibold mb-2">Failed to load data</h3>
-          <p className="text-sm text-muted-foreground mb-4 text-center max-w-md">{error}</p>
-          <Button onClick={fetchSettings}>
-            <RefreshCw className="h-4 w-4 mr-2" /> Retry
-          </Button>
-        </div>
-      </AppShell>
+      <div className="flex flex-col items-center justify-center h-96 border-2 border-dashed rounded-lg p-8">
+        <AlertCircle className="h-16 w-16 text-destructive mb-4" />
+        <h3 className="text-xl font-semibold mb-2">Failed to load data</h3>
+        <p className="text-sm text-muted-foreground mb-4 text-center max-w-md">{error}</p>
+        <Button onClick={fetchSettings}>
+          <RefreshCw className="h-4 w-4 mr-2" /> Retry
+        </Button>
+      </div>
     );
   }
 
   return (
-    <AppShell 
-      title="Settings" 
-      subtitle="Manage your profile and system settings"
-      actions={
-        <Button variant="outline" onClick={fetchSettings} disabled={loading}>
-          <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-        </Button>
-      }
-    >
+    <>
       <div className="grid lg:grid-cols-3 gap-4">
         {/* Admin Profile */}
         <Card className="glass lg:col-span-2">
@@ -401,7 +387,7 @@ export function SettingsPage() {
           </CardContent>
         </Card>
       </div>
-    </AppShell>
+    </>
   );
 }
 

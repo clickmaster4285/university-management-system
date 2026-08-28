@@ -1,5 +1,4 @@
 // src/routes/app.hr.tsx
-import { AppShell } from "@/layouts";
 import { KpiCard } from "@/components/dashboard/kpi-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,7 +27,6 @@ import {
 import { useState, useEffect, useMemo } from "react";
 import { toast } from "sonner";
 import { hrAPI, Employee, Leave } from "@/features/hr";
-
 
 export function HrPage() {
   const [employees, setEmployees] = useState<Employee[]>([]);
@@ -716,83 +714,30 @@ export function HrPage() {
 
   if (loading) {
     return (
-      <AppShell title="Human Resources" subtitle="Loading HR data...">
-        <div className="flex justify-center items-center h-64">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-            <p className="mt-4 text-muted-foreground">Loading HR data...</p>
-          </div>
+      <div className="flex justify-center items-center h-64">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-4 text-muted-foreground">Loading HR data...</p>
         </div>
-      </AppShell>
+      </div>
     );
   }
 
   if (error) {
     return (
-      <AppShell title="Human Resources" subtitle="Error loading data">
-        <div className="flex flex-col items-center justify-center h-96 border-2 border-dashed rounded-lg p-8">
-          <AlertCircle className="h-16 w-16 text-destructive mb-4" />
-          <h3 className="text-xl font-semibold mb-2">Failed to load data</h3>
-          <p className="text-sm text-muted-foreground mb-4 text-center max-w-md">{error}</p>
-          <Button onClick={fetchData}>
-            <RefreshCw className="h-4 w-4 mr-2" /> Retry
-          </Button>
-        </div>
-      </AppShell>
+      <div className="flex flex-col items-center justify-center h-96 border-2 border-dashed rounded-lg p-8">
+        <AlertCircle className="h-16 w-16 text-destructive mb-4" />
+        <h3 className="text-xl font-semibold mb-2">Failed to load data</h3>
+        <p className="text-sm text-muted-foreground mb-4 text-center max-w-md">{error}</p>
+        <Button onClick={fetchData}>
+          <RefreshCw className="h-4 w-4 mr-2" /> Retry
+        </Button>
+      </div>
     );
   }
 
   return (
-    <AppShell 
-      title="Human Resources" 
-      subtitle={totalEmployees > 0 
-        ? `${totalEmployees} employees · ${activeEmployees} active · ${onLeave} on leave · ${pendingLeaves} pending leaves`
-        : 'No employees yet. Add your first employee!'
-      }
-      actions={
-        <>
-          <Button 
-            onClick={openAddEmployee}
-            className="gradient-brand text-white border-0"
-          >
-            <UserPlus className="h-4 w-4 mr-2" /> Add Employee
-          </Button>
-          <Button 
-            variant="outline"
-            onClick={openAddLeave}
-            className="border-primary/20 hover:border-primary"
-            disabled={employees.length === 0}
-          >
-            <Calendar className="h-4 w-4 mr-2" /> Request Leave
-          </Button>
-          <Button 
-            variant="outline" 
-            onClick={updateEmployeeStatuses}
-            disabled={isUpdatingStatuses || employees.length === 0}
-            className="border-amber-500/30 hover:border-amber-500 text-amber-600 hover:text-amber-700"
-          >
-            {isUpdatingStatuses ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Updating...
-              </>
-            ) : (
-              <>
-                <RefreshCcw className="h-4 w-4 mr-2" />
-                Update Statuses
-              </>
-            )}
-          </Button>
-          <Button 
-            variant="outline" 
-            onClick={fetchData}
-            disabled={loading}
-          >
-            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-          </Button>
-        </>
-      }
-    >
+    <>
       {/* KPI Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <KpiCard 
@@ -1347,7 +1292,7 @@ export function HrPage() {
           </div>
         </div>
       )}
-    </AppShell>
+    </>
   );
 }
 
