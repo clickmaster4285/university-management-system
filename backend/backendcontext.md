@@ -44,10 +44,11 @@ backend/models/
 ├── Payroll.model.js
 ├── Program.model.js
 ├── ProgramCurriculum.model.js
+├── ProgramSemesterFeeSchedule.model.js
+├── SemesterRegistration.model.js
 ├── Recruitment.model.js
 ├── Report.model.js
 ├── Route.model.js
-├── Semester.model.js
 ├── Settings.model.js
 ├── Student.model.js
 ├── Subject.model.js
@@ -230,6 +231,27 @@ Mutations require `auth + authorize("Admin")`.
 - `POST /api/offerings/:id/enroll` — enroll student; builds immutable `feeSnapshot` via `resolveSubjectFee.js`
 - `DELETE /api/offerings/:id/enroll/:studentId` — drop student
 - Fee resolution: program-specific `SubjectFeeHistory` → default rate at enrollment date
+
+## Program semester fees (F2/F3)
+
+- Model: `ProgramSemesterFeeSchedule` (`PFS-0001` IDs)
+- Routes: `/api/program-semester-fees`, nested under `/api/programs/:id/semester-fees`
+- Generate from curriculum + `buildSemesterFeeSchedule.js`; activate archives prior active for same scope
+- `PATCH /:id/refresh-rates` — update draft/active subject lines from current `SubjectFeeHistory`
+
+## Semester registration (F4)
+
+- Model: `SemesterRegistration` (`SRG-0001` IDs)
+- Routes: `/api/semester-registrations`
+- `POST /preview` — validate scope, resolve active package, list enrollment warnings (no writes)
+- `POST /` — create registration with immutable `semesterFeeSnapshot`; auto-enroll or link existing offerings
+- `GET /api/students/:id/semester-registrations` — student history
+- `feeId` reserved for F5 challan; status: Registered / Paid / Partial / Dropped
+
+## Removed legacy (Aug 2026)
+
+- **`Semester` model + `/api/semesters`** — calendar sub-periods inside a session; unused by offerings, batches, or fee packages. Use **program semester** (1–8) on curriculum/offerings instead.
+- **`/api/fees` + `/api/fee-structures` + legacy Fees UI** — replaced by Subject fee history + Program semester fee packages. `Fee` and `FeeStructure` **models kept** for F5 challan integration; finance/reports may read existing records.
 
 ## Academic structure seed
 

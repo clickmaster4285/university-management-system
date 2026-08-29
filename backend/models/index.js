@@ -32,7 +32,11 @@ export { default as Program } from "./Program.model.js";
 export { default as Recruitment } from "./Recruitment.model.js";
 export { default as Report } from "./Report.model.js";
 export { default as Route } from "./Route.model.js";
-export { default as Semester } from "./Semester.model.js";
+export {
+  default as SemesterRegistration,
+  REGISTRATION_MODES,
+  REGISTRATION_STATUSES,
+} from "./SemesterRegistration.model.js";
 export { default as Settings } from "./Settings.model.js";
 export { default as Subject } from "./Subject.model.js";
 export { default as SubjectFeeHistory, FEE_TYPES } from "./SubjectFeeHistory.model.js";

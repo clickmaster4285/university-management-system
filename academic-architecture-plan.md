@@ -1,7 +1,7 @@
 # Academic Architecture Plan — Subjects, Curriculum, Fees & Offerings
 
-> **Status:** Phases 1–3 + unified academic seed + **Phase 5** (CourseOffering + Enrollment) implemented  
-> **Phase 6 paused** (per product decision 2026-08-29) — next focus: Teachers, roles, duties, HR alignment  
+> **Status:** Phases 1–3 + unified academic seed + **Phase 5** (CourseOffering + Enrollment) + **Fee F2–F4** (semester packages & registration) implemented  
+> **Phase 6 paused** (per product decision 2026-08-29) — next focus: F5 challan, Teachers, roles, HR alignment  
 > **See also:** `maincontext.md` for master roadmap, `fee-plan.md` for sessions/batches/offerings order and fee strategy  
 > **Replaces:** The current monolithic `Course` model approach (gradual deprecation)  
 > **Last updated:** 2026-08-29  

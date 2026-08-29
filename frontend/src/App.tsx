@@ -40,8 +40,8 @@ const SubjectEditPage = lazy(() => import("./pages/academics/subjects/SubjectEdi
 const FacultiesPage = lazy(() => import("./pages/academics/faculties/FacultiesPage"));
 const OfferingsPage = lazy(() => import("./pages/academics/offerings/OfferingsPage"));
 const AcademicSessionsPage = lazy(() => import("./pages/academics/sessions/AcademicSessionsPage"));
-const SemestersPage = lazy(() => import("./pages/academics/semesters/SemestersPage"));
 const BatchesPage = lazy(() => import("./pages/academics/batches/BatchesPage"));
+const SemesterRegistrationsPage = lazy(() => import("./pages/academics/registrations/SemesterRegistrationsPage"));
 const StudentsPage = lazy(() => import("./pages/academics/students/StudentsPage"));
 const TeachersPage = lazy(() => import("./pages/academics/teachers/TeachersPage"));
 const AttendancePage = lazy(() => import("./pages/academics/attendance/AttendancePage"));
@@ -57,7 +57,6 @@ const EventsPage = lazy(() => import("./pages/campus/events/EventsPage"));
 const SmartQrPage = lazy(() => import("./pages/campus/qr/SmartQrPage"));
 
 // Operations & Administration
-const FeesPage = lazy(() => import("./pages/operations/fees/FeesPage"));
 const FinancePage = lazy(() => import("./pages/operations/finance/FinancePage"));
 const HrPage = lazy(() => import("./pages/operations/hr/HrPage"));
 const ReportsPage = lazy(() => import("./pages/operations/reports/ReportsPage"));
@@ -118,8 +117,8 @@ export const App = () => (
                 <Route path="faculties" element={<FacultiesPage />} />
                 <Route path="offerings" element={<OfferingsPage />} />
                 <Route path="academic-sessions" element={<AcademicSessionsPage />} />
-                <Route path="semesters" element={<SemestersPage />} />
                 <Route path="batches" element={<BatchesPage />} />
+                <Route path="semester-registrations" element={<SemesterRegistrationsPage />} />
                 <Route path="students" element={<StudentsPage />} />
                 <Route path="teachers" element={<TeachersPage />} />
                 <Route path="attendance" element={<AttendancePage />} />
@@ -135,7 +134,6 @@ export const App = () => (
                 <Route path="qr" element={<SmartQrPage />} />
 
                 {/* Operations */}
-                <Route path="fees" element={<FeesPage />} />
                 <Route path="finance" element={<FinancePage />} />
                 <Route path="hr" element={<HrPage />} />
                 <Route path="reports" element={<ReportsPage />} />

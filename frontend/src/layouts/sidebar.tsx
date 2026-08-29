@@ -8,7 +8,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import {
   LayoutDashboard, GraduationCap, Building2, Layers, BookOpen,
-  Users, UserPlus, CalendarCheck, ClipboardList, ClipboardCheck,
+  Users, UserPlus, UserCheck, CalendarCheck, ClipboardList, ClipboardCheck,
   Video, Calendar, School, Library, Home, Bus, QrCode,
   DollarSign, Wallet, Briefcase, BarChart3, Settings, Bell,
   Sparkles, University, BookMarked, ChevronRight,
@@ -46,10 +46,10 @@ const sidebarNav = [
     label: "Academics",
     items: [
       { to: "/offerings", label: "Offerings", icon: BookOpen },
+      { to: "/semester-registrations", label: "Semester Registrations", icon: UserCheck },
       { to: "/attendance", label: "Attendance", icon: CalendarCheck },
       { to: "/batches", label: "Batches", icon: Layers },
       { to: "/academic-sessions", label: "Sessions", icon: Calendar },
-      { to: "/semesters", label: "Semesters", icon: Calendar },
     ],
   },
   {
@@ -73,7 +73,6 @@ const sidebarNav = [
   {
     label: "Finance & Admin",
     items: [
-      { to: "/fees", label: "Fees", icon: DollarSign },
       { to: "/finance", label: "Finance", icon: Wallet },
       { to: "/hr", label: "Human Resources", icon: Briefcase },
       { to: "/reports", label: "Reports", icon: BarChart3 },

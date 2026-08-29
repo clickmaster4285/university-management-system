@@ -34,8 +34,10 @@ University
               └── Department
                     ├── Subject          ← catalog (what can be taught)
                     ├── Program            ← degree (BSCS, BSSE, …)
-                    │     └── ProgramCurriculum   ← which subjects, which semester
+                    │     ├── ProgramCurriculum   ← which subjects, which semester
+                    │     └── ProgramSemesterFeeSchedule  ← semester fee package (F2)
                     ├── SubjectFeeHistory         ← versioned fee rates
+                    ├── SemesterRegistration      ← student semester package (F4)
                     └── CourseOffering            ← one running class
                           └── Enrollment          ← student registered + fee locked
 
@@ -194,6 +196,7 @@ When a student enrolls (`POST /api/offerings/:id/enroll`):
 | **3** | SubjectFeeHistory + fee timeline UI | ✅ Done |
 | **4** | Migrate legacy Course data | ⏭ Skipped — use `npm run seed:academic` |
 | **5** | CourseOffering + Enrollment + feeSnapshot | ✅ Done |
+| **5b** | ProgramSemesterFeeSchedule (F2) + Semester Fees UI (F3) + SemesterRegistration (F4) | ✅ Done |
 | **6** | Wire Assignments / Exams / Attendance to `offeringId` | ⏸ **Paused** — not needed right now |
 | **7** | BatchFeePolicy, FeeAdjustment (optional) | 📋 Future |
 | **8** | Deprecate legacy `Course` | ✅ Done (Aug 2026) |
@@ -297,6 +300,7 @@ Startup seeds **admin only** (`seedDefaultAdmin`). Legacy `seedCourses` removed.
 | Build features only on old `/courses` | Route removed |
 | Overwrite fee history | Use `SubjectFeeHistory` versioning; close old rows |
 | Skip curriculum check when creating offerings | Subject must be in program plan for that semester |
+| Use legacy `/semesters` or `/fees` pages | Removed — use Sessions + Program Semester Fees + (F5) challans |
 | Mix Employee and Teacher without a plan | Two models today — linking needs explicit design |
 | Add Super Admin or custom auth bypass | Only Admin/Teacher/Student/Staff |
 | Over-engineer permissions before teacher module is clean | Get Teacher CRUD right first, then roles |
@@ -309,14 +313,14 @@ Startup seeds **admin only** (`seedDefaultAdmin`). Legacy `seedCourses` removed.
 
 ### Now (current sprint direction)
 
+- **Fee Phase F5** — Challan integration (`SemesterRegistration` → `Fee` record, partial payment).
 - **Teachers / professors module** — refactor UI, real department refs, profile, teaching assignments via offerings.
-- **Roles & duties planning** — define HOD, coordinator, exam duty model before coding.
 
-### Next (after teachers)
+### Next (after fees F5 / teachers)
 
 - HR ↔ Teacher alignment (single person record or explicit link).
 - Teacher portal basics (my offerings, my students).
-- Student enrollment flows polish (bulk enroll, waitlist — if needed).
+- `per_subject` and `mixed` registration modes on SemesterRegistration.
 
 ### Later (paused / deferred)
 
@@ -365,8 +369,9 @@ All features must be **easy to use, easy to follow, and easy to understand**.
 
 ```
 /subjects, /subjects/create, /subjects/edit/:id
-/programs, /programs/:id/curriculum
+/programs, /programs/:id/curriculum, /programs/:id/semester-fees
 /offerings                          ← running classes
+/semester-registrations             ← package-mode semester registration (F4)
 /departments, /programs, /batches, /academic-sessions
 /teachers, /students
 ```
@@ -414,6 +419,7 @@ When finishing a task:
 | **Subject fee history** | Versioned fee rates (default + program override) |
 | **Course offering** | One running class (subject + batch + session + instructor) |
 | **Enrollment** | Student in one offering |
+| **Semester registration** | Student registered for a program semester (package fee snapshot) |
 | **feeSnapshot** | Fee amounts frozen at registration |
 | **Teacher** | Academic staff with User login; can instruct offerings |
 | **Employee** | HR record (may or may not be a Teacher — not linked yet) |

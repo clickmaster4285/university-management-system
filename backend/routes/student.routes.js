@@ -9,6 +9,7 @@ import {
   bulkCreateStudents,
   getStudentStats
 } from "../controllers/student.controller.js";
+import { listStudentSemesterRegistrations } from "../controllers/semesterRegistration.controller.js";
 
 const router = Router();
 
@@ -16,6 +17,7 @@ router.use(auth);
 
 router.get("/", getStudents);
 router.get("/stats", getStudentStats);
+router.get("/:id/semester-registrations", listStudentSemesterRegistrations);
 router.get("/:id", getStudentById);
 router.post("/", createStudent);
 router.post("/bulk", bulkCreateStudents);

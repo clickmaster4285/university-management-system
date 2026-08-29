@@ -64,7 +64,7 @@ pages/academics/departments/
 - `DepartmentsPage.tsx` — list aligned with Faculties (KPI cards, DataTable search/filters, icon actions)
 - `CampusesPage.tsx` — card grid + `CampusForm.tsx` on `/campuses/create` and `/campuses/edit/:id`
 
-**Still pending refactor** (500+ lines): FeesPage (2530), AdmissionsPage (1520), TransportPage (1513), AssignmentsPage (1466), CoursesPage (1331), HrPage (1287), LibraryPage (1198), ExamsPage (1198), EventsPage (1185), StudentsPage (1183), TeachersPage (1046), BatchesPage (1043).
+**Still pending refactor** (500+ lines): AdmissionsPage (1520), TransportPage (1513), AssignmentsPage (1466), CoursesPage (1331), HrPage (1287), LibraryPage (1198), ExamsPage (1198), EventsPage (1185), StudentsPage (1183), TeachersPage (1046), BatchesPage (1043).
 
 ## Routing
 
@@ -91,13 +91,14 @@ Routes sit under `<AppLayout />` (which handles auth + sidebar + topbar + render
 /programs/create    → ProgramCreatePage
 /programs/edit/:id  → ProgramEditPage
 /programs/:id/curriculum → ProgramCurriculumPage (semester subject plan)
+/programs/:id/semester-fees → ProgramSemesterFeesPage (F3 — fee packages)
+/semester-registrations → SemesterRegistrationsPage (F4 — package registration)
 /subjects           → SubjectsPage
 /subjects/create    → SubjectCreatePage
 /subjects/edit/:id  → SubjectEditPage
 /offerings          → OfferingsPage (Phase 5 — course offerings + enrollments)
 /courses            → CoursesPage (legacy — remove in Phase 8)
 /academic-sessions  → AcademicSessionsPage
-/semesters          → SemestersPage
 /batches            → BatchesPage
 /students           → StudentsPage
 /teachers           → TeachersPage
@@ -110,7 +111,6 @@ Routes sit under `<AppLayout />` (which handles auth + sidebar + topbar + render
 /transport          → TransportPage
 /events             → EventsPage
 /qr                 → SmartQrPage
-/fees               → FeesPage
 /finance            → FinancePage
 /hr                 → HrPage
 /reports            → ReportsPage
@@ -138,6 +138,8 @@ Key barrel export: `features/index.ts` re-exports everything.
 - **`features/batches.ts`** — `getAll` accepts `departmentId` instead of `department`.
 - **`features/subjects.ts`** — `Subject` interface + CRUD + stats + fee history API (Phase 1–3)
 - **`features/offerings.ts`** — `CourseOffering`, `Enrollment`, `FeeSnapshot` + CRUD/enroll API (Phase 5)
+- **`features/programSemesterFee.ts`** — `ProgramSemesterFeeSchedule` + generate/activate/refresh API (F2/F3)
+- **`features/semesterRegistration.ts`** — `SemesterRegistration` + preview/create/drop API (F4)
 - **`SubjectEditPage`** — tabs: Details (`SubjectForm`) + Fee History (`SubjectFeePanel`, grouped by program scope)
 - **`features/programs.ts`** — Program CRUD + stats + `getCurriculum` / `updateCurriculum`
 - **`features/faculties.ts`** — `Faculty` interface + `FacultyAPI` class with `getAll`, `getById`, `getStats`, `create`, `update`, `delete`.
@@ -146,7 +148,7 @@ Key barrel export: `features/index.ts` re-exports everything.
 
 ### Still using legacy `department` string (not yet updated)
 
-- `features/students.ts`, `features/admissions.ts`, `features/assignment.ts`, `features/exam.ts`, `features/book.ts`, `features/fee.ts`, `features/feeStructure.ts`, `features/finance.ts`, `features/hr.ts`, `features/auth.ts` — these still reference a `department: string` field. Students model itself is left for later per user request.
+- `features/students.ts`, `features/admissions.ts`, `features/assignment.ts`, `features/exam.ts`, `features/book.ts`, `features/finance.ts`, `features/hr.ts`, `features/auth.ts` — these still reference a `department: string` field. Students model itself is left for later per user request.
 
 ## Auth
 
@@ -256,4 +258,4 @@ Frontend:
 
 - **Student pages** — left for later (student model not refactored yet)
 - **Legacy `department` string** in some features — students, admissions, assignment, exam, book, fee, feeStructure, finance, hr, auth
-- **Large page refactoring** — FeesPage, AdmissionsPage, TransportPage, AssignmentsPage, CoursesPage, HrPage, LibraryPage, ExamsPage, EventsPage, StudentsPage, TeachersPage, BatchesPage all still 1000+ lines
+- **Large page refactoring** — AdmissionsPage, TransportPage, AssignmentsPage, CoursesPage, HrPage, LibraryPage, ExamsPage, EventsPage, StudentsPage, TeachersPage, BatchesPage all still 1000+ lines

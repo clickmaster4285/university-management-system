@@ -496,46 +496,52 @@ Store `feePolicyApplied` on enrollment and semester registration for audit.
 | Scholarship / waiver | `FeeAdjustment` | 📋 Planned |
 | Payment / challan | `Fee` model → Operations → Fees | ⚠️ Exists, needs link |
 | Per-subject audit snapshot | `Enrollment.feeSnapshot` | ✅ |
-| Semester bill snapshot | `SemesterRegistration.semesterFeeSnapshot` | 📋 Planned |
+| Semester bill snapshot | `SemesterRegistration.semesterFeeSnapshot` | ✅ F4 |
 
 ---
 
-## 11. Planned models & APIs
+## 11. Models & APIs
 
-### New models
+### Implemented models
+
+| Model | Purpose | Status |
+|-------|---------|--------|
+| `ProgramSemesterFeeSchedule` | Semester fee package (subjects + extras + totals) | ✅ F2/F3 |
+| `SemesterRegistration` | Student registered for program semester in a session | ✅ F4 |
+
+### Planned models
 
 | Model | Purpose |
 |-------|---------|
-| `ProgramSemesterFeeSchedule` | Semester fee package (subjects + extras + totals) |
-| `SemesterRegistration` | Student registered for program semester in a session |
 | `BatchFeePolicy` | Grandfathering / intake-locked rates |
 | `FeeAdjustment` | Scholarships, supplements, corrections |
 
-### SemesterRegistration (planned)
+### SemesterRegistration ✅
 
 | Field | Notes |
 |-------|-------|
+| `registrationId` | `SRG-0001` |
 | `studentId` | |
 | `programId` | |
 | `batchId` | |
 | `academicSessionId` | |
 | `programSemester` | 1–8 |
-| `registrationMode` | `package` \| `per_subject` \| `mixed` |
+| `registrationMode` | `package` \| `per_subject` \| `mixed` (F4: package) |
 | `semesterFeeSnapshot` | Full package snapshot (immutable) |
 | `enrollmentIds[]` | Links to per-subject enrollments |
-| `feeId` | Link to payment challan |
+| `feeId` | Link to payment challan (F5) |
 | `status` | Registered, Paid, Partial, Dropped |
 
-### APIs (planned)
+### APIs
 
-| Method | Path |
-|--------|------|
-| GET | `/api/programs/:id/semester-fees?semester=&sessionId=` |
-| POST | `/api/programs/:id/semester-fees/generate` |
-| PUT | `/api/programs/:id/semester-fees/:scheduleId` |
-| POST | `/api/semester-registrations` |
-| GET | `/api/students/:id/semester-registrations` |
-| POST | `/api/semester-registrations/:id/generate-challan` |
+| Method | Path | Status |
+|--------|------|--------|
+| GET | `/api/program-semester-fees` | ✅ |
+| POST | `/api/programs/:id/semester-fees/generate` | ✅ |
+| POST | `/api/semester-registrations` | ✅ F4 |
+| POST | `/api/semester-registrations/preview` | ✅ F4 |
+| GET | `/api/students/:id/semester-registrations` | ✅ F4 |
+| POST | `/api/semester-registrations/:id/generate-challan` | 📋 F5 |
 
 ---
 
@@ -549,9 +555,8 @@ Store `feePolicyApplied` on enrollment and semester registration for audit.
 
 ### Fee Phase F1 — Sessions & Batches UX polish ✅
 
-- Shared `AcademicSetupFlow` component on Sessions, Batches, and Offerings pages
-- Onboarding hints on Sessions / Batches pages
-- “Current session” banner + warning when none set
+- Sessions, Batches, and Offerings pages aligned with Departments/Faculties pattern (KPI cards, DataTable, filter panel, ghost actions)
+- “Current session” banner + warning when none set on Sessions
 - Batch wizard: pick program → admission session → auto-suggest code (`BSCS-2024`)
 - Offerings prerequisites block + gated “New Offering” when sessions/batches missing
 - Empty state on Offerings with links; create form defaults to current session
@@ -577,18 +582,27 @@ Store `feePolicyApplied` on enrollment and semester registration for audit.
 
 - **Programs → {code} → Semester Fees** tab (shared nav with Curriculum)
 - Session + student category filters
-- Grid: Sem 1 … Sem N with subjects count, subject total, extras, grand total, status
-- **Generate from curriculum** (all semesters) + per-row generate
-- Side sheet: subject lines + inline additional fees editor
-- Save additional fees + **Activate** schedule
+- Semester grid with subjects count, totals, status
+- **Build all semesters** → optional extras → **Publish** / **Publish all ready**
+- Inline expandable rows with live rate preview + **Apply current rates** when stale
 - Route: `/programs/:id/semester-fees`
 
-### Fee Phase F4 — SemesterRegistration + package mode
+### Fee Phase F4 — SemesterRegistration + package mode ✅
 
-- Register student for semester (batch + session + program semester)
-- Build `semesterFeeSnapshot` from active schedule
-- Auto-create offerings enrollments OR link existing
-- Reconcile with per-subject snapshots
+- `SemesterRegistration` model (`SRG-0001` IDs) with immutable `semesterFeeSnapshot`
+- Register student for semester (batch + session + program semester) in **package** mode
+- Snapshot built from **active** `ProgramSemesterFeeSchedule` for scope
+- Auto-create offering enrollments (package fee policy) or link existing enrollments
+- APIs:
+  - `GET /api/semester-registrations` — list (filter by student, program, batch, session)
+  - `GET /api/semester-registrations/stats` — KPI stats
+  - `POST /api/semester-registrations/preview` — preview package + enrollment warnings
+  - `POST /api/semester-registrations` — create registration
+  - `GET /api/semester-registrations/:id` — detail
+  - `PATCH /api/semester-registrations/:id/drop` — drop unpaid registration
+  - `GET /api/students/:id/semester-registrations` — student history
+- Frontend: `/semester-registrations` admin page + `features/semesterRegistration.ts`
+- Challan link deferred to F5 (`feeId` field reserved)
 
 ### Fee Phase F5 — Challan integration
 
