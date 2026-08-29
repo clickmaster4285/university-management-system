@@ -1,5 +1,6 @@
 // src/routes/app.academic-sessions.tsx
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
+import { createPortal } from "react-dom";
 import { DataTable, type Column } from "@/components/data-table";
 import { KpiCard } from "@/components/dashboard/kpi-card";
 import { Badge } from "@/components/ui/badge";
@@ -9,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { academicSessionAPI, AcademicSession } from "@/features/academicSession";
-import { 
+import {
   Calendar,
   Clock,
   RefreshCw,
@@ -20,7 +21,6 @@ import {
   Pencil,
   Trash2,
   AlertCircle,
-  Search,
   Eye,
   CheckCircle,
   XCircle,
@@ -28,7 +28,7 @@ import {
   Check,
 } from "lucide-react";
 import { toast } from "sonner";
-
+import { Link } from "react-router-dom";
 
 type SessionFormData = {
   name: string;
@@ -44,7 +44,6 @@ const statusOptions = ['Active', 'Upcoming', 'Completed', 'Inactive'];
 
 export function AcademicSessionsPage() {
   const [sessions, setSessions] = useState<AcademicSession[]>([]);
-  const [filteredSessions, setFilteredSessions] = useState<AcademicSession[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -53,7 +52,7 @@ export function AcademicSessionsPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [viewingSession, setViewingSession] = useState<AcademicSession | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
   const [stats, setStats] = useState<any>(null);
   
   const [formData, setFormData] = useState<SessionFormData>({
@@ -74,10 +73,8 @@ export function AcademicSessionsPage() {
       const response = await academicSessionAPI.getAll();
       if (response && response.data) {
         setSessions(response.data);
-        setFilteredSessions(response.data);
       } else {
         setSessions([]);
-        setFilteredSessions([]);
       }
     } catch (error: any) {
       console.error('❌ Failed to fetch academic sessions:', error);
@@ -88,7 +85,6 @@ export function AcademicSessionsPage() {
       setError(errorMsg);
       toast.error(errorMsg);
       setSessions([]);
-      setFilteredSessions([]);
     } finally {
       setLoading(false);
     }
@@ -111,22 +107,14 @@ export function AcademicSessionsPage() {
     fetchStats();
   }, []);
 
-  // Handle search
-  const handleSearch = (query: string) => {
-    setSearchQuery(query);
-    if (!query.trim()) {
-      setFilteredSessions(sessions);
-      return;
-    }
-    const searchLower = query.toLowerCase().trim();
-    const filtered = sessions.filter(session => {
-      const nameMatch = session.name?.toLowerCase().includes(searchLower) || false;
-      const codeMatch = session.code?.toLowerCase().includes(searchLower) || false;
-      const statusMatch = session.status?.toLowerCase().includes(searchLower) || false;
-      return nameMatch || codeMatch || statusMatch;
+  const filteredSessions = useMemo(() => {
+    return sessions.filter((s) => {
+      if (statusFilter !== "all" && (s.status || "Upcoming") !== statusFilter) return false;
+      return true;
     });
-    setFilteredSessions(filtered);
-  };
+  }, [sessions, statusFilter]);
+
+  const clearFilters = () => setStatusFilter("all");
 
   // Handle form input change
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
@@ -249,7 +237,6 @@ export function AcademicSessionsPage() {
       closeModal();
       await fetchSessions();
       await fetchStats();
-      setSearchQuery('');
       
     } catch (error: any) {
       console.error('❌ Failed to save session:', error);
@@ -271,7 +258,6 @@ export function AcademicSessionsPage() {
       toast.success(`Session "${name}" deleted successfully`);
       await fetchSessions();
       await fetchStats();
-      setSearchQuery('');
     } catch (error) {
       console.error('Failed to delete session:', error);
       toast.error('Failed to delete session');
@@ -392,39 +378,32 @@ export function AcademicSessionsPage() {
       key: "actions",
       header: "Actions",
       cell: (r) => (
-        <div className="flex gap-2 flex-wrap">
-          <Button 
-            variant="outline" 
-            size="sm"
-            onClick={() => openViewModal(r)}
-            className="hover:bg-blue-50"
-          >
-            <Eye className="h-3 w-3 mr-1" /> View
+        <div className="flex gap-1">
+          <Button type="button" size="sm" variant="ghost" onClick={() => openViewModal(r)} title="View session">
+            <Eye className="h-4 w-4" />
           </Button>
-          <Button 
-            variant="outline" 
-            size="sm"
-            onClick={() => openEditModal(r)}
-            className="hover:bg-blue-50"
-          >
-            <Pencil className="h-3 w-3 mr-1" /> Edit
+          <Button type="button" size="sm" variant="ghost" onClick={() => openEditModal(r)} title="Edit session">
+            <Pencil className="h-4 w-4" />
           </Button>
-          {!r.isCurrent && r.status === 'Active' && (
-            <Button 
-              variant="outline" 
+          {!r.isCurrent && r.status === "Active" && (
+            <Button
+              type="button"
               size="sm"
-              onClick={() => handleSetCurrent(r._id || '', r.name)}
-              className="hover:bg-green-50 text-green-600 border-green-200"
+              variant="ghost"
+              onClick={() => handleSetCurrent(r._id || "", r.name)}
+              title="Set as current session"
             >
-              <Check className="h-3 w-3 mr-1" /> Set Current
+              <Check className="h-4 w-4 text-green-600" />
             </Button>
           )}
-          <Button 
-            variant="destructive" 
+          <Button
+            type="button"
             size="sm"
-            onClick={() => handleDelete(r._id || r.sessionId || '', r.name)}
+            variant="ghost"
+            onClick={() => handleDelete(r._id || r.sessionId || "", r.name)}
+            title="Delete session"
           >
-            <Trash2 className="h-3 w-3" />
+            <Trash2 className="h-4 w-4 text-destructive" />
           </Button>
         </div>
       )
@@ -433,180 +412,113 @@ export function AcademicSessionsPage() {
 
   return (
     <>
-        {/* KPI Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <KpiCard 
-            label="Total Sessions" 
-            value={totalSessions} 
-            icon={Calendar} 
-            tone="brand" 
-          />
-          <KpiCard 
-            label="Active" 
-            value={activeSessions} 
-            icon={CheckCircle} 
-            tone="success" 
-          />
-          <KpiCard 
-            label="Upcoming" 
-            value={upcomingSessions} 
-            icon={Clock} 
-            tone="info" 
-          />
-          <KpiCard 
-            label="Completed" 
-            value={completedSessions} 
-            icon={Check} 
-            tone="warning" 
-          />
+      <div className="grid gap-4 md:grid-cols-4">
+        <KpiCard label="Total Sessions" value={stats?.total ?? totalSessions} icon={Calendar} />
+        <KpiCard label="Active" value={stats?.active ?? activeSessions} icon={CheckCircle} tone="success" />
+        <KpiCard label="Upcoming" value={stats?.upcoming ?? upcomingSessions} icon={Clock} tone="info" />
+        <KpiCard label="Completed" value={stats?.completed ?? completedSessions} icon={Check} tone="warning" />
+      </div>
+
+      {!loading && currentSession && (
+        <div className="mt-4 rounded-lg border bg-muted/30 px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+          <div className="text-sm">
+            <span className="text-muted-foreground">Current session:</span>{" "}
+            <span className="font-medium">{currentSession.name}</span>
+          </div>
+          <Button size="sm" variant="outline" asChild>
+            <Link to="/batches">Next: Batches</Link>
+          </Button>
         </div>
+      )}
 
-        {/* Current Session Banner */}
-        {currentSession && (
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <CalendarDays className="h-5 w-5 text-blue-600" />
-              <div>
-                <p className="font-medium text-blue-800">Current Session</p>
-                <p className="text-sm text-blue-600">
-                  {currentSession.name} ({currentSession.code}) — {new Date(currentSession.startDate).toLocaleDateString()} to {new Date(currentSession.endDate).toLocaleDateString()}
-                </p>
+      {!loading && !currentSession && totalSessions > 0 && (
+        <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-4 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="font-medium text-amber-900">No current session selected</p>
+            <p className="text-sm text-amber-800">
+              Mark one active session as current. Offerings and batches use this as the default calendar.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {error && (
+        <div className="mt-4 rounded-lg border border-destructive/30 bg-destructive/5 p-4 flex items-start gap-3">
+          <AlertCircle className="h-5 w-5 mt-0.5 text-destructive shrink-0" />
+          <div>
+            <p className="font-medium">Failed to load data</p>
+            <p className="text-sm text-muted-foreground">{error}</p>
+            <Button variant="outline" size="sm" className="mt-2" onClick={() => { fetchSessions(); fetchStats(); }}>
+              <RefreshCw className="h-3 w-3 mr-2" /> Retry
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {loading ? (
+        <div className="flex justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      ) : (
+        <DataTable
+          title="All Academic Sessions"
+          description={`${filteredSessions.length} of ${sessions.length} session${sessions.length === 1 ? "" : "s"} shown`}
+          data={filteredSessions}
+          columns={cols}
+          searchKeys={["name", "code"]}
+          pageSize={10}
+          addLabel="Add session"
+          onAdd={openAddModal}
+          filterPanel={(
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="session-status-filter">Status</Label>
+                <select
+                  id="session-status-filter"
+                  className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm"
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                >
+                  <option value="all">All statuses</option>
+                  {statusOptions.map((status) => (
+                    <option key={status} value={status}>{status}</option>
+                  ))}
+                </select>
               </div>
-            </div>
-            <Badge className="bg-blue-600 text-white border-0">Active</Badge>
-          </div>
-        )}
-
-        {/* Search Bar */}
-        <div className="mb-4 flex flex-wrap items-center gap-4">
-          <div className="relative flex-1 min-w-[200px] max-w-md">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search by name, code, or status..."
-              value={searchQuery}
-              onChange={(e) => handleSearch(e.target.value)}
-              className="pl-9"
-            />
-          </div>
-          {searchQuery && (
-            <div className="text-sm text-muted-foreground flex items-center gap-2">
-              Found {filteredSessions.length} of {sessions.length} sessions
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                onClick={() => handleSearch('')}
-                className="h-7 px-2"
-              >
-                ✕ Clear
-              </Button>
+              <div className="flex items-end">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full sm:w-auto"
+                  onClick={clearFilters}
+                  disabled={statusFilter === "all"}
+                >
+                  Clear filters
+                </Button>
+              </div>
             </div>
           )}
-        </div>
-
-        {/* Error Message */}
-        {error && (
-          <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg flex items-start gap-3">
-            <AlertCircle className="h-5 w-5 mt-0.5 flex-shrink-0" />
-            <div>
-              <p className="font-medium">Failed to load data</p>
-              <p className="text-sm">{error}</p>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="mt-2"
-                onClick={() => { fetchSessions(); fetchStats(); }}
-              >
-                <RefreshCw className="h-3 w-3 mr-2" /> Retry
-              </Button>
-            </div>
-          </div>
-        )}
-
-        {/* Loading State */}
-        {loading && (
-          <div className="flex justify-center items-center h-64">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-              <p className="mt-4 text-muted-foreground">Loading academic sessions...</p>
-            </div>
-          </div>
-        )}
-
-        {/* DataTable */}
-        {!loading && !error && (
-          <div className="relative">
-            <style>
-              {`
-                .data-table .data-table-search-wrapper,
-                .data-table .search-wrapper,
-                .data-table [data-slot="search"],
-                .data-table .relative input[placeholder*="Search"] {
-                  display: none !important;
-                }
-              `}
-            </style>
-            <DataTable
-              title="Academic Sessions"
-              description={`${filteredSessions.length} sessions found${searchQuery ? ` (filtered from ${sessions.length})` : ''}`}
-              data={filteredSessions}
-              columns={cols}
-              pageSize={10}
-              addLabel="Add session"
-              onAdd={openAddModal}
-            />
-          </div>
-        )}
-
-        {/* Empty State */}
-        {!loading && !error && filteredSessions.length === 0 && (
-          <div className="flex flex-col items-center justify-center h-64 border-2 border-dashed rounded-lg">
-            {searchQuery ? (
-              <>
-                <p className="text-muted-foreground mb-2">No sessions match your search</p>
-                <Button variant="outline" onClick={() => handleSearch('')}>
-                  Clear Search
-                </Button>
-              </>
-            ) : (
-              <>
-                <CalendarDays className="h-12 w-12 text-muted-foreground mb-4" />
-                <p className="text-muted-foreground mb-4">No academic sessions found</p>
-                <Button onClick={openAddModal}>
-                  <Plus className="h-4 w-4 mr-2" /> Create First Session
-                </Button>
-              </>
-            )}
-          </div>
-        )}
+        />
+      )}
 
       {/* Add/Edit Session Modal */}
-      {isModalOpen && (
-        <div 
+      {isModalOpen && createPortal(
+        <div
           className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) {
-              closeModal();
-            }
-          }}
+          onClick={(e) => { if (e.target === e.currentTarget) closeModal(); }}
         >
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
-            {/* Modal Header */}
-            <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between">
+          <div className="bg-background rounded-lg shadow-lg border w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-background border-b px-6 py-4 flex items-center justify-between">
               <div>
-                <h2 className="text-xl font-bold">
-                  {isEditMode ? 'Edit Academic Session' : 'Create Academic Session'}
+                <h2 className="text-lg font-semibold">
+                  {isEditMode ? "Edit Academic Session" : "Create Academic Session"}
                 </h2>
                 <p className="text-sm text-muted-foreground">
-                  {isEditMode ? 'Update session information' : 'Set up a new academic year'}
+                  {isEditMode ? "Update session information" : "Step 1 of 3 — Set up the academic calendar year"}
                 </p>
               </div>
-              <Button 
-                variant="ghost" 
-                size="sm"
-                onClick={closeModal}
-                className="h-8 w-8 p-0 rounded-full hover:bg-gray-100"
-              >
-                <X className="h-5 w-5" />
+              <Button type="button" variant="ghost" size="sm" onClick={closeModal}>
+                <X className="h-4 w-4" />
               </Button>
             </div>
 
@@ -744,7 +656,8 @@ export function AcademicSessionsPage() {
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* View Session Modal */}

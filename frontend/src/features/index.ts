@@ -19,6 +19,7 @@ export * from './reports';
 export * from './dashboard';
 export * from './notifications';
 export * from './programs';
+export * from './programSemesterFee';
 export * from './subjects';
 export * from './offerings';
 export * from './faculties';

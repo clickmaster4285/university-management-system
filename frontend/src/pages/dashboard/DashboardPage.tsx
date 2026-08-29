@@ -202,7 +202,7 @@ export function DashboardPage() {
         <KpiCard label="Active Students" value={overview?.activeStudents || 0} icon={UserCheck} trend={2.1} tone="success" />
         <KpiCard label="Total Teachers" value={overview?.totalTeachers || 0} icon={Users} tone="info" />
         <KpiCard label="Departments" value={overview?.totalDepartments || 0} icon={Building2} tone="brand" />
-        <KpiCard label="Offerings" value={overview?.totalOfferings || overview?.totalCourses || 0} icon={BookOpen} tone="info" />
+        <KpiCard label="Offerings" value={overview?.totalOfferings || 0} icon={BookOpen} tone="info" />
         <KpiCard label="Attendance Today" value={`${overview?.todayAttendance || 0}%`} icon={CalendarCheck} trend={0.8} tone="success" />
         <KpiCard label="Total Admissions" value={overview?.totalAdmissions || 0} icon={UserPlus} trend={12.5} tone="brand" />
         <KpiCard label="Pending Admissions" value={overview?.pendingAdmissions || 0} icon={AlertCircle} tone="warning" />

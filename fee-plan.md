@@ -323,7 +323,7 @@ SemesterRegistration       ← student’s registration for program semester + s
 Fee (challan / payment)    ← money collected
 ```
 
-### ProgramSemesterFeeSchedule (planned)
+### ProgramSemesterFeeSchedule ✅ (F2 backend)
 
 **Purpose:** Admin defines or **generates** the full fee picture for one program semester.
 
@@ -547,26 +547,41 @@ Store `feePolicyApplied` on enrollment and semester registration for audit.
 - Document both registration modes
 - Cross-link from `maincontext.md`
 
-### Fee Phase F1 — Sessions & Batches UX polish
+### Fee Phase F1 — Sessions & Batches UX polish ✅
 
+- Shared `AcademicSetupFlow` component on Sessions, Batches, and Offerings pages
 - Onboarding hints on Sessions / Batches pages
-- “Current session” banner
-- Batch wizard: pick program → admission session → auto-suggest code
-- Empty state on Offerings: *“Create a Session and Batch first”* with links
+- “Current session” banner + warning when none set
+- Batch wizard: pick program → admission session → auto-suggest code (`BSCS-2024`)
+- Offerings prerequisites block + gated “New Offering” when sessions/batches missing
+- Empty state on Offerings with links; create form defaults to current session
 
-### Fee Phase F2 — ProgramSemesterFeeSchedule (backend)
+### Fee Phase F2 — ProgramSemesterFeeSchedule (backend) ✅
 
-- Model + generate from curriculum + SubjectFeeHistory
-- API: generate, edit additional fees, activate schedule
-- No payment link yet
+- `ProgramSemesterFeeSchedule` model (`PFS-0001` IDs)
+- Generate from `ProgramCurriculum` + `SubjectFeeHistory` via `buildSemesterFeeSchedule.js`
+- API endpoints:
+  - `GET /api/program-semester-fees` — list (filter by program, session, semester, status)
+  - `GET /api/program-semester-fees/:id` — detail
+  - `PUT /api/program-semester-fees/:id` — edit additional fees, discount, notes
+  - `PATCH /api/program-semester-fees/:id/activate` — activate (archives prior active for same scope)
+  - `PATCH /api/program-semester-fees/:id/archive` — archive
+  - `DELETE /api/program-semester-fees/:id` — soft-delete drafts
+  - `GET /api/programs/:id/semester-fees` — list by program
+  - `GET /api/programs/:id/semester-fees/stats` — semester grid summary (for F3 UI)
+  - `POST /api/programs/:id/semester-fees/generate` — generate draft(s) from curriculum
+- Frontend API client: `frontend/src/features/programSemesterFee.ts` (ready for F3 UI)
+- No payment/challan link yet (F5)
 
-### Fee Phase F3 — Semester Fees UI
+### Fee Phase F3 — Semester Fees UI ✅
 
-- **Programs → BSCS → Semester Fees** tab
-- Grid: Sem 1 … Sem 8
-- Each row: subjects count, subject total, extras, grand total
-- **Generate from curriculum** button
-- Edit additional fees inline
+- **Programs → {code} → Semester Fees** tab (shared nav with Curriculum)
+- Session + student category filters
+- Grid: Sem 1 … Sem N with subjects count, subject total, extras, grand total, status
+- **Generate from curriculum** (all semesters) + per-row generate
+- Side sheet: subject lines + inline additional fees editor
+- Save additional fees + **Activate** schedule
+- Route: `/programs/:id/semester-fees`
 
 ### Fee Phase F4 — SemesterRegistration + package mode
 
@@ -662,7 +677,7 @@ Operations → Fees
 | 2026-08-29 | Subject fees stay in **SubjectFeeHistory**; package is a **generated view** + extras |
 | 2026-08-29 | Setup order: **Sessions → Batches → Offerings** (documented in Section 3–4) |
 | 2026-08-29 | Legacy `Course` model removed; use Subject + Offering |
-| TBD | When to build F1 vs Teachers module — product priority |
+| Done | F1 UX polish complete — next: Teachers module or F2 semester fee package |
 
 ---
 

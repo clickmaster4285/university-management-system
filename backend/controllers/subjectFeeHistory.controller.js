@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import { handle } from '../utils/asyncHandler.js';
+import { parseLocalDate, startOfDay, dayBefore } from '../utils/parseLocalDate.js';
 import { Subject, Program, SubjectFeeHistory, FEE_TYPES } from '../models/index.js';
 
 const notDeleted = { $ne: true };
@@ -10,18 +11,6 @@ async function findSubjectByIdentifier(identifier) {
     query.unshift({ _id: identifier });
   }
   return Subject.findOne({ $or: query, isDeleted: notDeleted });
-}
-
-function startOfDay(date) {
-  const d = new Date(date);
-  d.setHours(0, 0, 0, 0);
-  return d;
-}
-
-function dayBefore(date) {
-  const d = startOfDay(date);
-  d.setDate(d.getDate() - 1);
-  return d;
 }
 
 function activeAtDateFilter(atDate) {
@@ -101,7 +90,7 @@ export const getCurrentSubjectFee = handle(async (req, res) => {
   }
 
   const { programId, date } = req.query;
-  const atDate = date ? startOfDay(date) : startOfDay(new Date());
+  const atDate = date ? parseLocalDate(date) : startOfDay(new Date());
   if (Number.isNaN(atDate.getTime())) {
     return res.status(400).json({
       success: false,
@@ -173,7 +162,7 @@ export const addSubjectFee = handle(async (req, res) => {
     }
   }
 
-  const effectiveDate = effectiveFrom ? startOfDay(effectiveFrom) : startOfDay(new Date());
+  const effectiveDate = parseLocalDate(effectiveFrom);
   if (Number.isNaN(effectiveDate.getTime())) {
     return res.status(400).json({
       success: false,

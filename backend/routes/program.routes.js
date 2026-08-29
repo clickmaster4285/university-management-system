@@ -12,6 +12,11 @@ import {
   getProgramCurriculum,
   updateProgramCurriculum,
 } from "../controllers/programCurriculum.controller.js";
+import {
+  generateProgramSemesterFeeSchedules,
+  listProgramSemesterFeeSchedules,
+  getProgramSemesterFeeScheduleStats,
+} from "../controllers/programSemesterFeeSchedule.controller.js";
 
 const router = Router();
 
@@ -20,6 +25,9 @@ router.get("/", auth, authorize("Admin"), getPrograms);
 router.get("/stats", auth, authorize("Admin"), getProgramStats);
 router.get("/:id/curriculum", auth, authorize("Admin"), getProgramCurriculum);
 router.put("/:id/curriculum", auth, authorize("Admin"), updateProgramCurriculum);
+router.get("/:id/semester-fees", auth, authorize("Admin", "Staff"), listProgramSemesterFeeSchedules);
+router.get("/:id/semester-fees/stats", auth, authorize("Admin", "Staff"), getProgramSemesterFeeScheduleStats);
+router.post("/:id/semester-fees/generate", auth, authorize("Admin"), generateProgramSemesterFeeSchedules);
 router.get("/:id", auth, authorize("Admin"), getProgramById);
 router.put("/:id", auth, authorize("Admin"), updateProgram);
 router.delete("/:id", auth, authorize("Admin"), deleteProgram);

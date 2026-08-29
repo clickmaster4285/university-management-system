@@ -33,6 +33,7 @@ const ProgramsPage = lazy(() => import("./pages/academics/programs/ProgramsPage"
 const ProgramCreatePage = lazy(() => import("./pages/academics/programs/ProgramCreatePage"));
 const ProgramEditPage = lazy(() => import("./pages/academics/programs/ProgramEditPage"));
 const ProgramCurriculumPage = lazy(() => import("./pages/academics/programs/ProgramCurriculumPage"));
+const ProgramSemesterFeesPage = lazy(() => import("./pages/academics/programs/ProgramSemesterFeesPage"));
 const SubjectsPage = lazy(() => import("./pages/academics/subjects/SubjectsPage"));
 const SubjectCreatePage = lazy(() => import("./pages/academics/subjects/SubjectCreatePage"));
 const SubjectEditPage = lazy(() => import("./pages/academics/subjects/SubjectEditPage"));
@@ -110,6 +111,7 @@ export const App = () => (
                 <Route path="programs/create" element={<ProgramCreatePage />} />
                 <Route path="programs/edit/:id" element={<ProgramEditPage />} />
                 <Route path="programs/:id/curriculum" element={<ProgramCurriculumPage />} />
+                <Route path="programs/:id/semester-fees" element={<ProgramSemesterFeesPage />} />
                 <Route path="subjects" element={<SubjectsPage />} />
                 <Route path="subjects/create" element={<SubjectCreatePage />} />
                 <Route path="subjects/edit/:id" element={<SubjectEditPage />} />

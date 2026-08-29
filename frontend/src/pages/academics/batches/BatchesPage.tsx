@@ -1,5 +1,6 @@
 // src/routes/app.batches.tsx
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
+import { createPortal } from "react-dom";
 import { DataTable, type Column } from "@/components/data-table";
 import { KpiCard } from "@/components/dashboard/kpi-card";
 import { Badge } from "@/components/ui/badge";
@@ -9,7 +10,9 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { batchAPI, Batch } from "@/features/batches";
 import { departmentAPI, Department } from "@/features/departments";
+import { programAPI, Program } from "@/features/programs";
 import { academicSessionAPI, AcademicSession } from "@/features/academicSession";
+import { Link } from "react-router-dom";
 import { 
   Calendar,
   Clock,
@@ -21,7 +24,6 @@ import {
   Pencil,
   Trash2,
   AlertCircle,
-  Search,
   Eye,
   CheckCircle,
   XCircle,
@@ -59,8 +61,8 @@ const semesterTypes = ['Fall', 'Spring', 'Summer', 'Winter'];
 
 export function BatchesPage() {
   const [batches, setBatches] = useState<Batch[]>([]);
-  const [filteredBatches, setFilteredBatches] = useState<Batch[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
+  const [programs, setPrograms] = useState<Program[]>([]);
   const [sessions, setSessions] = useState<AcademicSession[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -70,10 +72,10 @@ export function BatchesPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [viewingBatch, setViewingBatch] = useState<Batch | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
   const [stats, setStats] = useState<any>(null);
-  const [selectedDepartmentFilter, setSelectedDepartmentFilter] = useState<string>("");
-  const [selectedStatusFilter, setSelectedStatusFilter] = useState<string>("");
+  const [departmentFilter, setDepartmentFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [wizardStep, setWizardStep] = useState(1);
   
   const [formData, setFormData] = useState<BatchFormData>({
     year: new Date().getFullYear(),
@@ -98,10 +100,8 @@ export function BatchesPage() {
       const response = await batchAPI.getAll();
       if (response && response.data) {
         setBatches(response.data);
-        setFilteredBatches(response.data);
       } else {
         setBatches([]);
-        setFilteredBatches([]);
       }
     } catch (error: any) {
       console.error('❌ Failed to fetch batches:', error);
@@ -112,7 +112,6 @@ export function BatchesPage() {
       setError(errorMsg);
       toast.error(errorMsg);
       setBatches([]);
-      setFilteredBatches([]);
     } finally {
       setLoading(false);
     }
@@ -127,6 +126,17 @@ export function BatchesPage() {
       }
     } catch (error) {
       console.error('Failed to fetch departments:', error);
+    }
+  };
+
+  const fetchPrograms = async () => {
+    try {
+      const response = await programAPI.getAll({ limit: 200 });
+      if (response?.data) {
+        setPrograms(response.data);
+      }
+    } catch (error) {
+      console.error("Failed to fetch programs:", error);
     }
   };
 
@@ -157,55 +167,22 @@ export function BatchesPage() {
   useEffect(() => {
     fetchBatches();
     fetchDepartments();
+    fetchPrograms();
     fetchSessions();
     fetchStats();
   }, []);
 
-  // Handle search
-  const handleSearch = (query: string) => {
-    setSearchQuery(query);
-    if (!query.trim()) {
-      applyFilters(selectedDepartmentFilter, selectedStatusFilter);
-      return;
-    }
-    const searchLower = query.toLowerCase().trim();
-    const filtered = batches.filter(batch => {
-      const codeMatch = batch.code?.toLowerCase().includes(searchLower) || false;
-      const deptMatch = batch.department?.toLowerCase().includes(searchLower) || false;
-      const programMatch = batch.program?.toLowerCase().includes(searchLower) || false;
-      const statusMatch = batch.status?.toLowerCase().includes(searchLower) || false;
-      const sessionMatch = batch.admissionSession?.toLowerCase().includes(searchLower) || false;
-      return codeMatch || deptMatch || programMatch || statusMatch || sessionMatch;
+  const filteredBatches = useMemo(() => {
+    return batches.filter((b) => {
+      if (statusFilter !== "all" && (b.status || "Upcoming") !== statusFilter) return false;
+      if (departmentFilter !== "all" && b.departmentId !== departmentFilter) return false;
+      return true;
     });
-    setFilteredBatches(filtered);
-  };
+  }, [batches, departmentFilter, statusFilter]);
 
-  // Apply filters
-  const applyFilters = (departmentId: string, status: string) => {
-    setSelectedDepartmentFilter(departmentId);
-    setSelectedStatusFilter(status);
-    let filtered = [...batches];
-    
-    if (departmentId) {
-      filtered = filtered.filter(b => b.departmentId === departmentId);
-    }
-    
-    if (status) {
-      filtered = filtered.filter(b => b.status === status);
-    }
-    
-    if (searchQuery.trim()) {
-      const searchLower = searchQuery.toLowerCase().trim();
-      filtered = filtered.filter(b => 
-        b.code?.toLowerCase().includes(searchLower) ||
-        b.department?.toLowerCase().includes(searchLower) ||
-        b.program?.toLowerCase().includes(searchLower) ||
-        b.status?.toLowerCase().includes(searchLower) ||
-        b.admissionSession?.toLowerCase().includes(searchLower)
-      );
-    }
-    
-    setFilteredBatches(filtered);
+  const clearFilters = () => {
+    setDepartmentFilter("all");
+    setStatusFilter("all");
   };
 
   // Handle form input change
@@ -217,28 +194,58 @@ export function BatchesPage() {
     }));
   };
 
+  const resolveDeptId = (dept: Department) => dept._id || dept.departmentId || "";
+
+  const filteredPrograms = programs.filter((p) => {
+    if (!formData.departmentId) return true;
+    const deptRef = p.departmentId;
+    const deptId = typeof deptRef === "object" ? deptRef._id : deptRef;
+    return deptId === formData.departmentId;
+  });
+
+  const currentSession = sessions.find((s) => s.isCurrent);
+
   // Handle department change
   const handleDepartmentChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const deptId = e.target.value;
-    const dept = departments.find(d => d._id === deptId || d.departmentId === deptId);
-    setFormData(prev => ({
+    const dept = departments.find((d) => resolveDeptId(d) === deptId);
+    setFormData((prev) => ({
       ...prev,
       departmentId: deptId,
-      department: dept?.name || '',
-      // Auto-generate code when department and year are selected
-      code: dept ? `${dept.code}-${prev.year}` : prev.code
+      department: dept?.name || "",
+      program: "",
+      programId: "",
+      code: "",
     }));
   };
 
-  // Handle year change - auto-generate code
-  const handleYearChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const year = parseInt(e.target.value) || 0;
-    const dept = departments.find(d => d._id === formData.departmentId || d.departmentId === formData.departmentId);
-    setFormData(prev => ({
+  const handleProgramChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const programId = e.target.value;
+    const program = programs.find((p) => p._id === programId);
+    if (!program) {
+      setFormData((prev) => ({ ...prev, programId: "", program: "", code: "" }));
+      return;
+    }
+    const duration = program.duration || 4;
+    setFormData((prev) => ({
       ...prev,
-      year: year,
-      code: dept ? `${dept.code}-${year}` : prev.code,
-      expectedGraduation: year + 4
+      programId: program._id || "",
+      program: program.name,
+      code: program.code || program.programId || "",
+      expectedGraduation: prev.year + duration,
+    }));
+  };
+
+  // Handle year change - auto-generate code from program
+  const handleYearChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const year = parseInt(e.target.value, 10) || 0;
+    const program = programs.find((p) => p._id === formData.programId);
+    const duration = program?.duration || 4;
+    setFormData((prev) => ({
+      ...prev,
+      year,
+      code: program ? program.code || program.programId || "" : prev.code,
+      expectedGraduation: year + duration,
     }));
   };
 
@@ -253,30 +260,31 @@ export function BatchesPage() {
     }));
   };
 
-  // Open modal for adding new batch
   const openAddModal = () => {
     setIsEditMode(false);
     setEditingId(null);
+    setWizardStep(1);
+    const current = sessions.find((s) => s.isCurrent);
     setFormData({
       year: new Date().getFullYear(),
-      code: '',
-      department: '',
-      departmentId: '',
-      program: '',
-      programId: '',
-      admissionSession: '',
-      admissionSessionId: '',
-      admissionSemester: 'Fall',
+      code: "",
+      department: "",
+      departmentId: "",
+      program: "",
+      programId: "",
+      admissionSession: current?.name || "",
+      admissionSessionId: current?._id || "",
+      admissionSemester: "Fall",
       expectedGraduation: new Date().getFullYear() + 4,
-      status: 'Upcoming',
-      description: ''
+      status: "Upcoming",
+      description: "",
     });
     setIsModalOpen(true);
   };
 
-  // Open modal for editing batch
   const openEditModal = (batch: Batch) => {
     setIsEditMode(true);
+    setWizardStep(1);
     setEditingId(batch._id || batch.batchId || null);
     setFormData({
       year: batch.year || new Date().getFullYear(),
@@ -301,12 +309,35 @@ export function BatchesPage() {
     setIsViewModalOpen(true);
   };
 
-  // Close modal
   const closeModal = () => {
     setIsModalOpen(false);
     setIsEditMode(false);
     setEditingId(null);
+    setWizardStep(1);
   };
+
+  const validateWizardStep = (step: number) => {
+    if (step === 1) {
+      if (!formData.departmentId || !formData.programId || !formData.year || !formData.code) {
+        toast.error("Select department, program, and intake year");
+        return false;
+      }
+    }
+    if (step === 2) {
+      if (!formData.admissionSessionId) {
+        toast.error("Select the admission session (when this cohort joined)");
+        return false;
+      }
+    }
+    return true;
+  };
+
+  const goNextWizardStep = () => {
+    if (!validateWizardStep(wizardStep)) return;
+    setWizardStep((s) => Math.min(3, s + 1));
+  };
+
+  const goPrevWizardStep = () => setWizardStep((s) => Math.max(1, s - 1));
 
   // Close view modal
   const closeViewModal = () => {
@@ -320,8 +351,8 @@ export function BatchesPage() {
     setIsSubmitting(true);
     
     try {
-      if (!formData.year || !formData.code || !formData.departmentId || !formData.program || !formData.admissionSessionId) {
-        toast.error('Year, Code, Department, Program, and Admission Session are required');
+      if (!formData.year || !formData.code || !formData.departmentId || !formData.programId || !formData.admissionSessionId) {
+        toast.error('Year, code, department, program, and admission session are required');
         setIsSubmitting(false);
         return;
       }
@@ -365,7 +396,6 @@ export function BatchesPage() {
       closeModal();
       await fetchBatches();
       await fetchStats();
-      setSearchQuery('');
       
     } catch (error: any) {
       console.error('❌ Failed to save batch:', error);
@@ -387,7 +417,6 @@ export function BatchesPage() {
       toast.success(`Batch "${code}" deleted successfully`);
       await fetchBatches();
       await fetchStats();
-      setSearchQuery('');
     } catch (error) {
       console.error('Failed to delete batch:', error);
       toast.error('Failed to delete batch');
@@ -500,29 +529,21 @@ export function BatchesPage() {
       key: "actions",
       header: "Actions",
       cell: (r) => (
-        <div className="flex gap-2 flex-wrap">
-          <Button 
-            variant="outline" 
-            size="sm"
-            onClick={() => openViewModal(r)}
-            className="hover:bg-blue-50"
-          >
-            <Eye className="h-3 w-3 mr-1" /> View
+        <div className="flex gap-1">
+          <Button type="button" size="sm" variant="ghost" onClick={() => openViewModal(r)} title="View batch">
+            <Eye className="h-4 w-4" />
           </Button>
-          <Button 
-            variant="outline" 
-            size="sm"
-            onClick={() => openEditModal(r)}
-            className="hover:bg-blue-50"
-          >
-            <Pencil className="h-3 w-3 mr-1" /> Edit
+          <Button type="button" size="sm" variant="ghost" onClick={() => openEditModal(r)} title="Edit batch">
+            <Pencil className="h-4 w-4" />
           </Button>
-          <Button 
-            variant="destructive" 
+          <Button
+            type="button"
             size="sm"
-            onClick={() => handleDelete(r._id || r.batchId || '', r.code)}
+            variant="ghost"
+            onClick={() => handleDelete(r._id || r.batchId || "", r.code)}
+            title="Delete batch"
           >
-            <Trash2 className="h-3 w-3" />
+            <Trash2 className="h-4 w-4 text-destructive" />
           </Button>
         </div>
       )
@@ -531,215 +552,191 @@ export function BatchesPage() {
 
   return (
     <>
+      <div className="grid gap-4 md:grid-cols-4">
+        <KpiCard label="Total Batches" value={stats?.total ?? totalBatches} icon={Users} />
+        <KpiCard label="Active" value={stats?.active ?? activeBatches} icon={CheckCircle} tone="success" />
+        <KpiCard label="Upcoming" value={stats?.upcoming ?? upcomingBatches} icon={Clock} tone="info" />
+        <KpiCard label="Completed" value={stats?.completed ?? completedBatches} icon={Check} tone="warning" />
+      </div>
 
-        {/* KPI Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <KpiCard 
-            label="Total Batches" 
-            value={totalBatches} 
-            icon={Users} 
-            tone="brand" 
-          />
-          <KpiCard 
-            label="Active" 
-            value={activeBatches} 
-            icon={CheckCircle} 
-            tone="success" 
-          />
-          <KpiCard 
-            label="Upcoming" 
-            value={upcomingBatches} 
-            icon={Clock} 
-            tone="info" 
-          />
-          <KpiCard 
-            label="Completed" 
-            value={completedBatches} 
-            icon={Check} 
-            tone="warning" 
-          />
+      {sessions.length === 0 && !loading && (
+        <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-4 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="font-medium text-amber-900">Create a session first</p>
+            <p className="text-sm text-amber-800">
+              Batches need an admission session (when students joined). Set up academic sessions before batches.
+            </p>
+          </div>
+          <Button size="sm" variant="outline" className="border-amber-300 bg-white" asChild>
+            <Link to="/academic-sessions">Go to Sessions</Link>
+          </Button>
         </div>
+      )}
 
-        {/* Search and Filter */}
-        <div className="mb-4 flex flex-wrap items-center gap-4">
-          <div className="relative flex-1 min-w-[200px] max-w-md">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search by code, department, or program..."
-              value={searchQuery}
-              onChange={(e) => handleSearch(e.target.value)}
-              className="pl-9"
-            />
+      {error && (
+        <div className="mt-4 rounded-lg border border-destructive/30 bg-destructive/5 p-4 flex items-start gap-3">
+          <AlertCircle className="h-5 w-5 mt-0.5 text-destructive shrink-0" />
+          <div>
+            <p className="font-medium">Failed to load data</p>
+            <p className="text-sm text-muted-foreground">{error}</p>
+            <Button variant="outline" size="sm" className="mt-2" onClick={() => { fetchBatches(); fetchStats(); }}>
+              <RefreshCw className="h-3 w-3 mr-2" /> Retry
+            </Button>
           </div>
-          
-          <div className="flex items-center gap-2">
-            <Label className="text-sm text-muted-foreground whitespace-nowrap">Department:</Label>
-            <select
-              value={selectedDepartmentFilter}
-              onChange={(e) => applyFilters(e.target.value, selectedStatusFilter)}
-              className="border rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary"
-            >
-              <option value="">All Departments</option>
-              {departments.map(dept => (
-                <option key={dept._id} value={dept._id}>
-                  {dept.name}
-                </option>
-              ))}
-            </select>
-          </div>
+        </div>
+      )}
 
-          <div className="flex items-center gap-2">
-            <Label className="text-sm text-muted-foreground whitespace-nowrap">Status:</Label>
-            <select
-              value={selectedStatusFilter}
-              onChange={(e) => applyFilters(selectedDepartmentFilter, e.target.value)}
-              className="border rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary"
-            >
-              <option value="">All Status</option>
-              {statusOptions.map(status => (
-                <option key={status} value={status}>{status}</option>
-              ))}
-            </select>
-          </div>
-          
-          {searchQuery && (
-            <div className="text-sm text-muted-foreground flex items-center gap-2">
-              Found {filteredBatches.length} of {batches.length} batches
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                onClick={() => {
-                  setSearchQuery('');
-                  applyFilters(selectedDepartmentFilter, selectedStatusFilter);
-                }}
-                className="h-7 px-2"
-              >
-                ✕ Clear
-              </Button>
+      {loading ? (
+        <div className="flex justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      ) : (
+        <DataTable
+          title="All Batches"
+          description={`${filteredBatches.length} of ${batches.length} batch${batches.length === 1 ? "" : "es"} shown`}
+          data={filteredBatches}
+          columns={cols}
+          searchKeys={["code", "department", "program", "admissionSession"]}
+          pageSize={10}
+          addLabel="Add batch"
+          onAdd={openAddModal}
+          filterPanel={(
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="batch-dept-filter">Department</Label>
+                <select
+                  id="batch-dept-filter"
+                  className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm"
+                  value={departmentFilter}
+                  onChange={(e) => setDepartmentFilter(e.target.value)}
+                >
+                  <option value="all">All departments</option>
+                  {departments.map((dept) => (
+                    <option key={dept._id} value={dept._id}>{dept.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="batch-status-filter">Status</Label>
+                <select
+                  id="batch-status-filter"
+                  className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm"
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                >
+                  <option value="all">All statuses</option>
+                  {statusOptions.map((status) => (
+                    <option key={status} value={status}>{status}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex items-end">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full sm:w-auto"
+                  onClick={clearFilters}
+                  disabled={departmentFilter === "all" && statusFilter === "all"}
+                >
+                  Clear filters
+                </Button>
+              </div>
             </div>
           )}
-        </div>
+        />
+      )}
 
-        {/* Error Message */}
-        {error && (
-          <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg flex items-start gap-3">
-            <AlertCircle className="h-5 w-5 mt-0.5 flex-shrink-0" />
-            <div>
-              <p className="font-medium">Failed to load data</p>
-              <p className="text-sm">{error}</p>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="mt-2"
-                onClick={() => { fetchBatches(); fetchStats(); }}
-              >
-                <RefreshCw className="h-3 w-3 mr-2" /> Retry
-              </Button>
-            </div>
-          </div>
-        )}
-
-        {/* Loading State */}
-        {loading && (
-          <div className="flex justify-center items-center h-64">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-              <p className="mt-4 text-muted-foreground">Loading batches...</p>
-            </div>
-          </div>
-        )}
-
-        {/* DataTable */}
-        {!loading && !error && (
-          <div className="relative">
-            <style>
-              {`
-                .data-table .data-table-search-wrapper,
-                .data-table .search-wrapper,
-                .data-table [data-slot="search"],
-                .data-table .relative input[placeholder*="Search"] {
-                  display: none !important;
-                }
-              `}
-            </style>
-            <DataTable
-              title="Batches"
-              description={`${filteredBatches.length} batches found${searchQuery ? ` (filtered from ${batches.length})` : ''}`}
-              data={filteredBatches}
-              columns={cols}
-              pageSize={10}
-              addLabel="Add batch"
-              onAdd={openAddModal}
-            />
-          </div>
-        )}
-
-        {/* Empty State */}
-        {!loading && !error && filteredBatches.length === 0 && (
-          <div className="flex flex-col items-center justify-center h-64 border-2 border-dashed rounded-lg">
-            {searchQuery ? (
-              <>
-                <p className="text-muted-foreground mb-2">No batches match your search</p>
-                <Button variant="outline" onClick={() => {
-                  setSearchQuery('');
-                  applyFilters('', '');
-                }}>
-                  Clear Search
-                </Button>
-              </>
-            ) : (
-              <>
-                <Users className="h-12 w-12 text-muted-foreground mb-4" />
-                <p className="text-muted-foreground mb-4">No batches found</p>
-                <Button onClick={openAddModal}>
-                  <Plus className="h-4 w-4 mr-2" /> Create First Batch
-                </Button>
-              </>
-            )}
-          </div>
-        )}
-      
-      {isModalOpen && (
-        <div 
+      {isModalOpen && createPortal(
+        <div
           className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) {
-              closeModal();
-            }
-          }}
+          onClick={(e) => { if (e.target === e.currentTarget) closeModal(); }}
         >
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
-            {/* Modal Header */}
-            <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between">
+          <div className="bg-background rounded-lg shadow-lg border w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-background border-b px-6 py-4 flex items-center justify-between">
               <div>
-                <h2 className="text-xl font-bold">
-                  {isEditMode ? 'Edit Batch' : 'Create New Batch'}
+                <h2 className="text-lg font-semibold">
+                  {isEditMode ? "Edit Batch" : "Create Batch"}
                 </h2>
                 <p className="text-sm text-muted-foreground">
-                  {isEditMode ? 'Update batch information' : 'Create a student cohort for an academic program'}
+                  {isEditMode
+                    ? "Update batch information"
+                    : `Step ${wizardStep} of 3 — Program & cohort, then admission session`}
                 </p>
               </div>
-              <Button 
-                variant="ghost" 
-                size="sm"
-                onClick={closeModal}
-                className="h-8 w-8 p-0 rounded-full hover:bg-gray-100"
-              >
-                <X className="h-5 w-5" />
+              <Button type="button" variant="ghost" size="sm" onClick={closeModal}>
+                <X className="h-4 w-4" />
               </Button>
             </div>
 
             {/* Modal Body */}
             <form onSubmit={handleSubmit} className="p-6 space-y-6">
-              {/* BATCH INFORMATION */}
+              {!isEditMode && (
+                <div className="flex gap-2 text-xs">
+                  {[1, 2, 3].map((step) => (
+                    <span
+                      key={step}
+                      className={`rounded-full px-3 py-1 ${
+                        wizardStep === step
+                          ? "bg-primary text-primary-foreground"
+                          : wizardStep > step
+                            ? "bg-green-100 text-green-800"
+                            : "bg-muted text-muted-foreground"
+                      }`}
+                    >
+                      {step === 1 ? "Program" : step === 2 ? "Admission" : "Settings"}
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              {(isEditMode || wizardStep === 1) && (
               <div>
                 <h3 className="text-sm font-semibold text-primary flex items-center gap-2 mb-4">
                   <Users className="h-4 w-4" />
-                  Batch Information
+                  {isEditMode ? "Batch Information" : "Step 1 — Program & cohort"}
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2 md:col-span-2">
+                    <Label htmlFor="departmentId">Department *</Label>
+                    <select
+                      id="departmentId"
+                      name="departmentId"
+                      value={formData.departmentId}
+                      onChange={handleDepartmentChange}
+                      className="w-full border rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-primary"
+                      required
+                    >
+                      <option value="">Select department</option>
+                      {departments.map((dept) => (
+                        <option key={dept._id} value={resolveDeptId(dept)}>
+                          {dept.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="space-y-2 md:col-span-2">
+                    <Label htmlFor="programId">Program *</Label>
+                    <select
+                      id="programId"
+                      name="programId"
+                      value={formData.programId}
+                      onChange={handleProgramChange}
+                      className="w-full border rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-primary"
+                      required
+                      disabled={!formData.departmentId}
+                    >
+                      <option value="">
+                        {formData.departmentId ? "Select program" : "Select department first"}
+                      </option>
+                      {filteredPrograms.map((program) => (
+                        <option key={program._id} value={program._id}>
+                          {program.code} — {program.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                   <div className="space-y-2">
-                    <Label htmlFor="year">Batch Year *</Label>
+                    <Label htmlFor="year">Intake year *</Label>
                     <Input
                       id="year"
                       name="year"
@@ -750,63 +747,39 @@ export function BatchesPage() {
                       onChange={handleYearChange}
                       required
                     />
+                    <p className="text-xs text-muted-foreground">Year students joined (e.g. 2024)</p>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="code">Batch Code</Label>
+                    <Label htmlFor="code">Batch code</Label>
                     <Input
                       id="code"
                       name="code"
                       value={formData.code}
                       onChange={handleInputChange}
-                      placeholder="BSCS-2026"
-                      readOnly={!isEditMode && !!formData.departmentId}
-                      className={formData.departmentId ? 'bg-gray-50' : ''}
+                      placeholder="BSCS-2024"
                     />
-                    {formData.departmentId && (
-                      <p className="text-xs text-muted-foreground">Auto-generated from department code and year</p>
+                    {formData.programId && (
+                      <p className="text-xs text-muted-foreground">
+                        Suggested from program + year (editable)
+                      </p>
                     )}
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="departmentId">Department *</Label>
-                    <select
-                      id="departmentId"
-                      name="departmentId"
-                      value={formData.departmentId}
-                      onChange={handleDepartmentChange}
-                      className="w-full border rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-primary"
-                      required
-                    >
-                      <option value="">Select Department</option>
-                      {departments.map(dept => (
-                        <option key={dept._id} value={dept._id}>
-                          {dept.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="program">Program *</Label>
-                    <Input
-                      id="program"
-                      name="program"
-                      value={formData.program}
-                      onChange={handleInputChange}
-                      placeholder="BS Computer Science"
-                      required
-                    />
                   </div>
                 </div>
               </div>
+              )}
 
-              {/* ADMISSION INFORMATION */}
+              {(isEditMode || wizardStep === 2) && (
               <div>
                 <h3 className="text-sm font-semibold text-primary flex items-center gap-2 mb-4">
                   <UserPlus className="h-4 w-4" />
-                  Admission Information
+                  {isEditMode ? "Admission Information" : "Step 2 — When did they join?"}
                 </h3>
+                <p className="text-xs text-muted-foreground mb-3">
+                  Admission session is when this cohort <strong>entered</strong> the university — not necessarily the session you teach in today.
+                </p>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="admissionSessionId">Admission Session *</Label>
+                    <Label htmlFor="admissionSessionId">Admission session *</Label>
                     <select
                       id="admissionSessionId"
                       name="admissionSessionId"
@@ -815,16 +788,25 @@ export function BatchesPage() {
                       className="w-full border rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-primary"
                       required
                     >
-                      <option value="">Select Admission Session</option>
-                      {sessions.map(session => (
+                      <option value="">Select admission session</option>
+                      {sessions.map((session) => (
                         <option key={session._id} value={session._id}>
                           {session.name}
+                          {session.isCurrent ? " (current)" : ""}
                         </option>
                       ))}
                     </select>
+                    {sessions.length === 0 && (
+                      <p className="text-xs text-amber-600">
+                        No sessions yet.{" "}
+                        <Link to="/academic-sessions" className="underline">
+                          Create a session
+                        </Link>
+                      </p>
+                    )}
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="admissionSemester">Admission Semester *</Label>
+                    <Label htmlFor="admissionSemester">Admission term *</Label>
                     <select
                       id="admissionSemester"
                       name="admissionSemester"
@@ -833,13 +815,15 @@ export function BatchesPage() {
                       className="w-full border rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-primary"
                       required
                     >
-                      {semesterTypes.map(type => (
-                        <option key={type} value={type}>{type}</option>
+                      {semesterTypes.map((type) => (
+                        <option key={type} value={type}>
+                          {type}
+                        </option>
                       ))}
                     </select>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="expectedGraduation">Expected Graduation *</Label>
+                    <Label htmlFor="expectedGraduation">Expected graduation *</Label>
                     <Input
                       id="expectedGraduation"
                       name="expectedGraduation"
@@ -853,13 +837,22 @@ export function BatchesPage() {
                   </div>
                 </div>
               </div>
+              )}
 
-              {/* BATCH SETTINGS */}
+              {(isEditMode || wizardStep === 3) && (
               <div>
                 <h3 className="text-sm font-semibold text-primary flex items-center gap-2 mb-4">
                   <Settings className="h-4 w-4" />
-                  Batch Settings
+                  {isEditMode ? "Batch Settings" : "Step 3 — Status & notes"}
                 </h3>
+                {!isEditMode && formData.code && (
+                  <div className="mb-4 rounded-lg border bg-muted/40 p-3 text-sm">
+                    <p className="font-medium">{formData.code}</p>
+                    <p className="text-muted-foreground">
+                      {formData.program} · joined {formData.admissionSession || "—"} ({formData.admissionSemester})
+                    </p>
+                  </div>
+                )}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="status">Status *</Label>
@@ -871,8 +864,10 @@ export function BatchesPage() {
                       className="w-full border rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-primary"
                       required
                     >
-                      {statusOptions.map(s => (
-                        <option key={s} value={s}>{s}</option>
+                      {statusOptions.map((s) => (
+                        <option key={s} value={s}>
+                          {s}
+                        </option>
                       ))}
                     </select>
                   </div>
@@ -883,15 +878,23 @@ export function BatchesPage() {
                       name="description"
                       value={formData.description}
                       onChange={handleInputChange}
-                      placeholder="Batch description..."
+                      placeholder="Optional notes about this cohort..."
                       className="min-h-[80px]"
                     />
                   </div>
                 </div>
               </div>
+              )}
 
-              {/* Modal Footer */}
-              <div className="flex justify-end gap-3 pt-4 border-t">
+              <div className="flex justify-between gap-3 pt-4 border-t">
+                <div>
+                  {!isEditMode && wizardStep > 1 && (
+                    <Button type="button" variant="outline" onClick={goPrevWizardStep}>
+                      Back
+                    </Button>
+                  )}
+                </div>
+                <div className="flex gap-3">
                 <Button 
                   type="button" 
                   variant="outline"
@@ -899,6 +902,11 @@ export function BatchesPage() {
                 >
                   Cancel
                 </Button>
+                {!isEditMode && wizardStep < 3 ? (
+                  <Button type="button" onClick={goNextWizardStep}>
+                    Next
+                  </Button>
+                ) : (
                 <Button 
                   type="submit"
                   className="gradient-brand text-white border-0"
@@ -916,10 +924,13 @@ export function BatchesPage() {
                     </>
                   )}
                 </Button>
+                )}
+                </div>
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* View Batch Modal */}

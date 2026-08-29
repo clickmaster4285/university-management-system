@@ -22,6 +22,7 @@ import {
   GraduationCap,
 } from "lucide-react";
 import { toast } from "sonner";
+import { ProgramProgramNav } from "./ProgramProgramNav";
 
 const CURRICULUM_TYPES: CurriculumType[] = ["Core", "Elective", "Optional"];
 
@@ -248,6 +249,8 @@ export default function ProgramCurriculumPage() {
           )}
         </Button>
       </div>
+
+      <ProgramProgramNav active="curriculum" programCode={programCode} />
 
       <div className="grid gap-4 md:grid-cols-3 mb-4">
         <KpiCard label="Program" value={programCode} icon={GraduationCap} />

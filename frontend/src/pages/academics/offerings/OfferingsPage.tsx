@@ -126,6 +126,13 @@ export default function OfferingsPage() {
   }, [fetchData]);
 
   useEffect(() => {
+    const sessionId = sessions.find((s) => s.isCurrent)?._id;
+    if (sessionId && !form.academicSessionId) {
+      setForm((f) => ({ ...f, academicSessionId: sessionId }));
+    }
+  }, [sessions, form.academicSessionId]);
+
+  useEffect(() => {
     if (!form.programId) {
       setCurriculum([]);
       return;
@@ -354,15 +361,34 @@ export default function OfferingsPage() {
     enrollments.filter((e) => e.status === "Enrolled").map((e) => resolveRefId(e.studentId))
   );
 
+  const currentSession = useMemo(
+    () => sessions.find((s) => s.isCurrent),
+    [sessions]
+  );
+
+  const canCreateOffering = sessions.length > 0 && batches.length > 0;
+
+  const openCreateDialog = () => {
+    if (!canCreateOffering) {
+      toast.error("Create at least one session and one batch first");
+      return;
+    }
+    setForm((f) => ({
+      ...f,
+      academicSessionId: currentSession?._id || f.academicSessionId,
+    }));
+    setCreateOpen(true);
+  };
+
   return (
     <>
       <div className="grid gap-4 md:grid-cols-4">
-        <KpiCard title="Total Offerings" value={stats.total} icon={BookOpen} />
-        <KpiCard title="Active" value={stats.active} icon={Layers} />
-        <KpiCard title="Enrollments" value={stats.totalEnrollments} icon={GraduationCap} />
-        <KpiCard title="Completed" value={stats.completed} icon={Calendar} />
+        <KpiCard label="Total Offerings" value={stats.total} icon={BookOpen} />
+        <KpiCard label="Active" value={stats.active} icon={Layers} />
+        <KpiCard label="Enrollments" value={stats.totalEnrollments} icon={GraduationCap} />
+        <KpiCard label="Completed" value={stats.completed} icon={Calendar} />
       </div>
-
+      
       <div className="mt-6 flex flex-wrap items-end justify-between gap-4">
         <div className="flex flex-wrap gap-4">
           <div>
@@ -410,7 +436,7 @@ export default function OfferingsPage() {
             </select>
           </div>
         </div>
-        <Button onClick={() => setCreateOpen(true)}>
+        <Button onClick={openCreateDialog} disabled={!canCreateOffering}>
           <Plus className="mr-2 h-4 w-4" />
           New Offering
         </Button>
@@ -421,8 +447,25 @@ export default function OfferingsPage() {
           <div className="flex justify-center py-12">
             <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
           </div>
+        ) : filteredOfferings.length === 0 ? (
+          <div className="flex flex-col items-center justify-center rounded-lg border border-dashed py-16 px-6 text-center">
+            <BookOpen className="h-12 w-12 text-muted-foreground mb-4" />
+            <p className="font-medium">No offerings yet</p>
+            <p className="mt-2 max-w-md text-sm text-muted-foreground">
+              An offering is a subject running for a specific batch during an academic session.
+              {!canCreateOffering
+                ? " Set up sessions and batches first (see steps above)."
+                : " Click New Offering to open your first class."}
+            </p>
+            {canCreateOffering && (
+              <Button className="mt-4" onClick={openCreateDialog}>
+                <Plus className="mr-2 h-4 w-4" />
+                Create first offering
+              </Button>
+            )}
+          </div>
         ) : (
-          <DataTable columns={columns} data={filteredOfferings} emptyMessage="No offerings yet" />
+          <DataTable columns={columns} data={filteredOfferings} />
         )}
       </div>
 
@@ -430,6 +473,9 @@ export default function OfferingsPage() {
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>Create Course Offering</DialogTitle>
+            <p className="text-sm text-muted-foreground">
+              Subject + program + batch (who) + session (when). Program semester picks subjects from curriculum.
+            </p>
           </DialogHeader>
           <div className="grid gap-4 py-2">
             <div>
@@ -494,6 +540,25 @@ export default function OfferingsPage() {
               </select>
             </div>
             <div>
+              <Label>Academic Session</Label>
+              <select
+                className="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm"
+                value={form.academicSessionId}
+                onChange={(e) => setForm((f) => ({ ...f, academicSessionId: e.target.value }))}
+              >
+                <option value="">Select session</option>
+                {sessions.map((s) => (
+                  <option key={s._id} value={s._id}>
+                    {s.name}
+                    {s.isCurrent ? " (current)" : ""}
+                  </option>
+                ))}
+              </select>
+              <p className="mt-1 text-xs text-muted-foreground">
+                When this class runs (usually the current session).
+              </p>
+            </div>
+            <div>
               <Label>Batch</Label>
               <select
                 className="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm"
@@ -508,21 +573,9 @@ export default function OfferingsPage() {
                   </option>
                 ))}
               </select>
-            </div>
-            <div>
-              <Label>Academic Session</Label>
-              <select
-                className="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm"
-                value={form.academicSessionId}
-                onChange={(e) => setForm((f) => ({ ...f, academicSessionId: e.target.value }))}
-              >
-                <option value="">Select session</option>
-                {sessions.map((s) => (
-                  <option key={s._id} value={s._id}>
-                    {s.name}
-                  </option>
-                ))}
-              </select>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Which student cohort attends this class.
+              </p>
             </div>
             <div>
               <Label>Instructor (optional)</Label>

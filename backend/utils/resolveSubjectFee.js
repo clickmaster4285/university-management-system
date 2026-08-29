@@ -1,10 +1,5 @@
 import { SubjectFeeHistory } from '../models/index.js';
-
-function startOfDay(date) {
-  const d = new Date(date);
-  d.setHours(0, 0, 0, 0);
-  return d;
-}
+import { parseLocalDate, startOfDay } from './parseLocalDate.js';
 
 function activeAtDateFilter(atDate) {
   return {
@@ -14,7 +9,7 @@ function activeAtDateFilter(atDate) {
 }
 
 export async function resolveSubjectFeeAtDate(subjectId, programId, atDate = new Date()) {
-  const date = startOfDay(atDate);
+  const date = atDate instanceof Date ? startOfDay(atDate) : parseLocalDate(atDate);
   const dateFilter = activeAtDateFilter(date);
 
   if (programId) {
