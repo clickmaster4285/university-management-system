@@ -28,6 +28,8 @@ backend/models/
 ├── Campus.model.js
 ├── Counter.model.js
 ├── Course.model.js
+├── CourseOffering.model.js
+├── Enrollment.model.js
 ├── Department.model.js
 ├── Faculty.model.js
 ├── Driver.model.js
@@ -171,6 +173,7 @@ User (role: Admin | Teacher | Student | Staff)
 - **Program**: belongs to Department (`departmentId`). Has `code` (globally unique), `degreeLevel`, `duration`, `totalCredits`, `status`. Soft-delete fields on model; controller delete still hard-deletes (needs fix). Course link uses both `programId` ref and denormalized `program` code string.
 - **Teacher ↔ User**: creating a Teacher auto-creates a User (role: 'Teacher'). Teacher has `userId` ref. Soft-deleting a Teacher also soft-deletes the linked User.
 - **Course** (legacy): monolithic model being replaced — see `academic-architecture-plan.md`. Target: **Subject**, **ProgramCurriculum**, **SubjectFeeHistory**, **CourseOffering**, **Enrollment**.
+- **CourseOffering** + **Enrollment** (Phase 5): running class per subject/batch/session; enrollment locks `feeSnapshot` via `utils/resolveSubjectFee.js`.
 
 ## Course API (lean — legacy `Course` model; see academic-architecture-plan.md)
 
@@ -215,6 +218,18 @@ Mutations require `auth + authorize("Admin")`.
 - `POST /api/subjects/:id/fees` — add rate (Admin); closes previous active row for same subject+program scope
 - Fields: `feePerCredit`, `feeType`, `effectiveFrom`, optional `programId`, `reason`
 - Unique active row per `{ subjectId, programId }` where `effectiveTo` is null
+
+## CourseOffering & Enrollment API (Phase 5 — implemented)
+
+- `GET /api/offerings` — list with filters (`programId`, `batchId`, `academicSessionId`, `status`, `search`)
+- `GET /api/offerings/stats` — KPI counts + total active enrollments
+- `POST /api/offerings` — create (Admin); validates curriculum + unique subject/batch/session
+- `PUT /api/offerings/:id` — update instructor, schedule, capacity, status (Admin)
+- `DELETE /api/offerings/:id` — soft delete (Admin); blocked if active enrollments
+- `GET /api/offerings/:id/enrollments` — list with student + fee snapshot
+- `POST /api/offerings/:id/enroll` — enroll student; builds immutable `feeSnapshot` via `resolveSubjectFee.js`
+- `DELETE /api/offerings/:id/enroll/:studentId` — drop student
+- Fee resolution: program-specific `SubjectFeeHistory` → default rate at enrollment date
 
 ## Academic structure seed
 

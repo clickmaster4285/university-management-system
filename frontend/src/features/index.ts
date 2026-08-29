@@ -21,4 +21,5 @@ export * from './dashboard';
 export * from './notifications';
 export * from './programs';
 export * from './subjects';
+export * from './offerings';
 export * from './faculties';

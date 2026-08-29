@@ -94,7 +94,8 @@ Routes sit under `<AppLayout />` (which handles auth + sidebar + topbar + render
 /subjects           → SubjectsPage
 /subjects/create    → SubjectCreatePage
 /subjects/edit/:id  → SubjectEditPage
-/courses            → CoursesPage
+/offerings          → OfferingsPage (Phase 5 — course offerings + enrollments)
+/courses            → CoursesPage (legacy — remove in Phase 8)
 /academic-sessions  → AcademicSessionsPage
 /semesters          → SemestersPage
 /batches            → BatchesPage
@@ -136,6 +137,7 @@ Key barrel export: `features/index.ts` re-exports everything.
 - **`features/attendance.ts`** — `AttendanceRecord` has `departmentId` alongside legacy `department`. API methods use `departmentId` in query params and payloads.
 - **`features/batches.ts`** — `getAll` accepts `departmentId` instead of `department`.
 - **`features/subjects.ts`** — `Subject` interface + CRUD + stats + fee history API (Phase 1–3)
+- **`features/offerings.ts`** — `CourseOffering`, `Enrollment`, `FeeSnapshot` + CRUD/enroll API (Phase 5)
 - **`SubjectEditPage`** — tabs: Details (`SubjectForm`) + Fee History (`SubjectFeePanel`, grouped by program scope)
 - **`features/programs.ts`** — Program CRUD + stats + `getCurriculum` / `updateCurriculum`
 - **`features/faculties.ts`** — `Faculty` interface + `FacultyAPI` class with `getAll`, `getById`, `getStats`, `create`, `update`, `delete`.

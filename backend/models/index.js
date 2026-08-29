@@ -9,6 +9,8 @@ export { default as Bus } from "./Bus.model.js";
 export { default as Campus } from "./Campus.model.js";
 export { default as Counter } from "./Counter.model.js";
 export { default as Course } from "./Course.model.js";
+export { default as CourseOffering, OFFERING_STATUSES } from "./CourseOffering.model.js";
+export { default as Enrollment, ENROLLMENT_STATUSES } from "./Enrollment.model.js";
 export { default as Department } from "./Department.model.js";
 export { default as Driver } from "./Driver.model.js";
 export { default as Employee } from "./Employee.model.js";

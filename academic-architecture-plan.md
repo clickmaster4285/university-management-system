@@ -1,6 +1,8 @@
 # Academic Architecture Plan — Subjects, Curriculum, Fees & Offerings
 
-> **Status:** Phases 1–3 + unified academic seed implemented — Phase 5 (CourseOffering + Enrollment) is next  
+> **Status:** Phases 1–3 + unified academic seed + **Phase 5** (CourseOffering + Enrollment) implemented  
+> **Phase 6 paused** (per product decision 2026-08-29) — next focus: Teachers, roles, duties, HR alignment  
+> **See also:** `maincontext.md` for master roadmap and working rules  
 > **Replaces:** The current monolithic `Course` model approach (gradual deprecation)  
 > **Last updated:** 2026-08-29  
 > **UX note:** UI should group by user mental model (program, semester, fee scope) — see `maincontext.md` design principles.
@@ -334,8 +336,8 @@ Payment recorded against that challan — never recalculate old enrollments
 | **2** | `ProgramCurriculum` + program curriculum UI | Low |
 | **3** | `SubjectFeeHistory` + fee timeline UI | Low |
 | **4** | ~~Migrate legacy `Course`~~ — **skipped**; use `npm run seed:academic` instead | — |
-| **5** | `CourseOffering` + `Enrollment` with `feeSnapshot` | Medium — **next** |
-| **6** | Wire Assignments / Exams / Attendance to `offeringId` | Higher |
+| **5** | `CourseOffering` + `Enrollment` with `feeSnapshot` | Medium — **done** |
+| **6** | Wire Assignments / Exams / Attendance to `offeringId` | Higher — **paused** (not current priority) |
 | **7** | Optional `BatchFeePolicy`, `FeeAdjustment` | As needed |
 | **8** | Deprecate old `Course` model | After full migration |
 
@@ -370,8 +372,12 @@ Payment recorded against that challan — never recalculate old enrollments
 | Method | Path |
 |--------|------|
 | GET | `/api/offerings` |
+| GET | `/api/offerings/stats` |
+| GET | `/api/offerings/:id` |
 | POST | `/api/offerings` |
 | PUT | `/api/offerings/:id` |
+| DELETE | `/api/offerings/:id` |
+| GET | `/api/offerings/:id/enrollments` |
 | POST | `/api/offerings/:id/enroll` |
 | DELETE | `/api/offerings/:id/enroll/:studentId` |
 
