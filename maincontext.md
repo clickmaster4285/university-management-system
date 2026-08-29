@@ -3,6 +3,7 @@
 > **Purpose of this file:** Single source of truth for anyone (or any AI session) working on this codebase. Read this first. It tracks vision, what is built, what is deferred, what to do, what not to do, and the roadmap.  
 > **Last updated:** 2026-08-29  
 > **Detailed academic spec:** `academic-architecture-plan.md`  
+> **Fees, sessions, batches & offerings flow:** `fee-plan.md`  
 > **Implementation details:** `backend/backendcontext.md`, `frontend/frontendcontext.md`
 
 ---
@@ -115,7 +116,12 @@ Click **Enrollments** on a row → add students.
 | `capacity` / `enrolledStudents` | Seat limit and current count |
 | `status` | Draft · Active · Completed · Cancelled |
 
-**No fee on the offering.** Fees are resolved when a student enrolls.
+**No fee on the offering.** Fees are resolved when a student enrolls.  
+**Full fee strategy (sessions, batches, both registration modes):** see **`fee-plan.md`**.
+
+### Prerequisites before Offerings
+
+You must have **Academic Sessions** and **Batches** first. See **`fee-plan.md` §3–4** for the step-by-step flow.
 
 ### Creating an offering (rules)
 
@@ -372,6 +378,7 @@ All features must be **easy to use, easy to follow, and easy to understand**.
 | File | Contents |
 |------|----------|
 | `maincontext.md` | **This file** — vision, status, rules, roadmap |
+| `fee-plan.md` | Sessions, batches, offerings setup order + full fee plan (both modes) |
 | `academic-architecture-plan.md` | Deep spec: models, APIs, fee policies, phases |
 | `backend/backendcontext.md` | Models list, API conventions, seed commands |
 | `frontend/frontendcontext.md` | Tech stack, routes, feature modules, UI patterns |

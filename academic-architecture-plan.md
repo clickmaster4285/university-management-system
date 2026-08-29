@@ -2,7 +2,7 @@
 
 > **Status:** Phases 1–3 + unified academic seed + **Phase 5** (CourseOffering + Enrollment) implemented  
 > **Phase 6 paused** (per product decision 2026-08-29) — next focus: Teachers, roles, duties, HR alignment  
-> **See also:** `maincontext.md` for master roadmap and working rules  
+> **See also:** `maincontext.md` for master roadmap, `fee-plan.md` for sessions/batches/offerings order and fee strategy  
 > **Replaces:** The current monolithic `Course` model approach (gradual deprecation)  
 > **Last updated:** 2026-08-29  
 > **UX note:** UI should group by user mental model (program, semester, fee scope) — see `maincontext.md` design principles.
