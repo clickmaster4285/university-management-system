@@ -93,10 +93,6 @@ const studentSchema = new mongoose.Schema({
     type: Date,
     default: Date.now
   },
-  coursesEnrolled: [{
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Course'
-  }],
   profileImage: {
     type: String
   },

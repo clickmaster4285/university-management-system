@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { examAPI, Exam } from "@/features/exam";
-import { courseAPI, Course } from "@/features/courses";
+import { offeringAPI, type CourseOffering } from "@/features/offerings";
 import { 
   ClipboardCheck, 
   Award, 
@@ -74,8 +74,8 @@ export function ExamsPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   // Courses state
-  const [courses, setCourses] = useState<Course[]>([]);
-  const [coursesLoading, setCoursesLoading] = useState(false);
+  const [offerings, setOfferings] = useState<CourseOffering[]>([]);
+  const [offeringsLoading, setOfferingsLoading] = useState(false);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -104,18 +104,18 @@ export function ExamsPage() {
   });
 
   // Fetch courses
-  const fetchCourses = async () => {
+  const fetchOfferings = async () => {
     try {
-      setCoursesLoading(true);
-      const response = await courseAPI.getAll({ status: 'Active' });
+      setOfferingsLoading(true);
+      const response = await offeringAPI.getAll({ status: 'Active', limit: 500 });
       if (response && response.success) {
-        setCourses(response.data || []);
+        setOfferings(response.data || []);
       }
     } catch (error) {
-      console.error('Failed to fetch courses:', error);
-      toast.error('Failed to load courses');
+      console.error('Failed to fetch offerings:', error);
+      toast.error('Failed to load offerings');
     } finally {
-      setCoursesLoading(false);
+      setOfferingsLoading(false);
     }
   };
 
@@ -188,7 +188,7 @@ export function ExamsPage() {
   };
 
   useEffect(() => {
-    fetchCourses();
+    fetchOfferings();
     fetchExams();
     fetchStats();
   }, []);
@@ -216,26 +216,40 @@ export function ExamsPage() {
     return gpaData;
   };
 
-  // Handle course selection
-  const handleCourseSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const selectedCourseId = e.target.value;
-    const selectedCourse = courses.find(c => c._id === selectedCourseId);
-    
-    if (selectedCourse) {
+  const getOfferingSubject = (offering: CourseOffering) =>
+    typeof offering.subjectId === 'object' ? offering.subjectId : null;
+
+  const getOfferingLabel = (offering: CourseOffering) => {
+    const subject = getOfferingSubject(offering);
+    return `${offering.offeringId || ''} — ${subject?.code || ''} ${subject?.name || ''}`.trim();
+  };
+
+  const handleOfferingSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const selectedId = e.target.value;
+    const selected = offerings.find((o) => o._id === selectedId);
+
+    if (selected) {
+      const subject = getOfferingSubject(selected);
+      const program = typeof selected.programId === 'object' ? selected.programId : null;
+      const instructor = typeof selected.instructorId === 'object' ? selected.instructorId : null;
+      const dept =
+        subject && typeof subject.departmentId === 'object' ? subject.departmentId : null;
+
       setFormData({
         ...formData,
-        course: selectedCourse.name || '',
-        courseCode: selectedCourse.code || '',
-        department: (typeof selectedCourse.departmentId === 'object' ? selectedCourse.departmentId?.name : '') || formData.department,
-        program: formData.program,
-        instructor: selectedCourse.instructor || formData.instructor,
+        course: subject?.name || '',
+        courseCode: subject?.code || '',
+        department: dept?.name || formData.department,
+        program: program?.code || program?.name || formData.program,
+        semester: selected.semester,
+        instructor: instructor?.name || formData.instructor,
       });
-      toast.success(`Course selected: ${selectedCourse.code} - ${selectedCourse.name}`);
+      toast.success(`Offering selected: ${subject?.code} — ${subject?.name}`);
     } else {
       setFormData({
         ...formData,
         course: '',
-        courseCode: ''
+        courseCode: '',
       });
     }
   };
@@ -915,24 +929,24 @@ export function ExamsPage() {
 
                 {/* Course Selection */}
                 <div className="space-y-2">
-                  <Label htmlFor="courseSelect">Select Course *</Label>
+                  <Label htmlFor="courseSelect">Select Offering *</Label>
                   <select
                     id="courseSelect"
                     name="courseSelect"
-                    onChange={handleCourseSelect}
+                    onChange={handleOfferingSelect}
                     className="w-full border rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary"
-                    value={formData.course ? courses.find(c => c.name === formData.course)?._id || '' : ''}
+                    value={formData.courseCode ? offerings.find((o) => getOfferingSubject(o)?.code === formData.courseCode)?._id || '' : ''}
                     required
                   >
-                    <option value="">Select a course</option>
-                    {coursesLoading ? (
-                      <option value="" disabled>Loading courses...</option>
-                    ) : courses.length === 0 ? (
-                      <option value="" disabled>No courses available</option>
+                    <option value="">Select an offering</option>
+                    {offeringsLoading ? (
+                      <option value="" disabled>Loading offerings...</option>
+                    ) : offerings.length === 0 ? (
+                      <option value="" disabled>No offerings available</option>
                     ) : (
-                      courses.map(course => (
-                        <option key={course._id} value={course._id}>
-                          {course.code} - {course.name}
+                      offerings.map((offering) => (
+                        <option key={offering._id} value={offering._id}>
+                          {getOfferingLabel(offering)}
                         </option>
                       ))
                     )}

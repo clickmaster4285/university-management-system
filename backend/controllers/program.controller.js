@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
 import { handle } from "../utils/asyncHandler.js";
-import { Program, Department, Course, Batch, ProgramCurriculum } from '../models/index.js';
+import { Program, Department, CourseOffering, Batch, ProgramCurriculum } from '../models/index.js';
 import { generateProgramId } from "../utils/generateProgramId.js";
 
 const DEGREE_LEVELS = ['BS', 'MS', 'PhD', 'BBA', 'MBA', 'LLB', 'Other'];
@@ -14,13 +14,10 @@ async function findProgramByIdentifier(identifier) {
   return Program.findOne({ $or: query, isDeleted: notDeleted });
 }
 
-function courseLinkFilter(program) {
+function offeringLinkFilter(program) {
   return {
     isDeleted: notDeleted,
-    $or: [
-      { programId: program._id },
-      { program: program.code },
-    ],
+    programId: program._id,
   };
 }
 
@@ -245,17 +242,17 @@ export const deleteProgram = handle(async (req, res) => {
     });
   }
 
-  const [courseCount, batchCount, curriculumCount] = await Promise.all([
-    Course.countDocuments(courseLinkFilter(program)),
+  const [offeringCount, batchCount, curriculumCount] = await Promise.all([
+    CourseOffering.countDocuments(offeringLinkFilter(program)),
     Batch.countDocuments(batchLinkFilter(program)),
     ProgramCurriculum.countDocuments({ programId: program._id, isDeleted: notDeleted }),
   ]);
 
-  if (courseCount > 0 || batchCount > 0 || curriculumCount > 0) {
+  if (offeringCount > 0 || batchCount > 0 || curriculumCount > 0) {
     return res.status(400).json({
       success: false,
-      message: 'Cannot delete program while courses, batches, or curriculum entries are still linked. Remove or reassign them first, or deactivate the program.',
-      courseCount,
+      message: 'Cannot delete program while offerings, batches, or curriculum entries are still linked. Remove or reassign them first, or deactivate the program.',
+      offeringCount,
       batchCount,
       curriculumCount,
     });
@@ -281,22 +278,17 @@ export const getProgramStats = handle(async (req, res) => {
     { $match: { isDeleted: notDeleted } },
     {
       $lookup: {
-        from: 'courses',
-        let: { programObjectId: '$_id', programCode: '$code' },
+        from: 'courseofferings',
+        let: { programObjectId: '$_id' },
         pipeline: [
           {
             $match: {
-              $expr: {
-                $or: [
-                  { $eq: ['$programId', '$$programObjectId'] },
-                  { $eq: ['$program', '$$programCode'] },
-                ],
-              },
+              $expr: { $eq: ['$programId', '$$programObjectId'] },
               isDeleted: notDeleted,
             },
           },
         ],
-        as: 'courses',
+        as: 'offerings',
       },
     },
     {
@@ -327,12 +319,12 @@ export const getProgramStats = handle(async (req, res) => {
         departmentId: 1,
         degreeLevel: 1,
         status: 1,
-        courseCount: { $size: '$courses' },
+        offeringCount: { $size: '$offerings' },
         batchCount: { $size: '$batches' },
-        totalStudents: { $sum: '$courses.enrolledStudents' },
+        totalStudents: { $sum: '$offerings.enrolledStudents' },
       },
     },
-    { $sort: { courseCount: -1 } },
+    { $sort: { offeringCount: -1 } },
   ]);
 
   const totalPrograms = await Program.countDocuments({ isDeleted: notDeleted });

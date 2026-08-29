@@ -14,7 +14,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { feeAPI, Fee } from "@/features/fee";
 import { feeStructureAPI } from "@/features/feeStructure";
 import { studentAPI, Student } from "@/features/students";
-import { courseAPI, Course } from "@/features/courses";
+import { subjectAPI, type Subject } from "@/features/subjects";
 import { 
   DollarSign, 
   AlertCircle, 
@@ -198,8 +198,8 @@ export function FeesPage() {
   const [feeRecords, setFeeRecords] = useState<StudentFeeRecord[]>([]);
   const [filteredRecords, setFilteredRecords] = useState<StudentFeeRecord[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
-  const [courses, setCourses] = useState<Course[]>([]);
-  const [filteredCourses, setFilteredCourses] = useState<Course[]>([]);
+  const [catalogSubjects, setCatalogSubjects] = useState<Subject[]>([]);
+  const [filteredSubjects, setFilteredSubjects] = useState<Subject[]>([]);
   const [stats, setStats] = useState<any>(null);
   
   // State for selected courses from database
@@ -286,35 +286,13 @@ export function FeesPage() {
     paymentMethod: 'Cash'
   });
 
-  // Filter courses when program or semester changes
+  // Filter subject catalog for fee structure builder
   useEffect(() => {
-    const selectedProgram = structureForm.program;
-    const selectedSemester = Number(structureForm.semester);
-
-    if (selectedProgram && selectedSemester) {
-      // Filter courses based on selected program and semester
-      const filtered = courses.filter(c => 
-        c.program === selectedProgram && 
-        c.semester === selectedSemester &&
-        c.isActive !== false
-      );
-      setFilteredCourses(filtered);
-      // Clear selected courses when filter changes
-      setSelectedCourseIds(new Set());
-    } else if (selectedProgram) {
-      // If only program is selected, show all courses for that program
-      const filtered = courses.filter(c => 
-        c.program === selectedProgram &&
-        c.isActive !== false
-      );
-      setFilteredCourses(filtered);
-      setSelectedCourseIds(new Set());
-    } else {
-      // If no program selected, show all active courses
-      setFilteredCourses(courses.filter(c => c.isActive !== false));
-      setSelectedCourseIds(new Set());
-    }
-  }, [structureForm.program, structureForm.semester, courses]);
+    setFilteredSubjects(
+      catalogSubjects.filter((s) => (s.status || 'Active') === 'Active')
+    );
+    setSelectedCourseIds(new Set());
+  }, [structureForm.program, structureForm.semester, catalogSubjects]);
 
   // Fetch all data
   const fetchAllData = async () => {
@@ -326,7 +304,7 @@ export function FeesPage() {
         fetchFeeStructures(),
         fetchFeeRecords(),
         fetchStudents(),
-        fetchCourses(),
+        fetchSubjects(),
         fetchStats()
       ]);
       
@@ -377,15 +355,14 @@ export function FeesPage() {
     }
   };
 
-  // Fetch courses
-  const fetchCourses = async () => {
+  const fetchSubjects = async () => {
     try {
-      const response = await courseAPI.getAll({ limit: 500 });
+      const response = await subjectAPI.getAll({ limit: 500, status: 'Active' });
       if (response && response.success) {
-        setCourses(response.data || []);
+        setCatalogSubjects(response.data || []);
       }
     } catch (error) {
-      console.error('Failed to fetch courses:', error);
+      console.error('Failed to fetch subjects:', error);
     }
   };
 
@@ -504,12 +481,12 @@ export function FeesPage() {
 
   // Handle select all courses
   const toggleSelectAllCourses = () => {
-    if (selectedCourseIds.size === filteredCourses.length && filteredCourses.length > 0) {
+    if (selectedCourseIds.size === filteredSubjects.length && filteredSubjects.length > 0) {
       // Deselect all
       setSelectedCourseIds(new Set());
     } else {
       // Select all
-      const allIds = new Set(filteredCourses.map(c => c._id || '').filter(id => id));
+      const allIds = new Set(filteredSubjects.map((c) => c._id || '').filter((id) => id));
       setSelectedCourseIds(allIds);
     }
   };
@@ -521,24 +498,25 @@ export function FeesPage() {
       return;
     }
 
-    const coursesToAdd = filteredCourses.filter(c => c._id && selectedCourseIds.has(c._id));
+    const coursesToAdd = filteredSubjects.filter((c) => c._id && selectedCourseIds.has(c._id));
     let addedCount = 0;
     let skippedCount = 0;
 
-    coursesToAdd.forEach(course => {
-      // Check if course already added
-      if ((structureForm.courses || []).some(c => c.courseCode === course.code)) {
+    coursesToAdd.forEach((subject) => {
+      if ((structureForm.courses || []).some((c) => c.courseCode === subject.code)) {
         skippedCount++;
         return;
       }
-      
+
+      const credits = subject.credits || 3;
+      const feePerCredit = 5000;
       const newCourse: CourseFee = {
-        courseCode: course.code,
-        courseName: course.name,
-        creditHours: course.credits || 3,
-        feePerCredit: course.feePerCredit || 5000,
-        totalFee: (course.credits || 3) * (course.feePerCredit || 5000),
-        isCore: true
+        courseCode: subject.code,
+        courseName: subject.name,
+        creditHours: credits,
+        feePerCredit,
+        totalFee: credits * feePerCredit,
+        isCore: true,
       };
       
       setStructureForm(prev => {
@@ -1669,7 +1647,7 @@ export function FeesPage() {
                   </h3>
                   <div className="flex items-center gap-2">
                     <Badge variant="secondary">{(structureForm.courses || []).length} courses added</Badge>
-                    <Badge variant="outline">{filteredCourses.length} available</Badge>
+                    <Badge variant="outline">{filteredSubjects.length} available</Badge>
                   </div>
                 </div>
 
@@ -1703,12 +1681,12 @@ export function FeesPage() {
                           <div className="flex items-center gap-2">
                             <Checkbox
                               id="selectAllCourses"
-                              checked={selectedCourseIds.size === filteredCourses.length && filteredCourses.length > 0}
+                              checked={selectedCourseIds.size === filteredSubjects.length && filteredSubjects.length > 0}
                               onCheckedChange={toggleSelectAllCourses}
-                              disabled={filteredCourses.length === 0}
+                              disabled={filteredSubjects.length === 0}
                             />
                             <Label htmlFor="selectAllCourses" className="text-xs font-medium">
-                              Select All ({filteredCourses.length})
+                              Select All ({filteredSubjects.length})
                             </Label>
                           </div>
                           <span className="text-xs text-muted-foreground">
@@ -1727,26 +1705,26 @@ export function FeesPage() {
                       </div>
 
                       {/* Course List with Checkboxes */}
-                      {filteredCourses.length > 0 ? (
+                      {filteredSubjects.length > 0 ? (
                         <div className="border rounded-lg bg-white max-h-[200px] overflow-y-auto">
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 p-2">
-                            {filteredCourses
+                            {filteredSubjects
                               .sort((a, b) => a.code.localeCompare(b.code))
-                              .map(course => {
-                                const isAdded = (structureForm.courses || []).some(c => c.courseCode === course.code);
+                              .map((subject) => {
+                                const isAdded = (structureForm.courses || []).some((c) => c.courseCode === subject.code);
                                 return (
-                                  <div key={course._id} className="flex items-center gap-2 p-1.5 rounded hover:bg-gray-50">
+                                  <div key={subject._id} className="flex items-center gap-2 p-1.5 rounded hover:bg-gray-50">
                                     <Checkbox
-                                      id={`course-${course._id}`}
-                                      checked={selectedCourseIds.has(course._id || '')}
-                                      onCheckedChange={() => toggleCourseSelection(course._id || '')}
+                                      id={`course-${subject._id}`}
+                                      checked={selectedCourseIds.has(subject._id || '')}
+                                      onCheckedChange={() => toggleCourseSelection(subject._id || '')}
                                       disabled={isAdded}
                                     />
-                                    <Label htmlFor={`course-${course._id}`} className="text-xs flex-1 cursor-pointer">
-                                      <span className="font-medium">{course.code}</span>
-                                      <span className="text-muted-foreground ml-1">{course.name}</span>
+                                    <Label htmlFor={`course-${subject._id}`} className="text-xs flex-1 cursor-pointer">
+                                      <span className="font-medium">{subject.code}</span>
+                                      <span className="text-muted-foreground ml-1">{subject.name}</span>
                                       <span className="text-xs text-muted-foreground ml-1">
-                                        ({course.credits || 3} cr, PKR {(course.feePerCredit || 0).toLocaleString()}/cr)
+                                        ({subject.credits || 3} cr)
                                       </span>
                                       {isAdded && (
                                         <Badge variant="secondary" className="ml-1 text-[10px]">Added</Badge>
@@ -1760,8 +1738,7 @@ export function FeesPage() {
                       ) : (
                         <div className="p-3 bg-yellow-50 rounded border border-yellow-200 text-sm text-yellow-700">
                           <AlertCircle className="h-4 w-4 inline mr-2" />
-                          No courses found for {structureForm.program} {structureForm.semester ? `Semester ${structureForm.semester}` : ''}. 
-                          Please ensure courses are added to this program/semester.
+                          No subjects found. Add subjects under Academics → Subjects.
                         </div>
                       )}
                     </div>

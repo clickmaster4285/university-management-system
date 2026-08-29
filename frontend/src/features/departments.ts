@@ -26,7 +26,7 @@ export interface DepartmentStats {
     name: string;
     code: string;
     status: string;
-    courseCount: number;
+    subjectCount: number;
     programCount: number;
     teacherCount: number;
     totalStudents: number;

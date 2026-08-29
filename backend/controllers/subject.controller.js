@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
 import { handle } from '../utils/asyncHandler.js';
-import { Subject, Department, Course, ProgramCurriculum } from '../models/index.js';
+import { Subject, Department, CourseOffering, ProgramCurriculum } from '../models/index.js';
 import { generateSubjectId } from '../utils/generateSubjectId.js';
 
 const notDeleted = { $ne: true };
@@ -253,15 +253,15 @@ export const deleteSubject = handle(async (req, res) => {
     });
   }
 
-  const [prerequisiteForCount, legacyCourseCount, curriculumCount] = await Promise.all([
+  const [prerequisiteForCount, offeringCount, curriculumCount] = await Promise.all([
     Subject.countDocuments({
       isDeleted: notDeleted,
       prerequisiteSubjectIds: subject._id,
       _id: { $ne: subject._id },
     }),
-    Course.countDocuments({
+    CourseOffering.countDocuments({
       isDeleted: notDeleted,
-      code: subject.code,
+      subjectId: subject._id,
     }),
     ProgramCurriculum.countDocuments({
       isDeleted: notDeleted,
@@ -269,12 +269,12 @@ export const deleteSubject = handle(async (req, res) => {
     }),
   ]);
 
-  if (prerequisiteForCount > 0 || legacyCourseCount > 0 || curriculumCount > 0) {
+  if (prerequisiteForCount > 0 || offeringCount > 0 || curriculumCount > 0) {
     return res.status(400).json({
       success: false,
-      message: 'Cannot delete subject while it is a prerequisite, linked in a program curriculum, or linked to legacy courses.',
+      message: 'Cannot delete subject while it is a prerequisite, linked in a program curriculum, or has active offerings.',
       prerequisiteForCount,
-      legacyCourseCount,
+      offeringCount,
       curriculumCount,
     });
   }

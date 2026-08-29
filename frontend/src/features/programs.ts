@@ -25,7 +25,7 @@ export interface ProgramStats {
     departmentId: string;
     degreeLevel: string;
     status: string;
-    courseCount: number;
+    offeringCount: number;
     batchCount: number;
     totalStudents: number;
   }>;

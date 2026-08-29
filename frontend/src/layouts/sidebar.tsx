@@ -46,7 +46,6 @@ const sidebarNav = [
     label: "Academics",
     items: [
       { to: "/offerings", label: "Offerings", icon: BookOpen },
-      { to: "/courses", label: "Courses (Legacy)", icon: BookOpen },
       { to: "/attendance", label: "Attendance", icon: CalendarCheck },
       { to: "/batches", label: "Batches", icon: Layers },
       { to: "/academic-sessions", label: "Sessions", icon: Calendar },

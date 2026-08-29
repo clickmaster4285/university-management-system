@@ -50,15 +50,54 @@ Student  → belongs to Program + Batch → enrolls in offerings
 - **Course offering** = the actual class running this session for a specific batch.
 - **Enrollment** = a student in that class, with a **frozen fee snapshot** at registration.
 
-Legacy **`Course`** mixed all of the above in one document. We are replacing it layer by layer. Do **not** extend the legacy model.
+Legacy **`Course`** model has been **removed** (2026-08-29). Use **Subject** + **Offering** + **Enrollment** only.
 
 ---
 
-## 3. How Course Offering works (end-to-end)
+## 3. Course Offering — simple explanation
 
-### What it is
+### Real-world analogy
 
-A **Course Offering** is *not* the subject catalog. It is a **running instance**:
+Think of a **recipe book** vs **a class in session**:
+
+| Concept | Like… | In the system |
+|---------|--------|----------------|
+| **Subject** | Recipe in the book (“Chocolate Cake — 3 steps”) | CSC101 exists in catalog, 3 credits |
+| **Curriculum** | Which recipes are in the BSCS meal plan, semester 1 | BSCS sem 1 includes CSC101 |
+| **Offering** | **Today** you are actually baking that cake for Batch 2024 in Room 204 | CSC101 running this term for that batch |
+| **Enrollment** | Ali signed up for today’s baking class; bill locked at signup | Student in that class + fee frozen |
+
+**Subject** = on paper, forever.  
+**Offering** = happening **right now** (this batch, this session, this teacher).
+
+### One concrete example
+
+1. You create **Subject** `CSC101 — Programming` (once).
+2. You add it to **BSCS curriculum**, semester 1.
+3. You set **fee**: 5000/credit (in Subject Fee History).
+4. **September 2025**: Admin creates an **Offering**:
+   - Subject: CSC101  
+   - Program: BSCS  
+   - Batch: 2024  
+   - Session: Fall 2025  
+   - Teacher: Dr. Khan  
+   - Seats: 30  
+5. Student **Ali enrolls** → system saves fee snapshot (5000 × 3 credits = 15000). That amount never changes for Ali’s registration even if fees rise next year.
+
+### What you do in the UI
+
+**Academics → Offerings** → **New Offering** → pick program, semester, subject, batch, session → save.  
+Click **Enrollments** on a row → add students.
+
+### What it is NOT
+
+- Not the subject catalog (that’s **Subjects**).
+- Not the degree plan (that’s **Program Curriculum**).
+- Not the fee table (that’s **Subject Fee History** on each subject).
+
+---
+
+## 3b. Course Offering — technical detail
 
 > “CSC101 for BSCS Batch 2024, Fall 2025 session, semester 1, taught by Dr. Khan, room 204, max 30 seats.”
 
@@ -117,7 +156,8 @@ When a student enrolls (`POST /api/offerings/:id/enroll`):
 |-----------|--------|
 | Subject, Program, Batch, Session, Teacher | ✅ Yes |
 | Enrollment + fee snapshot | ✅ Yes |
-| Assignments, Exams, Attendance | ❌ **Deferred** — still use legacy `Course` for now |
+| Assignments, Exams | Pick an **Offering** in forms (subject code stored on record) |
+| Attendance | 📋 Not wired to offering yet |
 
 ### API quick reference
 
@@ -150,7 +190,7 @@ When a student enrolls (`POST /api/offerings/:id/enroll`):
 | **5** | CourseOffering + Enrollment + feeSnapshot | ✅ Done |
 | **6** | Wire Assignments / Exams / Attendance to `offeringId` | ⏸ **Paused** — not needed right now |
 | **7** | BatchFeePolicy, FeeAdjustment (optional) | 📋 Future |
-| **8** | Deprecate legacy `Course` model + `/courses` UI | 📋 After Phase 6 |
+| **8** | Deprecate legacy `Course` | ✅ Done (Aug 2026) |
 
 ### Seeding
 
@@ -247,14 +287,14 @@ Startup seeds **admin only** (`seedDefaultAdmin`). Legacy `seedCourses` removed.
 
 | Don't | Why |
 |-------|-----|
-| Extend legacy `Course` model | Being replaced — see academic plan |
-| Build features only on `/courses` UI | ~1300-line legacy page; use `/offerings` |
+| Extend or recreate legacy `Course` | Removed — use Subject + Offering |
+| Build features only on old `/courses` | Route removed |
 | Overwrite fee history | Use `SubjectFeeHistory` versioning; close old rows |
 | Skip curriculum check when creating offerings | Subject must be in program plan for that semester |
 | Mix Employee and Teacher without a plan | Two models today — linking needs explicit design |
 | Add Super Admin or custom auth bypass | Only Admin/Teacher/Student/Staff |
 | Over-engineer permissions before teacher module is clean | Get Teacher CRUD right first, then roles |
-| Delete legacy Course files yet | Exams, Assignments, Fees still reference them |
+| Delete legacy Course files yet | ✅ Done |
 | Commit secrets (.env) | Use env vars for admin seed |
 
 ---
@@ -276,7 +316,7 @@ Startup seeds **admin only** (`seedDefaultAdmin`). Legacy `seedCourses` removed.
 
 - Phase 6: Assignments, Exams, Attendance → `offeringId`
 - Phase 7: BatchFeePolicy for continuing students
-- Phase 8: Remove `Course` model, `/courses` UI, `features/courses.ts`
+- ~~Phase 8: Remove `Course` model~~ ✅ Done
 
 ### Long term
 
@@ -286,17 +326,11 @@ Startup seeds **admin only** (`seedDefaultAdmin`). Legacy `seedCourses` removed.
 
 ---
 
-## 9. Legacy inventory (do not delete yet)
+## 9. Removed legacy (Aug 2026)
 
-| File / area | Still used by |
-|-------------|---------------|
-| `backend/models/Course.model.js` | Legacy API, exams, assignments |
-| `backend/controllers/course.controller.js` | `/api/courses` |
-| `frontend/.../CoursesPage.tsx` | Sidebar “Courses (Legacy)” |
-| `frontend/src/features/courses.ts` | ExamsPage, AssignmentsPage, FeesPage |
-| `Student.coursesEnrolled[]` | Legacy enrollment on student doc |
+**Deleted:** `Course` model, `/api/courses`, `CoursesPage`, `features/courses.ts`, `seedCourses`.
 
-**Already removed:** `seedCourses`, migration scripts, `npm run seed:courses`.
+**Still uses subject code as text** (not offering ID yet): Assignment and Exam forms pick an **Offering** in the UI but store `course` / `courseCode` strings on the record. Full `offeringId` link is optional future work.
 
 ---
 
@@ -326,8 +360,7 @@ All features must be **easy to use, easy to follow, and easy to understand**.
 ```
 /subjects, /subjects/create, /subjects/edit/:id
 /programs, /programs/:id/curriculum
-/offerings                          ← new delivery layer
-/courses                            ← legacy only
+/offerings                          ← running classes
 /departments, /programs, /batches, /academic-sessions
 /teachers, /students
 ```

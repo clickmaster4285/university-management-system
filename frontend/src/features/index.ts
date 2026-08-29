@@ -5,7 +5,6 @@ export * from './settings';
 export * from './students';
 export * from './teachers';
 export * from './departments';
-export * from './courses';
 export * from './attendance';
 export * from './admissions';
 export * from './assignment';

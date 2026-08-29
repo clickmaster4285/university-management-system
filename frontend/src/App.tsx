@@ -37,7 +37,6 @@ const SubjectsPage = lazy(() => import("./pages/academics/subjects/SubjectsPage"
 const SubjectCreatePage = lazy(() => import("./pages/academics/subjects/SubjectCreatePage"));
 const SubjectEditPage = lazy(() => import("./pages/academics/subjects/SubjectEditPage"));
 const FacultiesPage = lazy(() => import("./pages/academics/faculties/FacultiesPage"));
-const CoursesPage = lazy(() => import("./pages/academics/courses/CoursesPage"));
 const OfferingsPage = lazy(() => import("./pages/academics/offerings/OfferingsPage"));
 const AcademicSessionsPage = lazy(() => import("./pages/academics/sessions/AcademicSessionsPage"));
 const SemestersPage = lazy(() => import("./pages/academics/semesters/SemestersPage"));
@@ -115,7 +114,6 @@ export const App = () => (
                 <Route path="subjects/create" element={<SubjectCreatePage />} />
                 <Route path="subjects/edit/:id" element={<SubjectEditPage />} />
                 <Route path="faculties" element={<FacultiesPage />} />
-                <Route path="courses" element={<CoursesPage />} />
                 <Route path="offerings" element={<OfferingsPage />} />
                 <Route path="academic-sessions" element={<AcademicSessionsPage />} />
                 <Route path="semesters" element={<SemestersPage />} />

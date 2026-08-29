@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
 import { handle } from "../utils/asyncHandler.js";
-import { Department, Course, Teacher, Faculty, Program, Batch } from '../models/index.js';
+import { Department, Subject, Teacher, Faculty, Program, Batch } from '../models/index.js';
 import { generateDepartmentId } from "../utils/generateDepartmentId.js";
 
 async function findDepartmentByIdentifier(identifier) {
@@ -291,19 +291,19 @@ export const deleteDepartment = handle(async (req, res) => {
 
   const deptFilter = { departmentId: department._id, isDeleted: { $ne: true } };
 
-  const [programCount, courseCount, teacherCount, batchCount] = await Promise.all([
+  const [programCount, subjectCount, teacherCount, batchCount] = await Promise.all([
     Program.countDocuments(deptFilter),
-    Course.countDocuments(deptFilter),
+    Subject.countDocuments(deptFilter),
     Teacher.countDocuments(deptFilter),
     Batch.countDocuments(deptFilter),
   ]);
 
-  if (programCount > 0 || courseCount > 0 || teacherCount > 0 || batchCount > 0) {
+  if (programCount > 0 || subjectCount > 0 || teacherCount > 0 || batchCount > 0) {
     return res.status(400).json({
       success: false,
-      message: 'Cannot delete department while programs, courses, teachers, or batches are still linked. Remove or reassign them first, or deactivate the department.',
+      message: 'Cannot delete department while programs, subjects, teachers, or batches are still linked. Remove or reassign them first, or deactivate the department.',
       programCount,
-      courseCount,
+      subjectCount,
       teacherCount,
       batchCount,
     });
@@ -331,12 +331,12 @@ export const getDepartmentStats = handle(async (req, res) => {
     { $match: { isDeleted: notDeleted } },
     {
       $lookup: {
-        from: 'courses',
+        from: 'subjects',
         let: { deptId: '$_id' },
         pipeline: [
           { $match: { $expr: { $eq: ['$departmentId', '$$deptId'] }, isDeleted: notDeleted } },
         ],
-        as: 'courses',
+        as: 'subjects',
       },
     },
     {
@@ -365,14 +365,13 @@ export const getDepartmentStats = handle(async (req, res) => {
         code: 1,
         campusId: 1,
         status: 1,
-        courseCount: { $size: '$courses' },
+        subjectCount: { $size: '$subjects' },
         programCount: { $size: '$programs' },
         teacherCount: { $size: '$teachers' },
-        totalStudents: { $sum: '$courses.enrolledStudents' },
-        totalCredits: { $sum: '$courses.credits' },
+        totalCredits: { $sum: '$subjects.credits' },
       },
     },
-    { $sort: { courseCount: -1 } },
+    { $sort: { subjectCount: -1 } },
   ]);
 
   const totalDepartments = await Department.countDocuments({ isDeleted: notDeleted });

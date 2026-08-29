@@ -2,15 +2,15 @@
 import { handle } from "../utils/asyncHandler.js";
 
 // Get dashboard statistics
-import { Admission, Attendance, Course, Department, Employee, Fee, Leave, Student, Teacher } from "../models/index.js";
+import { Admission, Attendance, CourseOffering, Department, Employee, Fee, Leave, Student, Teacher } from "../models/index.js";
 export const getDashboardStats = handle(async (req, res) => {
   
   // Get counts from all collections
-  const [totalStudents, totalTeachers, totalDepartments, totalCourses, totalAdmissions, totalEmployees] = await Promise.all([
+  const [totalStudents, totalTeachers, totalDepartments, totalOfferings, totalAdmissions, totalEmployees] = await Promise.all([
     Student.countDocuments({ isDeleted: { $ne: true } }),
     Teacher.countDocuments({ isDeleted: { $ne: true } }),
     Department?.countDocuments({ isDeleted: { $ne: true } }) || 0,
-    Course?.countDocuments({ isDeleted: { $ne: true } }) || 0,
+    CourseOffering?.countDocuments({ isDeleted: { $ne: true } }) || 0,
     Admission.countDocuments({ isDeleted: { $ne: true } }),
     Employee.countDocuments({ isDeleted: { $ne: true } })
   ]);
@@ -59,7 +59,7 @@ export const getDashboardStats = handle(async (req, res) => {
         activeStudents: activeStudents || 0,
         totalTeachers: totalTeachers || 0,
         totalDepartments: totalDepartments || 0,
-        totalCourses: totalCourses || 0,
+        totalOfferings: totalOfferings || 0,
         totalAdmissions: totalAdmissions || 0,
         totalEmployees: totalEmployees || 0,
         pendingAdmissions: pendingAdmissions || 0,
@@ -156,7 +156,7 @@ export const getDashboardOverview = handle(async (req, res) => {
   const totalStudents = await Student.countDocuments({ isDeleted: { $ne: true } });
   const totalTeachers = await Teacher.countDocuments({ isDeleted: { $ne: true } });
   const totalDepartments = await Department?.countDocuments({ isDeleted: { $ne: true } }) || 0;
-  const totalCourses = await Course?.countDocuments({ isDeleted: { $ne: true } }) || 0;
+  const totalOfferings = await CourseOffering?.countDocuments({ isDeleted: { $ne: true } }) || 0;
   
   const activeStudents = await Student.countDocuments({ status: 'Active', isDeleted: { $ne: true } });
   const pendingAdmissions = await Admission.countDocuments({ status: 'Pending', isDeleted: { $ne: true } });
@@ -178,7 +178,7 @@ export const getDashboardOverview = handle(async (req, res) => {
       totalStudents,
       totalTeachers,
       totalDepartments,
-      totalCourses,
+      totalOfferings,
       activeStudents,
       pendingAdmissions,
       pendingLeaves,
