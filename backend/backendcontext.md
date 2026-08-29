@@ -1,5 +1,16 @@
 # Backend Context
 
+## API & data principles
+
+Features must be **easy to use, easy to follow, and easy to understand** — backend supports that with predictable APIs and efficient data access.
+
+- **Lean routes** — one resource, clear verbs; nested routes only when scoped (`/subjects/:id/fees`, `/programs/:id/curriculum`)
+- **Validate early** — return clear `message` strings the frontend can show in toasts
+- **Indexed queries** — compound indexes on filter/sort fields; partial unique indexes where soft-delete applies
+- **No redundant round-trips** — populate only fields the UI needs; stats endpoints for KPI rows
+- **Versioned / immutable data** — fee history closes old rows instead of overwriting (audit-safe)
+- **Efficiency** — `asyncHandler`, parallel `Promise.all` for independent reads, avoid N+1 in list endpoints
+
 ## Models Structure
 
 All model files live directly in `backend/models/` with a `.model.js` suffix. Shared embedded sub-schemas (`address.js`, `academicSettings.js`) also live in `models/`.
@@ -194,9 +205,16 @@ Mutations require `auth + authorize("Admin")`.
 
 - `GET /api/programs/:id/curriculum` — semester grid with subjects, credits summary
 - `PUT /api/programs/:id/curriculum` — replace curriculum `{ entries: [{ subjectId, semester, type, order, status }] }`
-- Validates subjects belong to program's department; semester within program duration
-- Unique subject per program; soft-delete on replace
+- Any active catalog subject can be added to a program; unique subject per program; soft-delete on replace
 - Program delete blocked if curriculum entries exist; Subject delete blocked if in curriculum
+
+## SubjectFeeHistory API (Phase 3 — implemented)
+
+- `GET /api/subjects/:id/fees` — fee timeline; optional `?programId=` or `?programId=default`
+- `GET /api/subjects/:id/fees/current` — resolve rate at date (`?programId=`, `?date=`); program override falls back to default
+- `POST /api/subjects/:id/fees` — add rate (Admin); closes previous active row for same subject+program scope
+- Fields: `feePerCredit`, `feeType`, `effectiveFrom`, optional `programId`, `reason`
+- Unique active row per `{ subjectId, programId }` where `effectiveTo` is null
 
 ## Program API (updated)
 

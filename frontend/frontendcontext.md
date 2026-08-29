@@ -12,6 +12,19 @@
 - **Recharts** for charts
 - **Zod** + **React Hook Form** for validation
 
+## UX & performance principles
+
+Features must be **easy to use, easy to follow, and easy to understand**.
+
+- **Group by context** — e.g. fee history per program (header + table), not one flat mixed list
+- **One clear flow** — list → create/edit route → shared form; tabs only when two concerns belong together (Subject details + fees)
+- **Labels that explain scope** — "Default rate", "Program override", "Active / Closed", effective date ranges
+- **KPIs match what the user is viewing** — default rate KPIs on fee tab, not ambiguous "current" across all programs
+- **Loading & errors** — spinner while fetching, toast on failure, empty states with next step ("Add the first rate")
+- **Efficiency** — lazy-loaded pages, fetch only what the view needs, `useMemo` for grouped/sorted lists, avoid duplicate API calls on mount
+
+When adding a page, match **Academic CRUD UI Pattern** below before inventing new layouts.
+
 ## Project Structure
 
 ```
@@ -122,7 +135,8 @@ Key barrel export: `features/index.ts` re-exports everything.
 - **`features/courses.ts`** — `Course` interface: `departmentId` (ref Department), `programId` (ref Program), `instructorId` (ref Teacher). All filter methods use `departmentId`. `CourseFilters` uses `departmentId`/`programId`.
 - **`features/attendance.ts`** — `AttendanceRecord` has `departmentId` alongside legacy `department`. API methods use `departmentId` in query params and payloads.
 - **`features/batches.ts`** — `getAll` accepts `departmentId` instead of `department`.
-- **`features/subjects.ts`** — `Subject` interface + CRUD + stats (Phase 1 catalog)
+- **`features/subjects.ts`** — `Subject` interface + CRUD + stats + fee history API (Phase 1–3)
+- **`SubjectEditPage`** — tabs: Details (`SubjectForm`) + Fee History (`SubjectFeePanel`, grouped by program scope)
 - **`features/programs.ts`** — Program CRUD + stats + `getCurriculum` / `updateCurriculum`
 - **`features/faculties.ts`** — `Faculty` interface + `FacultyAPI` class with `getAll`, `getById`, `getStats`, `create`, `update`, `delete`.
 - **`features/campus.ts`** — `campusAPI.getAll()` (no params needed), `.getById(id)`, `.create(data)`, `.update(id, data)`, `.delete(id)`. No separate `setMain` — uses `update(id, { isMainCampus: true })`.

@@ -29,6 +29,7 @@ export { default as Route } from "./Route.model.js";
 export { default as Semester } from "./Semester.model.js";
 export { default as Settings } from "./Settings.model.js";
 export { default as Subject } from "./Subject.model.js";
+export { default as SubjectFeeHistory, FEE_TYPES } from "./SubjectFeeHistory.model.js";
 export { default as Student } from "./Student.model.js";
 export { default as Teacher } from "./Teacher.model.js";
 export { default as University } from "./University.model.js";

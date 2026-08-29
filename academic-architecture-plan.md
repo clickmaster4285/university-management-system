@@ -1,8 +1,9 @@
 # Academic Architecture Plan — Subjects, Curriculum, Fees & Offerings
 
-> **Status:** Phase 1–2 implemented (Subject catalog + ProgramCurriculum) — Phase 3+ pending  
+> **Status:** Phase 1–3 implemented (Subject catalog + ProgramCurriculum + SubjectFeeHistory) — Phase 4+ pending  
 > **Replaces:** The current monolithic `Course` model approach (gradual migration)  
-> **Last updated:** 2026-08-28
+> **Last updated:** 2026-08-29  
+> **UX note:** UI should group by user mental model (program, semester, fee scope) — see `maincontext.md` design principles.
 
 ---
 

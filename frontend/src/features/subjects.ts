@@ -20,6 +20,53 @@ export interface SubjectStats {
   inactive: number;
 }
 
+export type SubjectFeeType =
+  | 'Tuition'
+  | 'Lab'
+  | 'Library'
+  | 'Sports'
+  | 'Transport'
+  | 'Hostel'
+  | 'Other';
+
+export const SUBJECT_FEE_TYPES: SubjectFeeType[] = [
+  'Tuition',
+  'Lab',
+  'Library',
+  'Sports',
+  'Transport',
+  'Hostel',
+  'Other',
+];
+
+export interface SubjectFeeHistory {
+  _id: string;
+  subjectId: string;
+  programId?: string | { _id: string; name: string; code: string } | null;
+  feePerCredit: number;
+  feeType: SubjectFeeType;
+  effectiveFrom: string;
+  effectiveTo?: string | null;
+  changedBy?: string | { _id: string; name: string; email?: string } | null;
+  reason?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface SubjectFeesData {
+  subject: Pick<Subject, '_id' | 'subjectId' | 'code' | 'name' | 'credits'>;
+  currentDefault: SubjectFeeHistory | null;
+  history: SubjectFeeHistory[];
+}
+
+export interface AddSubjectFeePayload {
+  feePerCredit: number;
+  feeType?: SubjectFeeType;
+  effectiveFrom?: string;
+  programId?: string | null;
+  reason?: string;
+}
+
 class SubjectAPI {
   private baseUrl = '/subjects';
 
@@ -63,6 +110,28 @@ class SubjectAPI {
 
   async delete(id: string) {
     const response = await api.delete(`${this.baseUrl}/${id}`);
+    return response.data;
+  }
+
+  async getFees(id: string, params?: { programId?: string }) {
+    const queryParams = new URLSearchParams();
+    if (params?.programId) queryParams.append('programId', params.programId);
+    const suffix = queryParams.toString() ? `?${queryParams}` : '';
+    const response = await api.get(`${this.baseUrl}/${id}/fees${suffix}`);
+    return response.data;
+  }
+
+  async getCurrentFee(id: string, params?: { programId?: string; date?: string }) {
+    const queryParams = new URLSearchParams();
+    if (params?.programId) queryParams.append('programId', params.programId);
+    if (params?.date) queryParams.append('date', params.date);
+    const suffix = queryParams.toString() ? `?${queryParams}` : '';
+    const response = await api.get(`${this.baseUrl}/${id}/fees/current${suffix}`);
+    return response.data;
+  }
+
+  async addFee(id: string, data: AddSubjectFeePayload) {
+    const response = await api.post(`${this.baseUrl}/${id}/fees`, data);
     return response.data;
   }
 }

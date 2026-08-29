@@ -29,6 +29,20 @@ See **`academic-architecture-plan.md`** for the approved direction: **Subject** 
 
 The current `Course` model is legacy; migrate in phases (do not expand it further).
 
+## Design & engineering principles
+
+All features — UI and API — should be **easy to use, easy to follow, and easy to understand**.
+
+| Area | Guideline |
+|------|-----------|
+| **UX** | Clear labels, grouped information (e.g. fees by program), one primary action per screen, consistent list → create/edit → detail flows |
+| **UI** | Match established patterns (KPI row, DataTable, tabs, forms). Avoid mixed or flat lists when hierarchy helps (program → rates → dates) |
+| **Frontend** | Lean components, lazy routes, minimal re-fetches, shared form components, readable state — optimize for clarity first, then bundle size |
+| **Backend** | Lean REST, indexed queries, `asyncHandler`, validate early, no redundant endpoints — optimize for correct data and fast reads/writes |
+| **Efficiency** | Do not over-engineer; prefer small focused changes that reuse existing conventions |
+
+Context files: `frontend/frontendcontext.md`, `backend/backendcontext.md`, `academic-architecture-plan.md`.
+
 ## Frontend Layout System
 
 - **AppLayout** (`layouts/AppLayout.tsx`) — handles auth check, renders SidebarProvider + AppSidebar + Topbar + `<Outlet />`

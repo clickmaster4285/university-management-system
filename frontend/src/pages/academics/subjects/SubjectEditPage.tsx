@@ -2,8 +2,10 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { subjectAPI, type Subject } from "@/features/subjects";
 import { SubjectForm } from "./SubjectForm";
+import { SubjectFeePanel } from "./SubjectFeePanel";
 
 export default function SubjectEditPage() {
   const { id } = useParams<{ id: string }>();
@@ -55,5 +57,18 @@ export default function SubjectEditPage() {
     );
   }
 
-  return <SubjectForm mode="edit" subject={subject} />;
+  return (
+    <Tabs defaultValue="details" className="space-y-4">
+      <TabsList className="grid w-full max-w-md grid-cols-2">
+        <TabsTrigger value="details">Details</TabsTrigger>
+        <TabsTrigger value="fees">Fee History</TabsTrigger>
+      </TabsList>
+      <TabsContent value="details">
+        <SubjectForm mode="edit" subject={subject} />
+      </TabsContent>
+      <TabsContent value="fees">
+        <SubjectFeePanel subject={subject} />
+      </TabsContent>
+    </Tabs>
+  );
 }
