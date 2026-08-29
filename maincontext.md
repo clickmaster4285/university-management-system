@@ -27,7 +27,19 @@ University (The entire institution)
 
 See **`academic-architecture-plan.md`** for the approved direction: **Subject** catalog → **ProgramCurriculum** → **SubjectFeeHistory** → **CourseOffering** + **Enrollment** with per-registration `feeSnapshot` and optional **BatchFeePolicy** for continuing students.
 
-The current `Course` model is legacy; migrate in phases (do not expand it further).
+The legacy `Course` model and `/courses` UI remain for now but are **not seeded** — use **`npm run seed:academic`** for the new model. Phase 5+ will replace offerings/enrollment.
+
+## Seeding (new model)
+
+```bash
+cd backend
+npm run seed:academic:dry   # preview
+npm run seed:academic       # apply
+```
+
+Creates: University → Campus → Faculty → Department → Program → Subject → ProgramCurriculum → SubjectFeeHistory.
+
+Startup seeds **admin only** (`seedDefaultAdmin` in `server.js`). Legacy `seedCourses` removed.
 
 ## Design & engineering principles
 

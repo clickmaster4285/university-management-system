@@ -1,7 +1,7 @@
 # Academic Architecture Plan — Subjects, Curriculum, Fees & Offerings
 
-> **Status:** Phase 1–3 implemented (Subject catalog + ProgramCurriculum + SubjectFeeHistory) — Phase 4+ pending  
-> **Replaces:** The current monolithic `Course` model approach (gradual migration)  
+> **Status:** Phases 1–3 + unified academic seed implemented — Phase 5 (CourseOffering + Enrollment) is next  
+> **Replaces:** The current monolithic `Course` model approach (gradual deprecation)  
 > **Last updated:** 2026-08-29  
 > **UX note:** UI should group by user mental model (program, semester, fee scope) — see `maincontext.md` design principles.
 
@@ -333,8 +333,8 @@ Payment recorded against that challan — never recalculate old enrollments
 | **1** | `Subject` model + CRUD + `/subjects` UI | Low — additive |
 | **2** | `ProgramCurriculum` + program curriculum UI | Low |
 | **3** | `SubjectFeeHistory` + fee timeline UI | Low |
-| **4** | Migrate unique `Course.code` → `Subject`; map program+semester → `ProgramCurriculum` | Medium |
-| **5** | `CourseOffering` + `Enrollment` with `feeSnapshot` | Medium |
+| **4** | ~~Migrate legacy `Course`~~ — **skipped**; use `npm run seed:academic` instead | — |
+| **5** | `CourseOffering` + `Enrollment` with `feeSnapshot` | Medium — **next** |
 | **6** | Wire Assignments / Exams / Attendance to `offeringId` | Higher |
 | **7** | Optional `BatchFeePolicy`, `FeeAdjustment` | As needed |
 | **8** | Deprecate old `Course` model | After full migration |

@@ -216,6 +216,21 @@ Mutations require `auth + authorize("Admin")`.
 - Fields: `feePerCredit`, `feeType`, `effectiveFrom`, optional `programId`, `reason`
 - Unique active row per `{ subjectId, programId }` where `effectiveTo` is null
 
+## Academic structure seed
+
+Script: `npm run seed:academic` (or `npm run seed:academic:dry`)
+
+Creates idempotently:
+
+`University → Campus → Faculty → Department → Program → Subject → ProgramCurriculum → SubjectFeeHistory`
+
+- Structure config: `backend/scripts/seedData/academicStructure.data.js`
+- Subject catalog: `backend/scripts/seedData/academicCatalog.data.js` (5 programs, 200 subjects)
+- Logic: `backend/utils/seedAcademicStructure.js`
+- Runner: `backend/scripts/runSeedAcademic.js`
+
+**Removed:** legacy `seedCourses` (startup + `npm run seed:courses`) and Course → Subject migration scripts. Old `Course` API/model still exists until Phase 8 deprecation.
+
 ## Program API (updated)
 
 - List: `GET /api/programs?departmentId&degreeLevel&status&search&page&limit` (auth only)
