@@ -30,6 +30,7 @@ const sidebarNav = [
       { to: "/campuses", label: "Campuses", icon: School },
       { to: "/faculties", label: "Faculties", icon: Building2 },
       { to: "/departments", label: "Departments", icon: Layers },
+      { to: "/subjects", label: "Subjects", icon: BookOpen },
       { to: "/programs", label: "Programs", icon: BookMarked },
     ],
   },

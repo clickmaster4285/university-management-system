@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { DEGREE_LEVELS } from "./ProgramForm";
-import { Layers, BookOpen, Users, Loader2, Pencil, Trash2 } from "lucide-react";
+import { Layers, BookOpen, Users, Loader2, Pencil, Trash2, ListTree } from "lucide-react";
 import { toast } from "sonner";
 
 const getProgramRecordId = (program: Program) => program._id || program.programId || "";
@@ -86,6 +86,15 @@ export default function ProgramsPage() {
     navigate(`/programs/edit/${id}`);
   };
 
+  const goToCurriculum = (program: Program) => {
+    const id = getProgramRecordId(program);
+    if (!id) {
+      toast.error("Cannot open curriculum: missing ID");
+      return;
+    }
+    navigate(`/programs/${id}/curriculum`);
+  };
+
   const handleDelete = async (program: Program) => {
     const id = getProgramRecordId(program);
     if (!id) {
@@ -123,6 +132,9 @@ export default function ProgramsPage() {
       header: "Actions",
       cell: (p) => (
         <div className="flex gap-1">
+          <Button type="button" size="sm" variant="ghost" onClick={() => goToCurriculum(p)} title="Manage curriculum">
+            <ListTree className="h-4 w-4" />
+          </Button>
           <Button type="button" size="sm" variant="ghost" onClick={() => goToEdit(p)} title="Edit program">
             <Pencil className="h-4 w-4" />
           </Button>

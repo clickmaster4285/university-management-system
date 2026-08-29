@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Loader2 } from "lucide-react";
+import { Loader2, ListTree } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { programAPI, type Program } from "@/features/programs";
 import { ProgramForm } from "./ProgramForm";
+
+const getProgramRecordId = (program: Program) => program._id || program.programId || "";
 
 export default function ProgramEditPage() {
   const { id } = useParams<{ id: string }>();
@@ -55,5 +57,18 @@ export default function ProgramEditPage() {
     );
   }
 
-  return <ProgramForm mode="edit" program={program} />;
+  return (
+    <>
+      <div className="flex justify-end mb-4">
+        <Button
+          variant="outline"
+          onClick={() => navigate(`/programs/${getProgramRecordId(program)}/curriculum`)}
+        >
+          <ListTree className="h-4 w-4 mr-2" />
+          Manage Curriculum
+        </Button>
+      </div>
+      <ProgramForm mode="edit" program={program} />
+    </>
+  );
 }

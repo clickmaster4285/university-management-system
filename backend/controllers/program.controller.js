@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
 import { handle } from "../utils/asyncHandler.js";
-import { Program, Department, Course, Batch } from '../models/index.js';
+import { Program, Department, Course, Batch, ProgramCurriculum } from '../models/index.js';
 import { generateProgramId } from "../utils/generateProgramId.js";
 
 const DEGREE_LEVELS = ['BS', 'MS', 'PhD', 'BBA', 'MBA', 'LLB', 'Other'];
@@ -245,17 +245,19 @@ export const deleteProgram = handle(async (req, res) => {
     });
   }
 
-  const [courseCount, batchCount] = await Promise.all([
+  const [courseCount, batchCount, curriculumCount] = await Promise.all([
     Course.countDocuments(courseLinkFilter(program)),
     Batch.countDocuments(batchLinkFilter(program)),
+    ProgramCurriculum.countDocuments({ programId: program._id, isDeleted: notDeleted }),
   ]);
 
-  if (courseCount > 0 || batchCount > 0) {
+  if (courseCount > 0 || batchCount > 0 || curriculumCount > 0) {
     return res.status(400).json({
       success: false,
-      message: 'Cannot delete program while courses or batches are still linked. Remove or reassign them first, or deactivate the program.',
+      message: 'Cannot delete program while courses, batches, or curriculum entries are still linked. Remove or reassign them first, or deactivate the program.',
       courseCount,
       batchCount,
+      curriculumCount,
     });
   }
 

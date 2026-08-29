@@ -30,12 +30,14 @@ backend/models/
 ├── Notification.model.js
 ├── Payroll.model.js
 ├── Program.model.js
+├── ProgramCurriculum.model.js
 ├── Recruitment.model.js
 ├── Report.model.js
 ├── Route.model.js
 ├── Semester.model.js
 ├── Settings.model.js
 ├── Student.model.js
+├── Subject.model.js
 ├── Teacher.model.js
 ├── University.model.js
 ├── User.model.js
@@ -144,6 +146,7 @@ University
   └── Campus (universityId ref)
         └── Faculty (campusId ref)
               └── Department (campusId ref, facultyId ref)
+                    ├── Subject (departmentId ref) — Phase 1 catalog
                     ├── Program (departmentId ref)
                     │     └── Course (programId ref + program string denormalized)
                     └── Course (departmentId ref)
@@ -179,6 +182,21 @@ User (role: Admin | Teacher | Student | Staff)
 - `PATCH /:id/toggle` → `PUT /:id` with `{ status }`
 
 Mutations require `auth + authorize("Admin")`.
+
+## Subject API (Phase 1 — implemented)
+
+- List: `GET /api/subjects?departmentId&status&search&page&limit`
+- Stats: `GET /api/subjects/stats` — `{ total, active, inactive }`
+- CRUD: standard lean routes; Admin only
+- `code` globally unique; soft delete; delete blocked if prerequisite for other subjects or legacy `Course` with same code exists
+
+## ProgramCurriculum API (Phase 2 — implemented)
+
+- `GET /api/programs/:id/curriculum` — semester grid with subjects, credits summary
+- `PUT /api/programs/:id/curriculum` — replace curriculum `{ entries: [{ subjectId, semester, type, order, status }] }`
+- Validates subjects belong to program's department; semester within program duration
+- Unique subject per program; soft-delete on replace
+- Program delete blocked if curriculum entries exist; Subject delete blocked if in curriculum
 
 ## Program API (updated)
 

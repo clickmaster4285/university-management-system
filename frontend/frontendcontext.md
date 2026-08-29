@@ -77,6 +77,10 @@ Routes sit under `<AppLayout />` (which handles auth + sidebar + topbar + render
 /programs           → ProgramsPage
 /programs/create    → ProgramCreatePage
 /programs/edit/:id  → ProgramEditPage
+/programs/:id/curriculum → ProgramCurriculumPage (semester subject plan)
+/subjects           → SubjectsPage
+/subjects/create    → SubjectCreatePage
+/subjects/edit/:id  → SubjectEditPage
 /courses            → CoursesPage
 /academic-sessions  → AcademicSessionsPage
 /semesters          → SemestersPage
@@ -118,7 +122,8 @@ Key barrel export: `features/index.ts` re-exports everything.
 - **`features/courses.ts`** — `Course` interface: `departmentId` (ref Department), `programId` (ref Program), `instructorId` (ref Teacher). All filter methods use `departmentId`. `CourseFilters` uses `departmentId`/`programId`.
 - **`features/attendance.ts`** — `AttendanceRecord` has `departmentId` alongside legacy `department`. API methods use `departmentId` in query params and payloads.
 - **`features/batches.ts`** — `getAll` accepts `departmentId` instead of `department`.
-- **`features/programs.ts`** — `Program` interface + `ProgramAPI` class with `getAll`, `getById`, `getStats`, `create`, `update`, `delete`.
+- **`features/subjects.ts`** — `Subject` interface + CRUD + stats (Phase 1 catalog)
+- **`features/programs.ts`** — Program CRUD + stats + `getCurriculum` / `updateCurriculum`
 - **`features/faculties.ts`** — `Faculty` interface + `FacultyAPI` class with `getAll`, `getById`, `getStats`, `create`, `update`, `delete`.
 - **`features/campus.ts`** — `campusAPI.getAll()` (no params needed), `.getById(id)`, `.create(data)`, `.update(id, data)`, `.delete(id)`. No separate `setMain` — uses `update(id, { isMainCampus: true })`.
 - **`features/university.ts`** — Single-university pattern: `getUniversity()`, `createUniversity(data)`, `updateUniversity(data)`, `deleteUniversity()`.

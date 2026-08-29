@@ -32,6 +32,10 @@ const DepartmentEditPage = lazy(() => import("./pages/academics/departments/Depa
 const ProgramsPage = lazy(() => import("./pages/academics/programs/ProgramsPage"));
 const ProgramCreatePage = lazy(() => import("./pages/academics/programs/ProgramCreatePage"));
 const ProgramEditPage = lazy(() => import("./pages/academics/programs/ProgramEditPage"));
+const ProgramCurriculumPage = lazy(() => import("./pages/academics/programs/ProgramCurriculumPage"));
+const SubjectsPage = lazy(() => import("./pages/academics/subjects/SubjectsPage"));
+const SubjectCreatePage = lazy(() => import("./pages/academics/subjects/SubjectCreatePage"));
+const SubjectEditPage = lazy(() => import("./pages/academics/subjects/SubjectEditPage"));
 const FacultiesPage = lazy(() => import("./pages/academics/faculties/FacultiesPage"));
 const CoursesPage = lazy(() => import("./pages/academics/courses/CoursesPage"));
 const AcademicSessionsPage = lazy(() => import("./pages/academics/sessions/AcademicSessionsPage"));
@@ -105,6 +109,10 @@ export const App = () => (
                 <Route path="programs" element={<ProgramsPage />} />
                 <Route path="programs/create" element={<ProgramCreatePage />} />
                 <Route path="programs/edit/:id" element={<ProgramEditPage />} />
+                <Route path="programs/:id/curriculum" element={<ProgramCurriculumPage />} />
+                <Route path="subjects" element={<SubjectsPage />} />
+                <Route path="subjects/create" element={<SubjectCreatePage />} />
+                <Route path="subjects/edit/:id" element={<SubjectEditPage />} />
                 <Route path="faculties" element={<FacultiesPage />} />
                 <Route path="courses" element={<CoursesPage />} />
                 <Route path="academic-sessions" element={<AcademicSessionsPage />} />

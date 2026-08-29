@@ -31,6 +31,47 @@ export interface ProgramStats {
   }>;
 }
 
+export type CurriculumType = 'Core' | 'Elective' | 'Optional';
+
+export interface ProgramCurriculumItem {
+  _id?: string;
+  subjectId: string | {
+    _id: string;
+    code: string;
+    name: string;
+    credits: number;
+    status?: string;
+    departmentId?: string | { _id: string; name: string; code: string };
+  };
+  semester: number;
+  type: CurriculumType;
+  order: number;
+  status: 'Active' | 'Inactive';
+}
+
+export interface ProgramCurriculumSemester {
+  semester: number;
+  items: ProgramCurriculumItem[];
+  totalCredits: number;
+}
+
+export interface ProgramCurriculumData {
+  program: Program;
+  semesters: ProgramCurriculumSemester[];
+  summary: {
+    totalSubjects: number;
+    totalCredits: number;
+  };
+}
+
+export interface ProgramCurriculumEntry {
+  subjectId: string;
+  semester: number;
+  type?: CurriculumType;
+  order?: number;
+  status?: 'Active' | 'Inactive';
+}
+
 class ProgramAPI {
   private baseUrl = '/programs';
 
@@ -105,6 +146,26 @@ class ProgramAPI {
       return response.data;
     } catch (error) {
       console.error('Error deleting program:', error);
+      throw error;
+    }
+  }
+
+  async getCurriculum(id: string): Promise<{ success: boolean; data: ProgramCurriculumData }> {
+    try {
+      const response = await api.get(`${this.baseUrl}/${id}/curriculum`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching program curriculum:', error);
+      throw error;
+    }
+  }
+
+  async updateCurriculum(id: string, entries: ProgramCurriculumEntry[]) {
+    try {
+      const response = await api.put(`${this.baseUrl}/${id}/curriculum`, { entries });
+      return response.data;
+    } catch (error) {
+      console.error('Error updating program curriculum:', error);
       throw error;
     }
   }

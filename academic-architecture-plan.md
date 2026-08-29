@@ -1,6 +1,6 @@
 # Academic Architecture Plan — Subjects, Curriculum, Fees & Offerings
 
-> **Status:** Approved direction — not yet implemented  
+> **Status:** Phase 1–2 implemented (Subject catalog + ProgramCurriculum) — Phase 3+ pending  
 > **Replaces:** The current monolithic `Course` model approach (gradual migration)  
 > **Last updated:** 2026-08-28
 
