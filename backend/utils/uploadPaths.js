@@ -25,6 +25,18 @@ export const HR_DOCUMENT_TYPES = [
   'other',
 ];
 
+export const STUDENT_DOCUMENT_TYPES = [
+  'cnic',
+  'photo',
+  'matric',
+  'intermediate',
+  'bachelor',
+  'domicile',
+  'character_certificate',
+  'migration',
+  'other',
+];
+
 const sanitizeSegment = (value = '') =>
   String(value)
     .trim()
@@ -64,6 +76,34 @@ export const getStaffDocumentRelativePath = (staffId, documentType, fileName) =>
   const safeStaffId = sanitizeSegment(staffId);
   const safeType = sanitizeSegment(documentType);
   return path.posix.join(UPLOAD_MODULES.HR, safeStaffId, safeType, fileName);
+};
+
+export const buildStudentDocumentFileName = ({
+  ownerId,
+  documentType,
+  documentName,
+  originalName,
+}) => {
+  const ext = path.extname(originalName || '').toLowerCase() || '';
+  const base = sanitizeSegment(documentName || path.basename(originalName || 'document', ext));
+  const type = sanitizeSegment(documentType || 'other');
+  const id = sanitizeSegment(ownerId || 'student');
+  const stamp = Date.now();
+  return `${id}_${type}_${base}_${stamp}${ext}`;
+};
+
+export const getStudentDocumentDirectory = (ownerId, documentType = 'other') => {
+  const safeOwnerId = sanitizeSegment(ownerId);
+  const safeType = sanitizeSegment(documentType);
+  const dir = path.join(UPLOAD_ROOT, UPLOAD_MODULES.STUDENTS, safeOwnerId, safeType);
+  ensureDirectory(dir);
+  return dir;
+};
+
+export const getStudentDocumentRelativePath = (ownerId, documentType, fileName) => {
+  const safeOwnerId = sanitizeSegment(ownerId);
+  const safeType = sanitizeSegment(documentType);
+  return path.posix.join(UPLOAD_MODULES.STUDENTS, safeOwnerId, safeType, fileName);
 };
 
 export const resolveUploadAbsolutePath = (relativePath) =>

@@ -24,6 +24,7 @@ import semesterRegistrationRoutes from "./semesterRegistration.routes.js";
 import programRoutes from "./program.routes.js";
 import platformRoleRoutes from "./platformRole.routes.js";
 import payrollRoutes from "./payroll.routes.js";
+import publicRoutes from "./public.routes.js";
 import subjectRoutes from "./subject.routes.js";
 import reportRoutes from "./report.routes.js";
 import roleAssignmentRoutes from "./roleAssignment.routes.js";
@@ -46,6 +47,7 @@ const mount = (path, routeHandler) => {
   }
 };
 
+router.use("/public", publicRoutes);
 mount("/students", studentRoutes);
 mount("/departments", departmentRoutes);
 mount("/offerings", courseOfferingRoutes);

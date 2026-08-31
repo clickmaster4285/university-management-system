@@ -34,7 +34,7 @@ const sidebarNav: NavSection[] = [
   {
     label: "Overview",
     items: [
-      { to: "/", label: "Dashboard", icon: LayoutDashboard, exact: true, module: "dashboard" },
+      { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard, exact: true, module: "dashboard" },
       { to: "/notifications", label: "Notifications", icon: Bell, module: "dashboard" },
       { to: "/ai", label: "AI Assistant", icon: Sparkles, module: "dashboard" },
     ],
@@ -70,8 +70,8 @@ const sidebarNav: NavSection[] = [
   {
     label: "Students",
     items: [
-      { to: "/students", label: "Students", icon: GraduationCap, module: "students" },
-      { to: "/admissions", label: "Admissions", icon: UserPlus, module: "admissions" },
+      { to: "/admissions", label: "Applications", icon: UserPlus, module: "admissions" },
+      { to: "/students", label: "Student Directory", icon: GraduationCap, module: "students" },
     ],
   },
   {
@@ -173,12 +173,12 @@ export function AppSidebar() {
   };
 
   const isActive = (to: string, exact?: boolean) =>
-    exact || to === "/" ? path === to : path === to || path.startsWith(to + "/");
+    exact ? path === to : path === to || path.startsWith(to + "/");
 
   return (
     <Sidebar collapsible="icon" className="border-r">
       <SidebarHeader className="px-3 py-4">
-        <Link to="/" className="flex items-center gap-2.5 group">
+        <Link to="/dashboard" className="flex items-center gap-2.5 group">
           <div className="h-9 w-9 rounded-xl gradient-brand flex items-center justify-center shadow-lg shadow-primary/20 transition-shadow group-hover:shadow-primary/30">
             <GraduationCap className="h-5 w-5 text-white" />
           </div>

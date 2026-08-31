@@ -29,7 +29,7 @@ async function findByIdentifier(Model, identifier, idField) {
 
 function populateRegistration(query) {
   return query
-    .populate('studentId', 'name email program department semester status')
+    .populate('studentId', 'studentId firstName lastName name email program programId department departmentId campusId batchId currentSemester semester status')
     .populate('programId', 'name code duration')
     .populate('batchId', 'code program year status')
     .populate('academicSessionId', 'name code isCurrent')
@@ -96,7 +96,13 @@ async function validateRegistrationInput(body) {
   }
 
   const programCode = program.code?.toUpperCase();
-  if (student.program && programCode && student.program.toUpperCase() !== programCode) {
+  const studentProgramId = student.programId?.toString?.() || student.programId;
+  if (studentProgramId && studentProgramId !== program._id.toString()) {
+    return {
+      error: `Student program does not match selected program (${program.code})`,
+    };
+  }
+  if (!studentProgramId && student.program && programCode && student.program.toUpperCase() !== programCode) {
     return {
       error: `Student program (${student.program}) does not match selected program (${program.code})`,
     };
@@ -336,9 +342,11 @@ export const previewSemesterRegistration = handle(async (req, res) => {
     data: {
       student: {
         _id: student._id,
-        name: student.name,
+        studentId: student.studentId,
+        name: student.fullName || student.name || `${student.firstName || ''} ${student.lastName || ''}`.trim(),
+        programId: student.programId,
         program: student.program,
-        semester: student.semester,
+        semester: student.currentSemester || student.semester,
       },
       program: { _id: program._id, name: program.name, code: program.code },
       batch: { _id: batch._id, code: batch.code, program: batch.program },

@@ -64,7 +64,9 @@ pages/academics/departments/
 - `DepartmentsPage.tsx` — list aligned with Faculties (KPI cards, DataTable search/filters, icon actions)
 - `CampusesPage.tsx` — card grid + `CampusForm.tsx` on `/campuses/create` and `/campuses/edit/:id`
 
-**Still pending refactor** (500+ lines): AdmissionsPage (1520), TransportPage (1513), AssignmentsPage (1466), CoursesPage (1331), HrPage (1287), LibraryPage (1198), ExamsPage (1198), EventsPage (1185), StudentsPage (1183), TeachersPage (1046), BatchesPage (1043).
+**Still pending refactor** (500+ lines): TransportPage (1513), AssignmentsPage (1466), LibraryPage (1198), ExamsPage (1198), EventsPage (1185), BatchesPage (1043).
+
+**Refactored (Aug 2026):** `StudentsPage` → slim directory; `ApplicationsPipelinePage` replaces monolith `AdmissionsPage` for `/admissions`.
 
 ## Routing
 
@@ -74,6 +76,9 @@ Routes sit under `<AppLayout />` (which handles auth + sidebar + topbar + render
 
 ```
 /                   → DashboardPage
+/landing              → LandingPage (public)
+/apply                → ApplyPage (public — no auth)
+/apply/status         → ApplicationTrackPage (public)
 /login              → LoginPage
 /otp                → OtpPage
 /university         → UniversityProfilePage
@@ -83,7 +88,9 @@ Routes sit under `<AppLayout />` (which handles auth + sidebar + topbar + render
 /faculties          → FacultiesPage
 /ai                 → AiAssistantPage
 /notifications      → NotificationsPage
-/admissions         → AdmissionsPage
+/admissions         → ApplicationsPipelinePage
+/admissions/:id     → ApplicationReviewPage
+/admissions/dossier/:id → AdmissionDossierPage
 /departments        → DepartmentsPage
 /departments/create → DepartmentCreatePage
 /departments/edit/:id → DepartmentEditPage
@@ -103,7 +110,9 @@ Routes sit under `<AppLayout />` (which handles auth + sidebar + topbar + render
 /academic-sessions/edit/:id → SessionEditPage
 /batches            → BatchesPage
 /challans           → ChallansPage (F5)
-/students           → StudentsPage
+/students           → StudentsPage (directory)
+/students/:id       → StudentProfilePage
+/students/:id/documents → StudentDocumentsPage
 /teachers           → TeachersPage
 /attendance         → AttendancePage
 /assignments        → AssignmentsPage
@@ -152,7 +161,10 @@ Key barrel export: `features/index.ts` re-exports everything.
 
 ### Still using legacy `department` string (not yet updated)
 
-- `features/students.ts`, `features/admissions.ts`, `features/assignment.ts`, `features/exam.ts`, `features/book.ts`, `features/finance.ts`, `features/hr.ts`, `features/auth.ts` — these still reference a `department: string` field. Students model itself is left for later per user request.
+- `features/students.ts` — Student directory with `programId`/`campusId` refs; profile update
+- `features/studentApplications.ts` — public catalog/apply/track + internal application pipeline API
+- `features/studentAdmissions.ts` — admission dossier, documents, `completeAdmission`
+- `features/admissions.ts` — **legacy** monolithic Admission API (deprecated for new work)
 
 ## Auth
 
@@ -264,6 +276,23 @@ Frontend:
 - **Legacy `department` string** in some features — students, admissions, assignment, exam, book, fee, feeStructure, finance, hr, auth
 - **Large page refactoring** — AdmissionsPage, TransportPage, AssignmentsPage, CoursesPage, LibraryPage, ExamsPage, EventsPage, StudentsPage, TeachersPage, BatchesPage all still 1000+ lines
 
+## Students & admissions (Aug 2026)
+
+| Route | Page | Module |
+|-------|------|--------|
+| `/apply` | ApplyPage | public (no auth) |
+| `/apply/status` | ApplicationTrackPage | public |
+| `/admissions` | ApplicationsPipelinePage | `admissions` |
+| `/admissions/:id` | ApplicationReviewPage | `admissions` |
+| `/admissions/dossier/:id` | AdmissionDossierPage + AdmissionDocumentsPanel | `admissions` |
+| `/students` | StudentsPage (directory) | `students` |
+| `/students/:id` | StudentProfilePage + StudentModuleLinks | `students` |
+| `/students/:id/documents` | StudentDocumentsPage | `students` |
+
+Sidebar **Students** group: Applications (`/admissions`), Student Directory (`/students`).
+
+Components: `components/student/StudentModuleLinks.tsx` (mirrors `StaffModuleLinks`).
+
 ## Staff, workforce & permissions (Aug 2026)
 
 ### Distributed staff modules
@@ -286,7 +315,7 @@ Legacy `/hr` removed. Staff profile shows `StaffModuleLinks` cards to related mo
 
 ### Sidebar groups (current)
 
-Overview · Governance · Academic Catalog · **HR & Staff** · Students · Academic Operations · Assessments · Campus Services · Finance · **Settings & Configuration**
+Overview · Governance · Academic Catalog · **HR & Staff** · **Students** · Academic Operations · Assessments · Campus Services · Finance · **Settings & Configuration**
 
 HR & Staff items: Staff Directory, Workforce, Leave Management, Staff Attendance, Portal Access, Role Assignments.
 
@@ -314,4 +343,4 @@ HR & Staff items: Staff Directory, Workforce, Leave Management, Staff Attendance
 | Student portal | Phase D |
 | Leave quota admin UI | Edit quotas per staff from HR |
 | Recruitment resume uploads | File upload for applicant CVs |
-| Large page refactors | AdmissionsPage, StudentsPage, etc. still 1000+ lines |
+| Large page refactors | TransportPage, AssignmentsPage, LibraryPage, etc. still 1000+ lines |

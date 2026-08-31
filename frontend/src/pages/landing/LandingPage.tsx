@@ -9,7 +9,7 @@ export function LandingPage() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (ready && user) navigate("/");
+    if (ready && user) navigate("/dashboard");
   }, [ready, user, navigate]);
 
   return (
@@ -40,10 +40,13 @@ export function LandingPage() {
         </p>
         <div className="mt-8 flex flex-wrap gap-3 justify-center">
           <Button asChild size="lg" className="gradient-brand text-white border-0 h-12 px-6">
-            <Link to="/login">Enter the console <ArrowRight className="h-4 w-4" /></Link>
+            <Link to="/apply">Apply for admission <ArrowRight className="h-4 w-4" /></Link>
           </Button>
           <Button asChild size="lg" variant="outline" className="h-12 px-6 glass">
-            <Link to="/login">Book a demo</Link>
+            <Link to="/apply/status">Track application</Link>
+          </Button>
+          <Button asChild size="lg" variant="outline" className="h-12 px-6 glass">
+            <Link to="/login">Staff sign in</Link>
           </Button>
         </div>
 

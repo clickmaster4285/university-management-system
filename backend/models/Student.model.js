@@ -1,135 +1,199 @@
 import mongoose from 'mongoose';
 
-const studentSchema = new mongoose.Schema({
-  name: {
-    type: String,
-    required: [true, 'Name is required'],
-    trim: true
+const studentSchema = new mongoose.Schema(
+  {
+    studentId: {
+      type: String,
+      unique: true,
+      sparse: true,
+    },
+    admissionId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'StudentAdmission',
+      default: null,
+    },
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      default: null,
+    },
+    firstName: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    lastName: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    name: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    fatherName: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    motherName: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    cnic: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    email: {
+      type: String,
+      lowercase: true,
+      trim: true,
+      default: '',
+    },
+    phone: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    programId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Program',
+      default: null,
+    },
+    departmentId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Department',
+      default: null,
+    },
+    campusId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Campus',
+      default: null,
+    },
+    batchId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Batch',
+      default: null,
+    },
+    program: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    department: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    campus: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    currentSemester: {
+      type: Number,
+      min: 1,
+      max: 12,
+      default: 1,
+    },
+    semester: {
+      type: Number,
+      min: 1,
+      max: 12,
+      default: 1,
+    },
+    gpa: {
+      type: Number,
+      min: 0,
+      max: 4,
+      default: 0,
+    },
+    cgpa: {
+      type: Number,
+      min: 0,
+      max: 4,
+      default: 0,
+    },
+    attendance: {
+      type: Number,
+      min: 0,
+      max: 100,
+      default: 0,
+    },
+    fee: {
+      type: String,
+      enum: ['Paid', 'Pending', 'Due', 'Overdue', 'Scholarship', ''],
+      default: 'Pending',
+    },
+    city: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    status: {
+      type: String,
+      enum: ['Active', 'Inactive', 'On Leave', 'Graduated', 'Suspended', 'Dropped'],
+      default: 'Active',
+    },
+    enrollmentDate: {
+      type: Date,
+      default: null,
+    },
+    photo: {
+      type: String,
+      default: '',
+    },
+    profileImage: {
+      type: String,
+      default: '',
+    },
+    isDeleted: {
+      type: Boolean,
+      default: false,
+    },
+    deletedAt: {
+      type: Date,
+      default: null,
+    },
+    deletedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      default: null,
+    },
   },
-  fatherName: {
-    type: String,
-    required: [true, "Father's name is required"],
-    trim: true
-  },
-  motherName: {
-    type: String,
-    trim: true
-  },
-  cnic: {
-    type: String,
-    required: [true, 'CNIC is required'],
-    unique: true,
-    trim: true
-  },
-  email: {
-    type: String,
-    required: [true, 'Email is required'],
-    unique: true,
-    lowercase: true,
-    trim: true,
-    match: [/^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/, 'Please enter a valid email']
-  },
-  phone: {
-    type: String,
-    trim: true
-  },
-  program: {
-    type: String,
-    required: [true, 'Program is required'],
-    enum: ['BSCS', 'BBA', 'BEE', 'BSSE', 'BSAI', 'BSE', 'MBA', 'PhD']
-  },
-  department: {
-    type: String,
-    required: [true, 'Department is required'],
-    enum: ['Computer Science', 'Business Administration', 'Electrical Engineering', 
-           'Software Engineering', 'Artificial Intelligence', 'Economics', 'Psychology']
-  },
-  semester: {
-    type: Number,
-    required: true,
-    min: 1,
-    max: 8,
-    default: 1
-  },
-  gpa: {
-    type: Number,
-    min: 0,
-    max: 4,
-    default: 0
-  },
-  cgpa: {
-    type: Number,
-    min: 0,
-    max: 4,
-    default: 0
-  },
-  attendance: {
-    type: Number,
-    min: 0,
-    max: 100,
-    default: 0
-  },
-  fee: {
-    type: String,
-    enum: ['Paid', 'Pending', 'Due', 'Overdue', 'Scholarship'],
-    default: 'Pending'
-  },
-  city: {
-    type: String,
-    trim: true
-  },
-  campus: {
-    type: String,
-    enum: ['East Campus - Peshawar', 'Main Campus - Islamabad', 'North Campus - Lahore', 
-           'South Campus - Karachi', 'West Campus - Quetta'],
-    default: 'Main Campus - Islamabad'
-  },
-  status: {
-    type: String,
-    enum: ['Active', 'Inactive', 'Graduated', 'Suspended', 'Dropped'],
-    default: 'Active'
-  },
-  enrollmentDate: {
-    type: Date,
-    default: Date.now
-  },
-  profileImage: {
-    type: String
-  },
-  isDeleted: {
-    type: Boolean,
-    default: false,
-  },
-  deletedAt: {
-    type: Date,
-    default: null,
-  },
-  deletedBy: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    default: null,
-  },
+  { timestamps: true }
+);
 
-}, {
-  timestamps: true // Adds createdAt and updatedAt
+studentSchema.index({ email: 1 });
+studentSchema.index({ cnic: 1 });
+studentSchema.index({ status: 1 });
+studentSchema.index({ programId: 1 });
+studentSchema.index({ firstName: 'text', lastName: 'text', name: 'text', email: 'text', studentId: 'text' });
+
+studentSchema.virtual('fullName').get(function fullName() {
+  if (this.firstName || this.lastName) {
+    return `${this.firstName || ''} ${this.lastName || ''}`.trim();
+  }
+  return this.name || '';
 });
 
-// Index for better search performance
-studentSchema.index({ name: 'text'});
-
-// Virtual field for full name
-studentSchema.virtual('fullName').get(function() {
-  return `${this.name} (${this.program})`;
-});
-
-// Pre-save middleware
-studentSchema.pre('save', function(next) {
-  // Auto-calculate CGPA if not provided
+studentSchema.pre('save', function preSave(next) {
+  if (!this.name && (this.firstName || this.lastName)) {
+    this.name = `${this.firstName || ''} ${this.lastName || ''}`.trim();
+  }
+  if (!this.semester && this.currentSemester) {
+    this.semester = this.currentSemester;
+  }
   if (!this.cgpa && this.gpa) {
     this.cgpa = this.gpa;
   }
   next();
 });
 
-const Student = mongoose.model('Student', studentSchema);
-export default Student;
+studentSchema.set('toJSON', { virtuals: true });
+studentSchema.set('toObject', { virtuals: true });
+
+export default mongoose.model('Student', studentSchema);

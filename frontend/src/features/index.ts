@@ -3,6 +3,8 @@ export * from './axios';
 export * from './auth';
 export * from './settings';
 export * from './students';
+export * from './studentApplications';
+export * from './studentAdmissions';
 export * from './departments';
 export * from './attendance';
 export * from './admissions';

@@ -6,7 +6,12 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/lib/auth";
 
 // Public & Layout Imports
-const LandingPage = lazy(() => import("./pages/landing/LandingPage"));
+const PublicSiteLayout = lazy(() => import("./layouts/PublicSiteLayout"));
+const HomePage = lazy(() => import("./pages/public/HomePage"));
+const AboutPage = lazy(() => import("./pages/public/AboutPage"));
+const ContactPage = lazy(() => import("./pages/public/ContactPage"));
+const ApplyPage = lazy(() => import("./pages/public/ApplyPage"));
+const ApplicationTrackPage = lazy(() => import("./pages/public/ApplicationTrackPage"));
 const LoginPage = lazy(() => import("./pages/auth/LoginPage"));
 const ForgotPasswordPage = lazy(() => import("./pages/auth/ForgotPasswordPage"));
 const OtpPage = lazy(() => import("./pages/auth/OtpPage"));
@@ -25,7 +30,9 @@ const CampusCreatePage = lazy(() => import("./pages/university/campuses/CampusCr
 const CampusEditPage = lazy(() => import("./pages/university/campuses/CampusEditPage"));
 
 // Academics Modular Pages
-const AdmissionsPage = lazy(() => import("./pages/academics/admissions/AdmissionsPage"));
+const AdmissionsPage = lazy(() => import("./pages/admissions/ApplicationsPipelinePage"));
+const ApplicationReviewPage = lazy(() => import("./pages/admissions/ApplicationReviewPage"));
+const AdmissionDossierPage = lazy(() => import("./pages/admissions/AdmissionDossierPage"));
 const DepartmentsPage = lazy(() => import("./pages/academics/departments/DepartmentsPage"));
 const DepartmentCreatePage = lazy(() => import("./pages/academics/departments/DepartmentCreatePage"));
 const DepartmentEditPage = lazy(() => import("./pages/academics/departments/DepartmentEditPage"));
@@ -47,6 +54,8 @@ const BatchCreatePage = lazy(() => import("./pages/academics/batches/BatchCreate
 const BatchEditPage = lazy(() => import("./pages/academics/batches/BatchEditPage"));
 const SemesterRegistrationsPage = lazy(() => import("./pages/academics/registrations/SemesterRegistrationsPage"));
 const StudentsPage = lazy(() => import("./pages/academics/students/StudentsPage"));
+const StudentProfilePage = lazy(() => import("./pages/students/StudentProfilePage"));
+const StudentDocumentsPage = lazy(() => import("./pages/students/StudentDocumentsPage"));
 const StaffPage = lazy(() => import("./pages/people/staff/StaffPage"));
 const StaffCreatePage = lazy(() => import("./pages/people/staff/StaffCreatePage"));
 const StaffEditPage = lazy(() => import("./pages/people/staff/StaffEditPage"));
@@ -105,81 +114,94 @@ export const App = () => (
         <BrowserRouter>
           <Suspense fallback={<RouteFallback />}>
             <Routes>
-              {/* Public Routes */}
-              <Route path="/landing" element={<LandingPage />} />
+              {/* Public website */}
+              <Route path="/" element={<PublicSiteLayout />}>
+                <Route index element={<HomePage />} />
+                <Route path="about" element={<AboutPage />} />
+                <Route path="contact" element={<ContactPage />} />
+                <Route path="apply" element={<ApplyPage />} />
+                <Route path="apply/status" element={<ApplicationTrackPage />} />
+              </Route>
+              <Route path="/landing" element={<Navigate to="/" replace />} />
+
+              {/* Auth */}
               <Route path="/login" element={<LoginPage />} />
               <Route path="/forgot-password" element={<ForgotPasswordPage />} />
               <Route path="/otp" element={<OtpPage />} />
 
-              {/* Authenticated / Protected App Routes */}
-              <Route path="/" element={<AppLayout />}>
-                <Route index element={<DashboardPage />} />
-                <Route path="university" element={<UniversityProfilePage />} />
-                <Route path="campuses" element={<CampusesPage />} />
-                <Route path="campuses/create" element={<CampusCreatePage />} />
-                <Route path="campuses/edit/:id" element={<CampusEditPage />} />
-                <Route path="ai" element={<AiAssistantPage />} />
-                <Route path="notifications" element={<NotificationsPage />} />
+              {/* Staff portal (authenticated) */}
+              <Route element={<AppLayout />}>
+                <Route path="/dashboard" element={<DashboardPage />} />
+                <Route path="/university" element={<UniversityProfilePage />} />
+                <Route path="/campuses" element={<CampusesPage />} />
+                <Route path="/campuses/create" element={<CampusCreatePage />} />
+                <Route path="/campuses/edit/:id" element={<CampusEditPage />} />
+                <Route path="/ai" element={<AiAssistantPage />} />
+                <Route path="/notifications" element={<NotificationsPage />} />
 
                 {/* Academics */}
-                <Route path="admissions" element={<AdmissionsPage />} />
-                <Route path="departments" element={<DepartmentsPage />} />
-                <Route path="departments/create" element={<DepartmentCreatePage />} />
-                <Route path="departments/edit/:id" element={<DepartmentEditPage />} />
-                <Route path="programs" element={<ProgramsPage />} />
-                <Route path="programs/create" element={<ProgramCreatePage />} />
-                <Route path="programs/edit/:id" element={<ProgramEditPage />} />
-                <Route path="programs/:id/curriculum" element={<ProgramCurriculumPage />} />
-                <Route path="programs/:id/semester-fees" element={<ProgramSemesterFeesPage />} />
-                <Route path="subjects" element={<SubjectsPage />} />
-                <Route path="subjects/create" element={<SubjectCreatePage />} />
-                <Route path="subjects/edit/:id" element={<SubjectEditPage />} />
-                <Route path="faculties" element={<FacultiesPage />} />
-                <Route path="offerings" element={<OfferingsPage />} />
-                <Route path="academic-sessions" element={<AcademicSessionsPage />} />
-                <Route path="academic-sessions/create" element={<SessionCreatePage />} />
-                <Route path="academic-sessions/edit/:id" element={<SessionEditPage />} />
-                <Route path="batches" element={<BatchesPage />} />
-                <Route path="batches/create" element={<BatchCreatePage />} />
-                <Route path="batches/edit/:id" element={<BatchEditPage />} />
-                <Route path="semester-registrations" element={<SemesterRegistrationsPage />} />
-                <Route path="students" element={<StudentsPage />} />
-                <Route path="staff" element={<StaffPage />} />
-                <Route path="staff/create" element={<StaffCreatePage />} />
-                <Route path="staff/:id/documents" element={<StaffDocumentsPage />} />
-                <Route path="staff/:id" element={<StaffEditPage />} />
-                <Route path="workforce" element={<WorkforcePage />} />
-                <Route path="workforce/leaves" element={<WorkforceLeavePage />} />
-                <Route path="workforce/attendance" element={<WorkforceAttendancePage />} />
-                <Route path="workforce/recruitment" element={<WorkforceRecruitmentPage />} />
-                <Route path="workforce/:id" element={<WorkforceSchedulePage />} />
-                <Route path="payroll" element={<PayrollPage />} />
-                <Route path="payroll/:id" element={<StaffPayrollPage />} />
-                <Route path="access" element={<AccessPage />} />
-                <Route path="access/roles" element={<Navigate to="/settings/roles" replace />} />
-                <Route path="access/:id" element={<StaffAccessPage />} />
-                <Route path="role-assignments" element={<RoleAssignmentsPage />} />
-                <Route path="role-assignments/staff/:staffId" element={<RoleAssignmentsPage />} />
-                <Route path="attendance" element={<AttendancePage />} />
-                <Route path="assignments" element={<AssignmentsPage />} />
-                <Route path="exams" element={<ExamsPage />} />
-                <Route path="online-classes" element={<OnlineClassesPage />} />
+                <Route path="/admissions" element={<AdmissionsPage />} />
+                <Route path="/admissions/dossier/:id" element={<AdmissionDossierPage />} />
+                <Route path="/admissions/:id" element={<ApplicationReviewPage />} />
+                <Route path="/departments" element={<DepartmentsPage />} />
+                <Route path="/departments/create" element={<DepartmentCreatePage />} />
+                <Route path="/departments/edit/:id" element={<DepartmentEditPage />} />
+                <Route path="/programs" element={<ProgramsPage />} />
+                <Route path="/programs/create" element={<ProgramCreatePage />} />
+                <Route path="/programs/edit/:id" element={<ProgramEditPage />} />
+                <Route path="/programs/:id/curriculum" element={<ProgramCurriculumPage />} />
+                <Route path="/programs/:id/semester-fees" element={<ProgramSemesterFeesPage />} />
+                <Route path="/subjects" element={<SubjectsPage />} />
+                <Route path="/subjects/create" element={<SubjectCreatePage />} />
+                <Route path="/subjects/edit/:id" element={<SubjectEditPage />} />
+                <Route path="/faculties" element={<FacultiesPage />} />
+                <Route path="/offerings" element={<OfferingsPage />} />
+                <Route path="/academic-sessions" element={<AcademicSessionsPage />} />
+                <Route path="/academic-sessions/create" element={<SessionCreatePage />} />
+                <Route path="/academic-sessions/edit/:id" element={<SessionEditPage />} />
+                <Route path="/batches" element={<BatchesPage />} />
+                <Route path="/batches/create" element={<BatchCreatePage />} />
+                <Route path="/batches/edit/:id" element={<BatchEditPage />} />
+                <Route path="/semester-registrations" element={<SemesterRegistrationsPage />} />
+                <Route path="/students" element={<StudentsPage />} />
+                <Route path="/students/:id/documents" element={<StudentDocumentsPage />} />
+                <Route path="/students/:id" element={<StudentProfilePage />} />
+                <Route path="/staff" element={<StaffPage />} />
+                <Route path="/staff/create" element={<StaffCreatePage />} />
+                <Route path="/staff/:id/documents" element={<StaffDocumentsPage />} />
+                <Route path="/staff/:id" element={<StaffEditPage />} />
+                <Route path="/workforce" element={<WorkforcePage />} />
+                <Route path="/workforce/leaves" element={<WorkforceLeavePage />} />
+                <Route path="/workforce/attendance" element={<WorkforceAttendancePage />} />
+                <Route path="/workforce/recruitment" element={<WorkforceRecruitmentPage />} />
+                <Route path="/workforce/:id" element={<WorkforceSchedulePage />} />
+                <Route path="/payroll" element={<PayrollPage />} />
+                <Route path="/payroll/:id" element={<StaffPayrollPage />} />
+                <Route path="/access" element={<AccessPage />} />
+                <Route path="/access/roles" element={<Navigate to="/settings/roles" replace />} />
+                <Route path="/access/:id" element={<StaffAccessPage />} />
+                <Route path="/role-assignments" element={<RoleAssignmentsPage />} />
+                <Route path="/role-assignments/staff/:staffId" element={<RoleAssignmentsPage />} />
+                <Route path="/attendance" element={<AttendancePage />} />
+                <Route path="/assignments" element={<AssignmentsPage />} />
+                <Route path="/exams" element={<ExamsPage />} />
+                <Route path="/online-classes" element={<OnlineClassesPage />} />
 
                 {/* Campus Services */}
-                <Route path="library" element={<LibraryPage />} />
-                <Route path="hostel" element={<HostelPage />} />
-                <Route path="transport" element={<TransportPage />} />
-                <Route path="events" element={<EventsPage />} />
-                <Route path="qr" element={<SmartQrPage />} />
+                <Route path="/library" element={<LibraryPage />} />
+                <Route path="/hostel" element={<HostelPage />} />
+                <Route path="/transport" element={<TransportPage />} />
+                <Route path="/events" element={<EventsPage />} />
+                <Route path="/qr" element={<SmartQrPage />} />
 
                 {/* Operations */}
-                <Route path="finance" element={<FinancePage />} />
-                <Route path="challans" element={<ChallansPage />} />
-                <Route path="reports" element={<ReportsPage />} />
-                <Route path="settings" element={<SettingsPage />} />
-                <Route path="settings/profile" element={<SettingsProfilePage />} />
-                <Route path="settings/roles" element={<RolesPermissionsPage />} />
-                <Route path="settings/permission-audit" element={<PermissionAuditPage />} />
+                <Route path="/finance" element={<FinancePage />} />
+                <Route path="/challans" element={<ChallansPage />} />
+                <Route path="/reports" element={<ReportsPage />} />
+                <Route path="/settings" element={<SettingsPage />} />
+                <Route path="/settings/profile" element={<SettingsProfilePage />} />
+                <Route path="/settings/roles" element={<RolesPermissionsPage />} />
+                <Route path="/settings/permission-audit" element={<PermissionAuditPage />} />
               </Route>
 
               {/* 404 Fallback Route */}

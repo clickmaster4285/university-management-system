@@ -1,5 +1,5 @@
 export const ROUTE_MODULE_MAP: Record<string, string> = {
-  '/': 'dashboard',
+  '/dashboard': 'dashboard',
   '/notifications': 'dashboard',
   '/ai': 'dashboard',
   '/university': 'governance',

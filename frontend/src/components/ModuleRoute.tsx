@@ -34,7 +34,7 @@ export function ModuleRoute({ children, module }: ModuleRouteProps) {
               </p>
             </div>
             <Button asChild>
-              <Link to="/">Back to dashboard</Link>
+              <Link to="/dashboard">Back to dashboard</Link>
             </Button>
           </CardContent>
         </Card>

@@ -284,16 +284,35 @@ Files are served at `/uploads/...` (static). Download API requires auth.
 
 `Teacher` model still exists for academic offerings (`instructorId`). Long-term: link or merge with `StaffMember` where a professor is also on payroll. For now, use **Staff Directory** for HR and **Role Assignments** for scoped academic duties.
 
-### Gaps / future (Phase D — next)
+### Student intake & enrollment (Aug 2026 — ✅)
+
+Two-stage intake replaces the monolithic `Admission` model for new work:
+
+| Stage | Model | Purpose |
+|-------|--------|---------|
+| **Application** | `StudentApplication` | Lightweight public or internal apply (`APP-26-0001`) |
+| **Admission dossier** | `StudentAdmission` | Full profile + documents before enrollment (`ADM-26-0001`) |
+| **Student** | `Student` | Official record — created only when dossier is completed |
+| **Semester registration** | `SemesterRegistration` | Academic enrollment per session (existing F4) |
+
+**Public (no login):** `/apply`, `/apply/status` — rate-limited API at `/api/public/*`.
+
+**Staff:** `/admissions` pipeline → review → promote to dossier → upload docs → complete admission → student appears in `/students`.
+
+Documents: `uploads/students/{admissionId|studentId}/{documentType}/...`
+
+Legacy `Admission.model.js` and old `AdmissionsPage.tsx` remain in repo but are **not** used by new routes.
+
+### Gaps / future
 
 | Priority | Work | Why |
 |----------|------|-----|
-| **D1** | Student portal | Login, grades, fees, attendance |
-| **D2** | Leave balance admin UI | Edit quotas per staff from HR screen |
-| **D3** | Recruitment resume uploads | Store applicant CVs in `uploads/hr/recruitment/` |
+| **Next** | Student portal login (`Student.userId`) | Grades, fees, attendance self-service |
+| **Next** | Leave balance admin UI | Edit quotas per staff from HR screen |
+| **Next** | Recruitment resume uploads | Store applicant CVs in `uploads/hr/recruitment/` |
 | **Paused** | Wire Assignments / Exams / student Attendance to `offeringId` | Phase 6 |
 
-### Completed (Phase C — Aug 2026)
+### Completed (Phase C + Student module — Aug 2026)
 
 | Item | Status |
 |------|--------|
@@ -304,6 +323,7 @@ Files are served at `/uploads/...` (static). Download API requires auth.
 | C5 Permission audit log | ✅ `/settings/permission-audit` |
 | Test users for all roles | ✅ `SEED_TEST_USERS=true` seeds all platform roles |
 | Legacy HR cleanup | ✅ removed `hr.routes`, `employee.controller`, `leave.controller`, `HrPage` |
+| **Student module** | ✅ public apply/track, admissions pipeline, dossier + docs, student directory |
 
 **Paused (Phase 6):** Wire Assignments / Exams / **student** Attendance to `offeringId`.
 
@@ -360,9 +380,9 @@ Files are served at `/uploads/...` (static). Download API requires auth.
 5. **Settings → Roles & Permissions** → click **Apply to all users** on each role template
 6. Smoke-test workforce: create leave → approve; mark attendance; upload a document
 
-### Next build sprint (Phase D)
+### Next build sprint
 
-1. Student portal
+1. Student portal login (`Student.userId`)
 2. Leave quota admin UI
 3. Recruitment resume file uploads
 
@@ -374,6 +394,7 @@ Files are served at `/uploads/...` (static). Download API requires auth.
 | **People v1** | `StaffMember` distributed modules |
 | **Permissions** | `PlatformRole`, module guards, audit log |
 | **Workforce** | Leave + balances, attendance + bulk, documents, recruitment |
+| **Students** | Public apply/track, application pipeline, admission dossier, student directory |
 
 ### Later (paused / deferred)
 
@@ -426,6 +447,13 @@ All features must be **easy to use, easy to follow, and easy to understand**.
 /offerings                          ← running classes
 /semester-registrations             ← package-mode semester registration (F4)
 /challans                           ← fee challans from registrations (F5)
+/apply, /apply/status               ← public admission apply + track (no auth)
+/admissions                         ← application pipeline (staff)
+/admissions/:id                     ← application review
+/admissions/dossier/:id             ← full admission dossier + documents
+/students                           ← enrolled student directory
+/students/:id                       ← student profile
+/students/:id/documents             ← post-enrollment documents
 /departments, /programs, /batches, /academic-sessions
 /academic-sessions/create, /academic-sessions/edit/:id
 /staff, /staff/:id, /staff/:id/documents

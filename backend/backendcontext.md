@@ -51,6 +51,9 @@ backend/models/
 ├── Route.model.js
 ├── Settings.model.js
 ├── Student.model.js
+├── StudentApplication.model.js
+├── StudentAdmission.model.js
+├── StudentDocument.model.js
 ├── Subject.model.js
 ├── Teacher.model.js
 ├── University.model.js
@@ -282,11 +285,49 @@ Creates idempotently:
 - Mutations: `POST/PUT/DELETE` require Admin
 - Soft delete with delete guards for linked courses and batches
 
-## Attendance / Batch / Student (legacy notes)
+## Student intake API (Aug 2026)
+
+### Public routes (no auth) — `/api/public`
+
+| Method | Route | Purpose |
+|--------|-------|---------|
+| GET | `/public/catalog/programs` | Active programs for apply form |
+| GET | `/public/catalog/campuses` | Campus list |
+| GET | `/public/catalog/sessions` | Open intake sessions |
+| POST | `/public/applications` | Submit application (rate-limited) |
+| GET | `/public/applications/track` | Track by `applicationId` + `cnic` |
+
+### Internal routes — `/api/admissions` (module: `admissions`)
+
+| Method | Route | Purpose |
+|--------|-------|---------|
+| GET/POST | `/applications` | List / create internal applications |
+| GET | `/applications/stats` | Pipeline KPIs |
+| GET/PATCH | `/applications/:id`, `/applications/:id/status` | Review + status updates |
+| POST | `/applications/:id/promote` | Create admission dossier |
+| GET/PUT | `/dossiers/:id` | View / edit full dossier |
+| POST | `/dossiers/:id/complete` | Validate + create `Student` |
+| GET/POST | `/dossiers/:id/documents` | List / upload admission documents |
+
+### Student routes — `/api/students` (module: `students`)
+
+- Directory list with `programId`, `departmentId`, `campusId`, `batchId` refs
+- `POST /students` disabled — students created via `completeAdmission` only
+- `GET/POST/DELETE /students/:id/documents` — post-enrollment documents
+
+### Upload paths
+
+Student documents: `uploads/students/{admissionId|studentId}/{documentType}/{id}_{type}_{name}_{timestamp}.ext`
+
+ID generators: `generateStudentId.js` (`STU-0001`, `APP-26-0001`, `ADM-26-0001`)
+
+Legacy `Admission` model and `/admissions/legacy/*` shim kept for old data; new work uses `StudentApplication` + `StudentAdmission`.
+
+## Attendance / Batch / Student
 
 - **Attendance**: has `departmentId` ref (nullable) + `department` string denormalized from Student.
 - **Batch**: has `departmentId` ref + `department`/`program` strings denormalized.
-- **Student**: left for later — still uses hardcoded `department` and `campus` strings, no User link.
+- **Student**: refs to `programId`, `departmentId`, `campusId`, `batchId`, `admissionId`; legacy string fields kept as denormalized snapshots. Created via admission dossier completion, not direct POST.
 
 ## Department API (updated)
 

@@ -53,5 +53,8 @@ export { default as PermissionAuditLog } from "./PermissionAuditLog.model.js";
 export { default as Subject } from "./Subject.model.js";
 export { default as SubjectFeeHistory, FEE_TYPES } from "./SubjectFeeHistory.model.js";
 export { default as Student } from "./Student.model.js";
+export { default as StudentApplication } from "./StudentApplication.model.js";
+export { default as StudentAdmission } from "./StudentAdmission.model.js";
+export { default as StudentDocument } from "./StudentDocument.model.js";
 export { default as University } from "./University.model.js";
 export { default as User } from "./User.model.js";
