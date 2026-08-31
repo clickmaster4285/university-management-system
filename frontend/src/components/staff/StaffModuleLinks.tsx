@@ -4,6 +4,7 @@ import {
   ChevronRight,
   Clock,
   DollarSign,
+  FileText,
   Shield,
   UserCog,
 } from "lucide-react";
@@ -43,6 +44,14 @@ const modules = [
       const user = typeof staff.userId === "object" ? staff.userId : null;
       return user?.primaryRole || "No login";
     },
+  },
+  {
+    key: "documents",
+    title: "HR documents",
+    description: "CNIC, contracts, appointment letters",
+    to: (id: string) => `/staff/${id}/documents`,
+    icon: FileText,
+    summary: () => "Upload & manage files",
   },
   {
     key: "duties",

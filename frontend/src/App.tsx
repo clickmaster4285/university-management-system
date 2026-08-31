@@ -52,6 +52,10 @@ const StaffCreatePage = lazy(() => import("./pages/people/staff/StaffCreatePage"
 const StaffEditPage = lazy(() => import("./pages/people/staff/StaffEditPage"));
 const WorkforcePage = lazy(() => import("./pages/workforce/WorkforcePage"));
 const WorkforceSchedulePage = lazy(() => import("./pages/workforce/WorkforceSchedulePage"));
+const WorkforceLeavePage = lazy(() => import("./pages/workforce/WorkforceLeavePage"));
+const WorkforceAttendancePage = lazy(() => import("./pages/workforce/WorkforceAttendancePage"));
+const WorkforceRecruitmentPage = lazy(() => import("./pages/workforce/WorkforceRecruitmentPage"));
+const StaffDocumentsPage = lazy(() => import("./pages/people/staff/StaffDocumentsPage"));
 const PayrollPage = lazy(() => import("./pages/payroll/PayrollPage"));
 const StaffPayrollPage = lazy(() => import("./pages/payroll/StaffPayrollPage"));
 const AccessPage = lazy(() => import("./pages/access/AccessPage"));
@@ -76,6 +80,7 @@ const ReportsPage = lazy(() => import("./pages/operations/reports/ReportsPage"))
 const SettingsPage = lazy(() => import("./pages/operations/settings/SettingsPage"));
 const SettingsProfilePage = lazy(() => import("./pages/operations/settings/SettingsProfilePage"));
 const RolesPermissionsPage = lazy(() => import("./pages/operations/settings/RolesPermissionsPage"));
+const PermissionAuditPage = lazy(() => import("./pages/operations/settings/PermissionAuditPage"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -141,8 +146,12 @@ export const App = () => (
                 <Route path="students" element={<StudentsPage />} />
                 <Route path="staff" element={<StaffPage />} />
                 <Route path="staff/create" element={<StaffCreatePage />} />
+                <Route path="staff/:id/documents" element={<StaffDocumentsPage />} />
                 <Route path="staff/:id" element={<StaffEditPage />} />
                 <Route path="workforce" element={<WorkforcePage />} />
+                <Route path="workforce/leaves" element={<WorkforceLeavePage />} />
+                <Route path="workforce/attendance" element={<WorkforceAttendancePage />} />
+                <Route path="workforce/recruitment" element={<WorkforceRecruitmentPage />} />
                 <Route path="workforce/:id" element={<WorkforceSchedulePage />} />
                 <Route path="payroll" element={<PayrollPage />} />
                 <Route path="payroll/:id" element={<StaffPayrollPage />} />
@@ -170,6 +179,7 @@ export const App = () => (
                 <Route path="settings" element={<SettingsPage />} />
                 <Route path="settings/profile" element={<SettingsProfilePage />} />
                 <Route path="settings/roles" element={<RolesPermissionsPage />} />
+                <Route path="settings/permission-audit" element={<PermissionAuditPage />} />
               </Route>
 
               {/* 404 Fallback Route */}

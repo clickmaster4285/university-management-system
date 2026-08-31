@@ -163,6 +163,17 @@ export const defaultWorkSchedule = (): WorkScheduleDay[] =>
 
 export type StaffPayload = Omit<StaffMember, '_id' | 'staffId' | 'userId' | 'fullName' | 'createdAt'>;
 
+export interface StaffOffering {
+  _id?: string;
+  offeringId?: string;
+  semester?: number;
+  status?: string;
+  subjectId?: { name?: string; code?: string; credits?: number };
+  programId?: { name?: string; code?: string };
+  batchId?: { name?: string; batchCode?: string };
+  academicSessionId?: { name?: string; sessionCode?: string };
+}
+
 class StaffMemberAPI {
   async getAll(params?: {
     departmentId?: string;
@@ -179,6 +190,11 @@ class StaffMemberAPI {
   async getById(id: string) {
     const res = await api.get(`/staff/${id}`);
     return res.data?.data as StaffMember;
+  }
+
+  async getOfferings(id: string) {
+    const res = await api.get(`/staff/${id}/offerings`);
+    return (res.data?.data ?? []) as StaffOffering[];
   }
 
   async getStats() {

@@ -262,4 +262,56 @@ Frontend:
 
 - **Student pages** — left for later (student model not refactored yet)
 - **Legacy `department` string** in some features — students, admissions, assignment, exam, book, fee, feeStructure, finance, hr, auth
-- **Large page refactoring** — AdmissionsPage, TransportPage, AssignmentsPage, CoursesPage, HrPage, LibraryPage, ExamsPage, EventsPage, StudentsPage, TeachersPage, BatchesPage all still 1000+ lines
+- **Large page refactoring** — AdmissionsPage, TransportPage, AssignmentsPage, CoursesPage, LibraryPage, ExamsPage, EventsPage, StudentsPage, TeachersPage, BatchesPage all still 1000+ lines
+
+## Staff, workforce & permissions (Aug 2026)
+
+### Distributed staff modules
+
+| Route | Page | Module key |
+|-------|------|------------|
+| `/staff` | StaffPage | `staff` |
+| `/staff/:id` | StaffEditPage | `staff` |
+| `/staff/:id/documents` | StaffDocumentsPage | `staff` |
+| `/workforce` | WorkforcePage (hub) | `hr` |
+| `/workforce/:id` | WorkforceSchedulePage | `hr` |
+| `/workforce/leaves` | WorkforceLeavePage | `hr` |
+| `/workforce/attendance` | WorkforceAttendancePage | `hr` |
+| `/payroll`, `/payroll/:id` | PayrollPage, StaffPayrollPage | `finance` |
+| `/access`, `/access/:id` | AccessPage, StaffAccessPage | `staff` |
+| `/workforce/recruitment` | WorkforceRecruitmentPage | `hr` |
+| `/settings/permission-audit` | PermissionAuditPage | `settings` |
+
+Legacy `/hr` removed. Staff profile shows `StaffModuleLinks` cards to related modules.
+
+### Sidebar groups (current)
+
+Overview · Governance · Academic Catalog · **HR & Staff** · Students · Academic Operations · Assessments · Campus Services · Finance · **Settings & Configuration**
+
+HR & Staff items: Staff Directory, Workforce, Leave Management, Staff Attendance, Portal Access, Role Assignments.
+
+### Route guards
+
+- `lib/routeModules.ts` — maps path prefix → module key
+- `components/ModuleRoute.tsx` — redirects if `user.moduleAccess[module] !== true`
+- Sidebar filters items the same way (`hasModuleAccess`)
+
+### API services
+
+- `features/staffMembers.ts` — StaffMember CRUD + stats
+- `features/workforce.ts` — leaves, attendance, documents (`workforceAPI`)
+- `features/platformRoles.ts` — role templates CRUD + apply-to-users
+
+### Staff documents UI
+
+- `StaffDocumentsPanel` — upload (type, name, file), list, download (blob via axios), delete
+- Files stored on server under `uploads/hr/{staffId}/{documentType}/` — see `backend/utils/uploadPaths.js`
+
+## What's next (frontend)
+
+| Item | Notes |
+|------|-------|
+| Student portal | Phase D |
+| Leave quota admin UI | Edit quotas per staff from HR |
+| Recruitment resume uploads | File upload for applicant CVs |
+| Large page refactors | AdmissionsPage, StudentsPage, etc. still 1000+ lines |

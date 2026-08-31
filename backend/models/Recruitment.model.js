@@ -40,6 +40,11 @@ const recruitmentSchema = new mongoose.Schema({
       enum: ['Applied', 'Shortlisted', 'Interviewed', 'Offered', 'Rejected', 'Hired'],
       default: 'Applied'
     },
+    hiredStaffMemberId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'StaffMember',
+      default: null,
+    },
     appliedDate: {
       type: Date,
       default: Date.now

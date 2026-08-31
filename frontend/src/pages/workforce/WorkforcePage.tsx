@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { Clock, Loader2, Pencil } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+import { CalendarDays, ChevronRight, Clock, FileText, Briefcase, Loader2, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { DataTable, type Column } from "@/components/data-table";
 import { KpiCard } from "@/components/dashboard/kpi-card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
 import { staffMemberAPI, type StaffMember } from "@/features/staffMembers";
 import { formatScheduleSummary, getStaffRecordId } from "@/lib/staffUtils";
 
@@ -84,6 +85,53 @@ export default function WorkforcePage() {
         <p className="text-sm text-muted-foreground mt-1">
           Manage when staff work — schedules, hours, and availability.
         </p>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
+        <Link to="/workforce/leaves">
+          <Card className="h-full hover:border-primary/40 hover:bg-muted/30 transition-colors">
+            <CardContent className="p-4 flex items-center justify-between">
+              <div>
+                <p className="font-semibold">Leave management</p>
+                <p className="text-sm text-muted-foreground">Requests & approvals</p>
+              </div>
+              <CalendarDays className="h-5 w-5 text-primary" />
+            </CardContent>
+          </Card>
+        </Link>
+        <Link to="/workforce/attendance">
+          <Card className="h-full hover:border-primary/40 hover:bg-muted/30 transition-colors">
+            <CardContent className="p-4 flex items-center justify-between">
+              <div>
+                <p className="font-semibold">Attendance</p>
+                <p className="text-sm text-muted-foreground">Late/absent vs schedule</p>
+              </div>
+              <Clock className="h-5 w-5 text-primary" />
+            </CardContent>
+          </Card>
+        </Link>
+        <Link to="/workforce/recruitment">
+          <Card className="h-full hover:border-primary/40 hover:bg-muted/30 transition-colors">
+            <CardContent className="p-4 flex items-center justify-between">
+              <div>
+                <p className="font-semibold">Recruitment</p>
+                <p className="text-sm text-muted-foreground">Postings & hire to staff</p>
+              </div>
+              <Briefcase className="h-5 w-5 text-primary" />
+            </CardContent>
+          </Card>
+        </Link>
+        <Link to="/staff">
+          <Card className="h-full hover:border-primary/40 hover:bg-muted/30 transition-colors">
+            <CardContent className="p-4 flex items-center justify-between">
+              <div>
+                <p className="font-semibold">Staff documents</p>
+                <p className="text-sm text-muted-foreground">CNIC, contracts, letters</p>
+              </div>
+              <FileText className="h-5 w-5 text-primary" />
+            </CardContent>
+          </Card>
+        </Link>
       </div>
 
       <div className="grid gap-4 md:grid-cols-3 mb-6">

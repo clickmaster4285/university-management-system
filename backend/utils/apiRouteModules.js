@@ -27,6 +27,7 @@ export const API_ROUTE_MODULES = {
   '/notifications': 'dashboard',
   '/settings': 'settings',
   '/staff': 'staff',
+  '/workforce': 'hr',
   '/role-assignments': 'academic_ops',
   '/academic-sessions': 'academic_ops',
   '/batches': 'academic_ops',

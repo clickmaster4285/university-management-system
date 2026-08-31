@@ -228,6 +228,11 @@ const staffMemberSchema = new mongoose.Schema(
       trim: true,
       default: '',
     },
+    hiredFromRecruitmentId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Recruitment',
+      default: null,
+    },
     isDeleted: {
       type: Boolean,
       default: false,

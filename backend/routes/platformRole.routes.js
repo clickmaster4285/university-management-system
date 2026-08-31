@@ -11,12 +11,14 @@ import {
   reseedPlatformRoles,
   updatePlatformRole,
 } from '../controllers/platformRole.controller.js';
+import { listPermissionAuditLogs } from '../controllers/permissionAudit.controller.js';
 
 const router = Router();
 
 router.use(auth, authorize('Admin'), requireModule('settings'));
 
 router.get('/meta', getPlatformRoleMeta);
+router.get('/audit-logs', listPermissionAuditLogs);
 router.get('/', listPlatformRoles);
 router.post('/', createPlatformRole);
 router.post('/reseed', reseedPlatformRoles);

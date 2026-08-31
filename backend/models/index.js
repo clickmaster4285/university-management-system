@@ -45,6 +45,11 @@ export {
 } from "./RoleAssignment.model.js";
 export { default as Settings } from "./Settings.model.js";
 export { default as StaffMember } from "./StaffMember.model.js";
+export { default as StaffLeave } from "./StaffLeave.model.js";
+export { default as StaffAttendance } from "./StaffAttendance.model.js";
+export { default as StaffDocument } from "./StaffDocument.model.js";
+export { default as StaffLeaveBalance } from "./StaffLeaveBalance.model.js";
+export { default as PermissionAuditLog } from "./PermissionAuditLog.model.js";
 export { default as Subject } from "./Subject.model.js";
 export { default as SubjectFeeHistory, FEE_TYPES } from "./SubjectFeeHistory.model.js";
 export { default as Student } from "./Student.model.js";

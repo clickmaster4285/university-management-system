@@ -1,7 +1,7 @@
 # UniversityMS — Master Project Context
 
 > **Purpose of this file:** Single source of truth for anyone (or any AI session) working on this codebase. Read this first. It tracks vision, what is built, what is deferred, what to do, what not to do, and the roadmap.  
-> **Last updated:** 2026-08-29  
+> **Last updated:** 2026-08-31  
 > **Detailed academic spec:** `academic-architecture-plan.md`  
 > **Fees, sessions, batches & offerings flow:** `fee-plan.md`  
 > **Implementation details:** `backend/backendcontext.md`, `frontend/frontendcontext.md`
@@ -215,59 +215,99 @@ Startup seeds **admin only** (`seedDefaultAdmin`). Legacy `seedCourses` removed.
 
 ---
 
-## 5. People & roles — current state and next focus
+## 5. People, permissions & workforce — current state
+
+### StaffMember (single source of truth)
+
+One `StaffMember` record per employee. UI is **distributed** across modules:
+
+| Module | Route | Purpose |
+|--------|-------|---------|
+| Staff Directory | `/staff`, `/staff/:id` | Profile, employment, link cards |
+| Workforce | `/workforce`, `/workforce/:id` | Work schedules |
+| Leave management | `/workforce/leaves` | Requests & approvals |
+| Staff attendance | `/workforce/attendance` | Present/late/absent vs schedule |
+| HR documents | `/staff/:id/documents` | CNIC, contracts, appointment letters |
+| Payroll | `/payroll`, `/payroll/:id` | Compensation & payroll history |
+| Portal access | `/access`, `/access/:id` | Login role + per-user module access |
+| Role assignments | `/role-assignments` | Scoped duties (HOD, exam controller, etc.) |
+
+Legacy `/hr` page and `Employee`-centric HR UI removed. `Employee` model may still exist for old data but new work uses `StaffMember`.
+
+### Platform roles & module permissions (Phase A — built, verify manually)
+
+| Piece | Status |
+|-------|--------|
+| `PlatformRole` model + CRUD | ✅ |
+| `/settings/roles` — create/edit/delete, restore defaults, **Apply to all users** | ✅ |
+| `requireModule()` on all API routes via `apiRouteModules.js` | ✅ |
+| Frontend `ModuleRoute` + sidebar filtered by `moduleAccess` | ✅ |
+| Admin seed — `primaryRole: System Admin` + full module access | ✅ |
+| Test users (`SEED_TEST_USERS=true`) | ✅ finance@, faculty@, hr@scholaros.test |
+| **Manual verification** (role logins + apply templates) | ⏳ You do this once |
+
+**Module keys:** `dashboard`, `governance`, `academic_catalog`, `academic_ops`, `assessments`, `admissions`, `students`, `staff`, `library`, `hostel`, `transport`, `events`, `finance`, `hr`, `reports`, `settings`
+
+**Phase A checklist (manual):**
+1. Restart backend (picks up route guards + admin seed)
+2. Log in as Finance / Faculty / HR — confirm sidebar + API 403 blocks
+3. Settings → Roles & Permissions → **Apply to all users** for each role template
+
+### Workforce & HR documents (Phase B — ✅)
+
+| Piece | Status |
+|-------|--------|
+| `StaffLeave` — requests, approve/reject | ✅ |
+| `StaffAttendance` — mark attendance, late minutes vs `workSchedule` | ✅ |
+| `StaffDocument` — upload/list/download/delete | ✅ |
+| Organized uploads under `backend/uploads/` | ✅ |
+
+**Upload path pattern:**
+
+```
+uploads/hr/{staffId}/{documentType}/{staffId}_{documentType}_{documentName}_{timestamp}.ext
+```
+
+Example: `uploads/hr/stf-0001/cnic/stf-0001_cnic_front_1730000000000.pdf`
+
+Document types: `cnic`, `contract`, `appointment_letter`, `qualification`, `experience_letter`, `salary_slip`, `other`
+
+Files are served at `/uploads/...` (static). Download API requires auth.
 
 ### User roles (auth layer)
 
-`User.role`: **Admin** · **Teacher** · **Student** · **Staff**
+`User.role`: **Admin** · **Teacher** · **Student** · **Staff** (legacy JWT field)
 
-- JWT carries `role`; routes use `auth` + `authorize("Admin")` for mutations.
-- Default role on user creation: `Student`.
-- Admin seeded at startup from env (`ADMIN_EMAIL`, etc.).
+`User.primaryRole` + `User.moduleAccess` — from `PlatformRole` templates; drives sidebar and API `requireModule()`.
 
-### Teacher (academic staff) — today
+### Teacher (academic staff) — parallel path
 
-| Piece | Status |
-|-------|--------|
-| `Teacher` model | ✅ Exists — department, designation, qualifications, status |
-| `Teacher.userId` → `User` | ✅ Auto-created on teacher create (role: Teacher) |
-| `TeachersPage` | ⚠️ Exists but **bloated** (~1000 lines), hardcoded department strings |
-| Head of Faculty / Department | ✅ `headId` refs Teacher |
-| CourseOffering `instructorId` | ✅ Teacher can be assigned to an offering |
-| Teaching load / duties | ❌ Not modeled |
-| TA / co-instructor | ❌ Not modeled |
-| Department roles (HOD, coordinator) | ❌ Only `headId` on department |
-| Permission granularity | ❌ Only 4 coarse roles — no per-module permissions |
+`Teacher` model still exists for academic offerings (`instructorId`). Long-term: link or merge with `StaffMember` where a professor is also on payroll. For now, use **Staff Directory** for HR and **Role Assignments** for scoped academic duties.
 
-### HR / Employee — today (separate from Teacher)
+### Gaps / future (Phase D — next)
 
-| Piece | Status |
-|-------|--------|
-| `Employee` model + `HrPage` | ✅ General HR (payroll-ish, designations as strings) |
-| Link Employee ↔ Teacher | ❌ **Not linked** — two parallel systems |
-| Leave, payroll models | ✅ Exist in backend, partial UI |
+| Priority | Work | Why |
+|----------|------|-----|
+| **D1** | Student portal | Login, grades, fees, attendance |
+| **D2** | Leave balance admin UI | Edit quotas per staff from HR screen |
+| **D3** | Recruitment resume uploads | Store applicant CVs in `uploads/hr/recruitment/` |
+| **Paused** | Wire Assignments / Exams / student Attendance to `offeringId` | Phase 6 |
 
-### Gaps to address (recommended next work)
+### Completed (Phase C — Aug 2026)
 
-**Short term — Teachers / Professors module**
+| Item | Status |
+|------|--------|
+| C1 Recruitment API + UI | ✅ `/workforce/recruitment` |
+| C2 Leave balance tracking | ✅ quotas + validation on create/approve |
+| C3 Bulk staff attendance | ✅ `POST /workforce/attendance/bulk` |
+| C4 StaffMember ↔ offerings (teaching) | ✅ `GET /staff/:id/offerings` + `StaffTeachingPanel` |
+| C5 Permission audit log | ✅ `/settings/permission-audit` |
+| Test users for all roles | ✅ `SEED_TEST_USERS=true` seeds all platform roles |
+| Legacy HR cleanup | ✅ removed `hr.routes`, `employee.controller`, `leave.controller`, `HrPage` |
 
-1. **Refactor Teachers UI** — match Department/Program pattern (list + create/edit routes, real `departmentId` dropdown, no hardcoded strings).
-2. **Teacher profile page** — qualifications, office hours, assigned offerings, workload summary.
-3. **Teaching assignment** — view offerings where `instructorId = teacher`; optional workload limits.
-4. **Designation ladder** — Professor → Associate → Assistant → Lecturer (already on model; enforce in UI).
+**Paused (Phase 6):** Wire Assignments / Exams / **student** Attendance to `offeringId`.
 
-**Medium term — Roles & duties**
-
-1. **Academic roles** — HOD, Program Coordinator, Exam Controller, Lab Incharge (either fields on Teacher or a `StaffAssignment` model scoped to department/program).
-2. **Duty / responsibility records** — what they are responsible for this session (teaching, advising, exam duty).
-3. **Clarify Teacher vs Employee vs Staff** — document when to use which; optional link `Employee.teacherId` or merge paths for professors who are also on payroll.
-
-**Long term — Fine-grained access**
-
-1. Module permissions (e.g. Teacher can mark attendance for *their* offerings only).
-2. Role-based UI (teacher portal vs admin portal).
-
-> **Decision (2026-08-29):** Phase 6 (offerings → assignments/exams/attendance) is **not** the next priority. Focus on **people: teachers, duties, roles, HR alignment** first.
+> **Decision (2026-08-29):** Phase 6 (offerings → assignments/exams/attendance) remains paused. People, permissions, and workforce are the active focus.
 
 ---
 
@@ -311,17 +351,29 @@ Startup seeds **admin only** (`seedDefaultAdmin`). Legacy `seedCourses` removed.
 
 ## 8. Roadmap summary
 
-### Now (current sprint direction)
+### Now — your action (Phase A verify, ~15 min)
 
-- **People module v1** — see `people-and-permissions-plan.md`.
-- Academic setup complete: sessions/batches full-page, fee packages, offerings, challans (F5 ✅).
+1. Restart backend if not already running (`cd backend && npm run dev`)
+2. Optional: set `SEED_TEST_USERS=true` in `.env`, restart
+3. Log in as **Finance**, **Faculty**, **HR** — confirm sidebar hides blocked modules
+4. Try a blocked API (e.g. Finance user → `GET /api/university`) — expect 403
+5. **Settings → Roles & Permissions** → click **Apply to all users** on each role template
+6. Smoke-test workforce: create leave → approve; mark attendance; upload a document
 
-### Next
+### Next build sprint (Phase D)
 
-- **People module v1** — `StaffMember`, employments, generous `TeacherProfile`, module-wise permissions (`people-and-permissions-plan.md`).
-- HR ↔ legacy `Employee` migration into unified staff model.
-- Optional login per staff (admin-created only in v1).
-- `per_subject` and `mixed` registration modes on SemesterRegistration.
+1. Student portal
+2. Leave quota admin UI
+3. Recruitment resume file uploads
+
+### Done (Aug 2026)
+
+| Phase | What |
+|-------|------|
+| **Academic** | Subjects, curriculum, fees, offerings, semester registration, challans |
+| **People v1** | `StaffMember` distributed modules |
+| **Permissions** | `PlatformRole`, module guards, audit log |
+| **Workforce** | Leave + balances, attendance + bulk, documents, recruitment |
 
 ### Later (paused / deferred)
 
@@ -376,6 +428,9 @@ All features must be **easy to use, easy to follow, and easy to understand**.
 /challans                           ← fee challans from registrations (F5)
 /departments, /programs, /batches, /academic-sessions
 /academic-sessions/create, /academic-sessions/edit/:id
+/staff, /staff/:id, /staff/:id/documents
+/workforce, /workforce/leaves, /workforce/attendance, /workforce/:id
+/payroll, /access, /settings/roles, /role-assignments
 /teachers, /students
 ```
 
@@ -387,7 +442,7 @@ All features must be **easy to use, easy to follow, and easy to understand**.
 |------|----------|
 | `maincontext.md` | **This file** — vision, status, rules, roadmap |
 | `fee-plan.md` | Sessions, batches, offerings setup order + full fee plan (both modes) |
-| `people-and-permissions-plan.md` | Staff, employments, teacher portfolio, roles & module permissions (design — not built) |
+| `people-and-permissions-plan.md` | Original design doc — largely implemented via StaffMember + PlatformRole |
 | `academic-architecture-plan.md` | Deep spec: models, APIs, fee policies, phases |
 | `backend/backendcontext.md` | Models list, API conventions, seed commands |
 | `frontend/frontendcontext.md` | Tech stack, routes, feature modules, UI patterns |
@@ -398,19 +453,16 @@ All features must be **easy to use, easy to follow, and easy to understand**.
 
 ## 13. Session handoff checklist
 
+**Last session (Aug 2026):** Phase A + B built — permissions, workforce leave/attendance/documents.
+
 When starting a new task, confirm:
 
-- [ ] Which phase does this belong to? Does it conflict with “do not extend Course”?
-- [ ] Is there an existing pattern (Department, Subject, Offering) to copy?
+- [ ] Phase A manual verify done? (role logins, apply templates)
+- [ ] Which phase does this belong to? (C1 recruitment, C2 leave balances, etc.)
+- [ ] Is there an existing pattern (WorkforceLeavePage, StaffDocumentsPanel) to copy?
 - [ ] Does UI need KPI + DataTable + filters?
 - [ ] Does backend need stats endpoint + soft delete + indexes?
-- [ ] Should `maincontext.md` or `academic-architecture-plan.md` be updated when done?
-
-When finishing a task:
-
-- [ ] Update phase status in this file if milestone completed
-- [ ] Update `backendcontext.md` / `frontendcontext.md` if APIs or routes changed
-- [ ] Note any new “do not” rules discovered
+- [ ] Update this file + `backendcontext.md` / `frontendcontext.md` when done
 
 ---
 
@@ -426,4 +478,7 @@ When finishing a task:
 | **Semester registration** | Student registered for a program semester (package fee snapshot) |
 | **feeSnapshot** | Fee amounts frozen at registration |
 | **Teacher** | Academic staff with User login; can instruct offerings |
-| **Employee** | HR record (may or may not be a Teacher — not linked yet) |
+| **StaffMember** | Unified HR record — employment, schedule, payroll, portal access |
+| **PlatformRole** | Named role template with `moduleAccess` map |
+| **moduleAccess** | Per-user boolean map of which sidebar modules/APIs are allowed |
+| **Employee** | Legacy HR model — prefer StaffMember for new work |

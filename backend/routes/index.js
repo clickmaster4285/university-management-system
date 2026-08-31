@@ -32,6 +32,7 @@ import staffMemberRoutes from "./staffMember.routes.js";
 import studentRoutes from "./student.routes.js";
 import transportRoutes from "./transport.routes.js";
 import universityRoutes from "./university.routes.js";
+import workforceRoutes from "./workforce.routes.js";
 
 const router = Router();
 
@@ -69,6 +70,7 @@ mount("/dashboard", dashboardRoutes);
 mount("/notifications", notificationRoutes);
 mount("/settings", settingsRoutes);
 mount("/staff", staffMemberRoutes);
+mount("/workforce", workforceRoutes);
 mount("/role-assignments", roleAssignmentRoutes);
 router.use("/auth", authRoutes);
 mount("/academic-sessions", academicSessionRoutes);

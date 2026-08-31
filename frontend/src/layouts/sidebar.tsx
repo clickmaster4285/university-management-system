@@ -14,6 +14,7 @@ import {
   Video, Calendar, School, Library, Home, Bus, QrCode,
   DollarSign, Wallet, Briefcase, BarChart3, Settings, Bell, Receipt,
   Sparkles, University, BookMarked, ChevronRight, Clock, Shield, UserCog,
+  CalendarDays,
 } from "lucide-react";
 
 type NavItem = {
@@ -59,6 +60,9 @@ const sidebarNav: NavSection[] = [
     items: [
       { to: "/staff", label: "Staff Directory", icon: Briefcase, module: "staff" },
       { to: "/workforce", label: "Workforce", icon: Clock, module: "hr" },
+      { to: "/workforce/leaves", label: "Leave Management", icon: CalendarDays, module: "hr" },
+      { to: "/workforce/attendance", label: "Staff Attendance", icon: CalendarCheck, module: "hr" },
+      { to: "/workforce/recruitment", label: "Recruitment", icon: Briefcase, module: "hr" },
       { to: "/access", label: "Portal Access", icon: Shield, module: "staff" },
       { to: "/role-assignments", label: "Role Assignments", icon: UserCog, module: "academic_ops" },
     ],
@@ -113,6 +117,7 @@ const sidebarNav: NavSection[] = [
       { to: "/settings", label: "Configuration", icon: Settings, module: "settings", exact: true },
       { to: "/settings/profile", label: "Admin Profile", icon: UserCog, module: "settings" },
       { to: "/settings/roles", label: "Roles & Permissions", icon: Shield, module: "settings" },
+      { to: "/settings/permission-audit", label: "Permission Audit", icon: Shield, module: "settings" },
     ],
   },
 ];

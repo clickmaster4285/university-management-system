@@ -231,6 +231,9 @@ export default function RolesPermissionsPage() {
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
+            <Button variant="outline" size="sm" asChild>
+              <Link to="/settings/permission-audit">Audit log</Link>
+            </Button>
             <Button variant="outline" size="sm" onClick={() => handleReseed("missing")} disabled={reseeding}>
               <RefreshCw className={`h-4 w-4 mr-2 ${reseeding ? "animate-spin" : ""}`} />
               Seed missing roles

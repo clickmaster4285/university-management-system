@@ -64,6 +64,26 @@ class PlatformRoleAPI {
     const res = await api.post(`/platform-roles/${encodeURIComponent(id)}/apply-to-users`);
     return res.data as { data: { matched: number; updated: number }; message: string };
   }
+
+  async listAuditLogs(params?: { targetType?: string; search?: string; page?: number; limit?: number }) {
+    const res = await api.get('/platform-roles/audit-logs', { params });
+    return res.data as {
+      data: PermissionAuditLog[];
+      total: number;
+      count: number;
+    };
+  }
+}
+
+export interface PermissionAuditLog {
+  _id?: string;
+  action: string;
+  targetType: 'role' | 'user';
+  targetLabel: string;
+  actorEmail?: string;
+  summary?: string;
+  changes?: Record<string, unknown>;
+  createdAt?: string;
 }
 
 export const platformRoleAPI = new PlatformRoleAPI();

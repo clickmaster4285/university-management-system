@@ -8,6 +8,7 @@ import {
   ROLE_DESCRIPTIONS,
   serializeModuleAccess,
 } from '../utils/moduleAccessDefaults.js';
+import { logPermissionAudit } from '../utils/permissionAudit.js';
 
 const notDeleted = { $ne: true };
 
@@ -70,6 +71,16 @@ export const createPlatformRole = handle(async (req, res) => {
     isSystem: false,
   });
 
+  await logPermissionAudit({
+    action: 'role_created',
+    targetType: 'role',
+    targetId: role._id,
+    targetLabel: role.name,
+    actor: req.user,
+    summary: `Created role "${role.name}"`,
+    changes: { moduleAccess: serializeModuleAccess(role.moduleAccess) },
+  });
+
   res.status(201).json({
     success: true,
     data: serializeRole(role),
@@ -115,11 +126,25 @@ export const updatePlatformRole = handle(async (req, res) => {
   }
 
   if (description !== undefined) role.description = String(description).trim();
+  const previousAccess = serializeModuleAccess(role.moduleAccess);
   if (moduleAccess && typeof moduleAccess === 'object') {
     role.moduleAccess = normalizeModuleAccess(moduleAccess);
   }
 
   await role.save();
+
+  await logPermissionAudit({
+    action: 'role_updated',
+    targetType: 'role',
+    targetId: role._id,
+    targetLabel: role.name,
+    actor: req.user,
+    summary: `Updated role "${role.name}"`,
+    changes: {
+      before: { moduleAccess: previousAccess },
+      after: { moduleAccess: serializeModuleAccess(role.moduleAccess) },
+    },
+  });
 
   res.json({
     success: true,
@@ -157,6 +182,15 @@ export const deletePlatformRole = handle(async (req, res) => {
   role.deletedBy = req.user?._id || null;
   await role.save();
 
+  await logPermissionAudit({
+    action: 'role_deleted',
+    targetType: 'role',
+    targetId: role._id,
+    targetLabel: role.name,
+    actor: req.user,
+    summary: `Deleted role "${role.name}"`,
+  });
+
   res.json({ success: true, message: 'Role deleted successfully' });
 });
 
@@ -191,6 +225,18 @@ export const reseedPlatformRoles = handle(async (req, res) => {
 
   const roles = await PlatformRole.find({ isDeleted: notDeleted }).sort({ name: 1 });
 
+  await logPermissionAudit({
+    action: 'role_reseeded',
+    targetType: 'role',
+    targetLabel: 'system roles',
+    actor: req.user,
+    summary:
+      mode === 'reset'
+        ? `Restored ${updated} system role(s) to defaults`
+        : `Seeded ${created} missing system role(s)`,
+    changes: { mode, created, updated },
+  });
+
   res.json({
     success: true,
     data: roles.map(serializeRole),
@@ -214,6 +260,16 @@ export const applyRoleToUsers = handle(async (req, res) => {
     { primaryRole: role.name, isDeleted: notDeleted },
     { $set: { moduleAccess: access } }
   );
+
+  await logPermissionAudit({
+    action: 'role_applied',
+    targetType: 'role',
+    targetId: role._id,
+    targetLabel: role.name,
+    actor: req.user,
+    summary: `Applied role "${role.name}" to ${result.modifiedCount} user(s)`,
+    changes: { moduleAccess: access, updated: result.modifiedCount },
+  });
 
   res.json({
     success: true,

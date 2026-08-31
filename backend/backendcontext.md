@@ -295,3 +295,76 @@ Creates idempotently:
 - Create/update validate `facultyId` belongs to same campus as department
 - Soft delete with `deletedBy`; duplicate check includes soft-deleted records (409 with clear message)
 - All routes: `auth + authorize("Admin")`
+
+## Platform roles & module access (Aug 2026)
+
+- Model: `PlatformRole` — `name`, `description`, `moduleAccess` (Record<string, boolean>), `isSystem`
+- Routes: `/api/platform-roles` — CRUD, reseed defaults, `POST /:id/apply-to-users`
+- `User.primaryRole` + `User.moduleAccess` — copied from role template; per-user overrides on `/access/:id`
+- Middleware: `requireModule(moduleKey)` — checks `req.user.moduleAccess[moduleKey] === true`; Admin bypass
+- Route map: `backend/utils/apiRouteModules.js` — prefix → module key; applied in `routes/index.js`
+- Seeds: `seedPlatformRoles.js` (startup), `seedTestRoleUsers.js` (optional, `SEED_TEST_USERS=true`)
+
+## StaffMember & distributed HR modules (Aug 2026)
+
+- Model: `StaffMember` — single source of truth for employees (replaces legacy HR page flow)
+- Related models: `StaffLeave`, `StaffAttendance`, `StaffDocument`, `StaffPayroll` (on staff routes)
+- Staff routes: `/api/staff` — CRUD, login enable/disable, payroll nested routes, documents
+- Workforce routes: `/api/workforce/leaves`, `/api/workforce/attendance` — module key `hr`
+- Leave: create/list/stats, Admin approves via `PUT /leaves/:id/status`
+- Attendance: `markStaffAttendance` compares check-in to `workSchedule` via `workScheduleUtils.js` (late minutes, off-day)
+- Documents: multer upload, max 10 MB, PDF/JPG/PNG/WEBP/DOC/DOCX
+
+### File uploads
+
+- Root: `backend/uploads/` (gitignored except `.gitkeep`)
+- Static serve: `app.use('/uploads', express.static(UPLOAD_ROOT))` in `server.js`
+- Path builder: `backend/utils/uploadPaths.js`
+
+```
+uploads/hr/{staffId}/{documentType}/{staffId}_{documentType}_{documentName}_{timestamp}.ext
+```
+
+- Upload flow: `resolveStaffForUpload` middleware → multer (`middleware/upload.js`) → `staffDocument.controller.js`
+- Download: `GET /api/staff/:id/documents/:documentId/download` (auth required; uses stored `relativePath`)
+
+### Recruitment API (Phase C)
+
+- Routes under `/api/workforce/recruitment` — module key `hr`
+- CRUD postings, add applicants, update status, **hire** → creates `StaffMember` with `hiredFromRecruitmentId`
+
+### Leave balances (Phase C)
+
+- Model: `StaffLeaveBalance` — per staff per year (annual/sick/casual/maternity/paternity quotas + used)
+- `GET/PUT /api/workforce/leaves/balance/:staffMemberId`
+- Validated on leave create; deducted/restored on approve/reject
+
+### Bulk attendance (Phase C)
+
+- `POST /api/workforce/attendance/bulk` — `{ date, records?, markAbsentForUnmarked? }`
+
+### Teaching link (Phase C)
+
+- `GET /api/staff/:id/offerings` — offerings where `instructorId` = staff member
+- CourseOffering already refs `StaffMember` (no separate Teacher model)
+
+### Permission audit (Phase C)
+
+- Model: `PermissionAuditLog`
+- `GET /api/platform-roles/audit-logs` — role changes + portal access updates
+- Logged from `platformRole.controller` and staff login access endpoints
+
+### Test users seed
+
+- `SEED_TEST_USERS=true` — creates one user per `PLATFORM_ROLES` entry (except System Admin, Student)
+- Email: `{role-slug}@scholaros.test` · Password: `{RoleName}@123` (e.g. `university-admin@scholaros.test` / `UniversityAdmin@123`)
+
+## What's next (backend)
+
+| Item | Notes |
+|------|-------|
+| Recruitment API | Model exists (`Recruitment.model.js`); needs controller, routes, `requireModule('hr')` |
+| Leave balances | Extend `StaffLeave` or add `LeaveBalance` per staff/year |
+| Bulk attendance | `POST /api/workforce/attendance/bulk` with array of records |
+| Teacher link | Optional `teacherId` on `StaffMember` or `staffMemberId` on `Teacher` |
+| Cleanup | Legacy `Employee` model — migrate or deprecate |

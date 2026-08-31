@@ -15,6 +15,7 @@ export const ROUTE_MODULE_MAP: Record<string, string> = {
   '/settings': 'settings',
   '/settings/profile': 'settings',
   '/settings/roles': 'settings',
+  '/settings/permission-audit': 'settings',
   '/role-assignments': 'academic_ops',
   '/students': 'students',
   '/admissions': 'admissions',

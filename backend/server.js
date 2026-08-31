@@ -3,10 +3,14 @@ import dotenv from 'dotenv';
 import express from 'express';
 import helmet from 'helmet';
 import morgan from 'morgan';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import connectDB from './config/database.js';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
 import { seedDefaultAdmin } from './scripts/seedAdmin.js';
 import { seedPlatformRoles } from './scripts/seedPlatformRoles.js';
+import { seedTestRoleUsers } from './scripts/seedTestRoleUsers.js';
+import { UPLOAD_ROOT } from './utils/uploadPaths.js';
 import apiRoutes from './routes/index.js';
 import './jobs/statusUpdate.js';
 
@@ -15,6 +19,8 @@ dotenv.config();
 const port = Number(process.env.PORT);
 const host = process.env.HOST;
 const frontendUrl = process.env.FRONTEND_URL;
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 const app = express();
 
 app.use(helmet({
@@ -29,6 +35,8 @@ app.use(cors({
 }));
 
 app.use(express.json());
+app.use('/uploads', express.static(UPLOAD_ROOT));
+app.use(morgan('dev'));
 app.use('/api', apiRoutes);
 app.use(errorHandler);
 
@@ -37,6 +45,7 @@ async function startServer() {
     await connectDB();
     await seedDefaultAdmin();
     await seedPlatformRoles();
+    await seedTestRoleUsers();
 
     app.listen(port, host, () => {
       console.log(`🚀 Server running on http://${host}:${port}`);

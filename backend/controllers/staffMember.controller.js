@@ -1,7 +1,7 @@
 import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
 import { handle } from '../utils/asyncHandler.js';
-import { Department, StaffMember, User, PlatformRole } from '../models/index.js';
+import { Department, StaffMember, User, PlatformRole, CourseOffering } from '../models/index.js';
 import { generateStaffId } from '../utils/generateStaffId.js';
 import {
   mapPrimaryRoleToLegacyRole,
@@ -9,6 +9,7 @@ import {
   serializeModuleAccess,
 } from '../utils/moduleAccessDefaults.js';
 import { getModuleAccessForRole } from '../utils/platformRoleAccess.js';
+import { logPermissionAudit } from '../utils/permissionAudit.js';
 
 async function findPlatformRoleByName(name) {
   return PlatformRole.findOne({ name, isDeleted: notDeleted });
@@ -415,6 +416,16 @@ export const enableStaffLogin = handle(async (req, res) => {
   found.userId = user._id;
   await found.save();
 
+  await logPermissionAudit({
+    action: 'user_login_enabled',
+    targetType: 'user',
+    targetId: user._id,
+    targetLabel: user.email,
+    actor: req.user,
+    summary: `Enabled login for ${found.firstName} ${found.lastName} as ${primaryRole}`,
+    changes: { primaryRole, moduleAccess: access },
+  });
+
   const populated = await populateStaff(StaffMember.findById(found._id));
   res.status(201).json({
     success: true,
@@ -454,6 +465,16 @@ export const updateStaffLoginAccess = handle(async (req, res) => {
 
   await User.findByIdAndUpdate(found.userId, userUpdates, { new: true, runValidators: true });
 
+  await logPermissionAudit({
+    action: 'user_access_updated',
+    targetType: 'user',
+    targetId: found.userId,
+    targetLabel: found.email,
+    actor: req.user,
+    summary: `Updated portal access for ${found.firstName} ${found.lastName}`,
+    changes: userUpdates,
+  });
+
   const populated = await populateStaff(StaffMember.findById(found._id));
   res.json({
     success: true,
@@ -471,6 +492,8 @@ export const disableStaffLogin = handle(async (req, res) => {
     return res.status(400).json({ success: false, message: 'No login exists for this staff member' });
   }
 
+  const disabledUserId = found.userId;
+
   await User.findByIdAndUpdate(found.userId, {
     status: 'Inactive',
     isDeleted: true,
@@ -481,11 +504,43 @@ export const disableStaffLogin = handle(async (req, res) => {
   found.userId = null;
   await found.save();
 
+  await logPermissionAudit({
+    action: 'user_login_disabled',
+    targetType: 'user',
+    targetId: disabledUserId,
+    targetLabel: found.email,
+    actor: req.user,
+    summary: `Disabled login for ${found.firstName} ${found.lastName}`,
+  });
+
   const populated = await populateStaff(StaffMember.findById(found._id));
   res.json({
     success: true,
     data: serializeStaffResponse(populated),
     message: 'Login disabled successfully',
+  });
+});
+
+export const getStaffOfferings = handle(async (req, res) => {
+  const found = await findStaffByIdentifier(req.params.id);
+  if (!found) {
+    return res.status(404).json({ success: false, message: 'Staff member not found' });
+  }
+
+  const offerings = await CourseOffering.find({
+    instructorId: found._id,
+    isDeleted: notDeleted,
+  })
+    .populate('subjectId', 'name code credits')
+    .populate('programId', 'name code')
+    .populate('batchId', 'name batchCode')
+    .populate('academicSessionId', 'name sessionCode')
+    .sort({ createdAt: -1 });
+
+  res.json({
+    success: true,
+    count: offerings.length,
+    data: offerings,
   });
 });
 
