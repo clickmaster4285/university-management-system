@@ -9,7 +9,12 @@ const payrollSchema = new mongoose.Schema({
   employee: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Employee',
-    required: true
+    default: null,
+  },
+  staffMember: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'StaffMember',
+    default: null,
   },
   employeeName: {
     type: String,

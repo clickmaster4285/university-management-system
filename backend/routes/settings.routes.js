@@ -1,11 +1,12 @@
 // backend/src/routes/settings.routes.js
 import express from 'express';
 import { auth, authorize } from '../middleware/auth.js';
+import { requireModule } from '../middleware/requireModule.js';
 import * as settingsController from '../controllers/settings.controller.js';
 
 const router = express.Router();
 
-router.use(auth, authorize("Admin"));
+router.use(auth, authorize("Admin"), requireModule('settings'));
 
 // ==================== SETTINGS ROUTES ====================
 router.get('/', settingsController.getSettings);

@@ -152,7 +152,7 @@ export default function StaffPage() {
             type="button"
             size="sm"
             variant="ghost"
-            onClick={() => navigate(`/staff/edit/${getStaffRecordId(row)}`)}
+            onClick={() => navigate(`/staff/${getStaffRecordId(row)}`)}
             title="Edit"
           >
             <Pencil className="h-4 w-4" />
@@ -187,7 +187,7 @@ export default function StaffPage() {
       ) : (
         <DataTable
           title="Staff directory"
-          description={`${filteredStaff.length} of ${staffMembers.length} staff shown`}
+          description="Who works here — open a profile to manage employment and personal details"
           data={filteredStaff}
           columns={columns}
           searchKeys={["firstName", "lastName", "email", "staffId"]}

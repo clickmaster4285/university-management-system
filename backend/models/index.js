@@ -29,6 +29,7 @@ export {
   STUDENT_CATEGORIES,
 } from "./ProgramSemesterFeeSchedule.model.js";
 export { default as Program } from "./Program.model.js";
+export { default as PlatformRole } from "./PlatformRole.model.js";
 export { default as Recruitment } from "./Recruitment.model.js";
 export { default as Report } from "./Report.model.js";
 export { default as Route } from "./Route.model.js";

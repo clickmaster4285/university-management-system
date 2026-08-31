@@ -1,5 +1,7 @@
 import mongoose from 'mongoose';
 
+const WEEKDAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+
 const employmentSchema = new mongoose.Schema(
   {
     departmentId: {
@@ -78,6 +80,48 @@ const teacherProfileSchema = new mongoose.Schema(
   { _id: false }
 );
 
+const workScheduleDaySchema = new mongoose.Schema(
+  {
+    day: {
+      type: String,
+      enum: WEEKDAYS,
+      required: true,
+    },
+    isWorkingDay: {
+      type: Boolean,
+      default: true,
+    },
+    startTime: {
+      type: String,
+      default: '09:00',
+    },
+    endTime: {
+      type: String,
+      default: '17:00',
+    },
+  },
+  { _id: false }
+);
+
+const compensationSchema = new mongoose.Schema(
+  {
+    basicSalary: { type: Number, default: 0, min: 0 },
+    allowances: { type: Number, default: 0, min: 0 },
+    currency: { type: String, default: 'PKR', trim: true },
+    payFrequency: {
+      type: String,
+      enum: ['Monthly', 'Bi-weekly', 'Weekly'],
+      default: 'Monthly',
+    },
+    bankName: { type: String, trim: true, default: '' },
+    accountTitle: { type: String, trim: true, default: '' },
+    accountNumber: { type: String, trim: true, default: '' },
+    iban: { type: String, trim: true, default: '' },
+    effectiveFrom: { type: Date, default: null },
+  },
+  { _id: false }
+);
+
 const staffMemberSchema = new mongoose.Schema(
   {
     staffId: {
@@ -104,6 +148,12 @@ const staffMemberSchema = new mongoose.Schema(
       required: [true, 'Email is required'],
       lowercase: true,
       trim: true,
+    },
+    personalEmail: {
+      type: String,
+      lowercase: true,
+      trim: true,
+      default: '',
     },
     phone: {
       type: String,
@@ -138,6 +188,23 @@ const staffMemberSchema = new mongoose.Schema(
       name: { type: String, trim: true, default: '' },
       phone: { type: String, trim: true, default: '' },
       relation: { type: String, trim: true, default: '' },
+    },
+    joiningDate: {
+      type: Date,
+      default: null,
+    },
+    jobDescription: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    workSchedule: {
+      type: [workScheduleDaySchema],
+      default: [],
+    },
+    compensation: {
+      type: compensationSchema,
+      default: () => ({}),
     },
     status: {
       type: String,

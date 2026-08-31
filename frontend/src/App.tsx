@@ -1,6 +1,6 @@
 import { lazy, Suspense } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/lib/auth";
@@ -50,6 +50,13 @@ const StudentsPage = lazy(() => import("./pages/academics/students/StudentsPage"
 const StaffPage = lazy(() => import("./pages/people/staff/StaffPage"));
 const StaffCreatePage = lazy(() => import("./pages/people/staff/StaffCreatePage"));
 const StaffEditPage = lazy(() => import("./pages/people/staff/StaffEditPage"));
+const WorkforcePage = lazy(() => import("./pages/workforce/WorkforcePage"));
+const WorkforceSchedulePage = lazy(() => import("./pages/workforce/WorkforceSchedulePage"));
+const PayrollPage = lazy(() => import("./pages/payroll/PayrollPage"));
+const StaffPayrollPage = lazy(() => import("./pages/payroll/StaffPayrollPage"));
+const AccessPage = lazy(() => import("./pages/access/AccessPage"));
+const StaffAccessPage = lazy(() => import("./pages/access/StaffAccessPage"));
+const RoleAssignmentsPage = lazy(() => import("./pages/people/role-assignments/RoleAssignmentsPage"));
 const AttendancePage = lazy(() => import("./pages/academics/attendance/AttendancePage"));
 const AssignmentsPage = lazy(() => import("./pages/academics/assignments/AssignmentsPage"));
 const ExamsPage = lazy(() => import("./pages/academics/exams/ExamsPage"));
@@ -65,9 +72,10 @@ const SmartQrPage = lazy(() => import("./pages/campus/qr/SmartQrPage"));
 // Operations & Administration
 const FinancePage = lazy(() => import("./pages/operations/finance/FinancePage"));
 const ChallansPage = lazy(() => import("./pages/operations/challans/ChallansPage"));
-const HrPage = lazy(() => import("./pages/operations/hr/HrPage"));
 const ReportsPage = lazy(() => import("./pages/operations/reports/ReportsPage"));
 const SettingsPage = lazy(() => import("./pages/operations/settings/SettingsPage"));
+const SettingsProfilePage = lazy(() => import("./pages/operations/settings/SettingsProfilePage"));
+const RolesPermissionsPage = lazy(() => import("./pages/operations/settings/RolesPermissionsPage"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -133,7 +141,16 @@ export const App = () => (
                 <Route path="students" element={<StudentsPage />} />
                 <Route path="staff" element={<StaffPage />} />
                 <Route path="staff/create" element={<StaffCreatePage />} />
-                <Route path="staff/edit/:id" element={<StaffEditPage />} />
+                <Route path="staff/:id" element={<StaffEditPage />} />
+                <Route path="workforce" element={<WorkforcePage />} />
+                <Route path="workforce/:id" element={<WorkforceSchedulePage />} />
+                <Route path="payroll" element={<PayrollPage />} />
+                <Route path="payroll/:id" element={<StaffPayrollPage />} />
+                <Route path="access" element={<AccessPage />} />
+                <Route path="access/roles" element={<Navigate to="/settings/roles" replace />} />
+                <Route path="access/:id" element={<StaffAccessPage />} />
+                <Route path="role-assignments" element={<RoleAssignmentsPage />} />
+                <Route path="role-assignments/staff/:staffId" element={<RoleAssignmentsPage />} />
                 <Route path="attendance" element={<AttendancePage />} />
                 <Route path="assignments" element={<AssignmentsPage />} />
                 <Route path="exams" element={<ExamsPage />} />
@@ -149,9 +166,10 @@ export const App = () => (
                 {/* Operations */}
                 <Route path="finance" element={<FinancePage />} />
                 <Route path="challans" element={<ChallansPage />} />
-                <Route path="hr" element={<HrPage />} />
                 <Route path="reports" element={<ReportsPage />} />
                 <Route path="settings" element={<SettingsPage />} />
+                <Route path="settings/profile" element={<SettingsProfilePage />} />
+                <Route path="settings/roles" element={<RolesPermissionsPage />} />
               </Route>
 
               {/* 404 Fallback Route */}

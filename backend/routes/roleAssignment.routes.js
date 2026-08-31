@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { auth, authorize } from '../middleware/auth.js';
+import { requireModule } from '../middleware/requireModule.js';
 import {
   createRoleAssignment,
   deleteRoleAssignment,
@@ -9,7 +10,7 @@ import {
 
 const router = Router();
 
-router.use(auth, authorize('Admin', 'Staff'));
+router.use(auth, authorize('Admin', 'Staff'), requireModule('academic_ops'));
 
 router.get('/meta', getRoleAssignmentMeta);
 router.get('/', listRoleAssignments);

@@ -7,11 +7,11 @@ export interface Batch {
   year: number;
   code: string;
   department: string;
-  departmentId?: string;
+  departmentId?: string | { _id?: string; name?: string; code?: string };
   program: string;
-  programId?: string;
+  programId?: string | { _id?: string };
   admissionSession: string;
-  admissionSessionId?: string;
+  admissionSessionId?: string | { _id?: string; sessionId?: string; name?: string };
   admissionSemester: string;
   expectedGraduation: number;
   status: 'Active' | 'Inactive' | 'Upcoming' | 'Completed';

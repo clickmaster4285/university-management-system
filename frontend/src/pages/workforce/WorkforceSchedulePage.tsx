@@ -5,34 +5,27 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { staffMemberAPI, type StaffMember } from "@/features/staffMembers";
 import { StaffContextHeader } from "@/components/staff/StaffContextHeader";
-import { StaffModuleLinks } from "@/components/staff/StaffModuleLinks";
-import { StaffForm } from "./StaffForm";
+import { StaffWorkSchedulePanel } from "@/pages/people/staff/StaffWorkSchedulePanel";
 
-export default function StaffEditPage() {
+export default function WorkforceSchedulePage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [staff, setStaff] = useState<StaffMember | null>(null);
   const [loading, setLoading] = useState(true);
-  const [notFound, setNotFound] = useState(false);
 
   useEffect(() => {
-    const fetchStaff = async () => {
-      if (!id) {
-        setNotFound(true);
-        setLoading(false);
-        return;
-      }
+    const load = async () => {
+      if (!id) return;
       try {
         const data = await staffMemberAPI.getById(id);
-        if (data) setStaff(data);
-        else setNotFound(true);
+        setStaff(data);
       } catch {
-        setNotFound(true);
+        setStaff(null);
       } finally {
         setLoading(false);
       }
     };
-    fetchStaff();
+    load();
   }, [id]);
 
   if (loading) {
@@ -43,12 +36,12 @@ export default function StaffEditPage() {
     );
   }
 
-  if (notFound || !staff) {
+  if (!staff) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
         <p className="mb-4">Staff member not found.</p>
-        <Button variant="outline" onClick={() => navigate("/staff")}>
-          Back to staff directory
+        <Button variant="outline" onClick={() => navigate("/workforce")}>
+          Back to workforce
         </Button>
       </div>
     );
@@ -56,10 +49,15 @@ export default function StaffEditPage() {
 
   return (
     <Card className="border shadow-sm">
-      <CardContent className="p-6 md:p-8 space-y-8">
-        <StaffContextHeader staff={staff} />
-        <StaffModuleLinks staff={staff} />
-        <StaffForm mode="edit" staff={staff} onUpdated={setStaff} embedded />
+      <CardContent className="p-6 md:p-8">
+        <StaffContextHeader
+          staff={staff}
+          backTo="/workforce"
+          backLabel="Back to workforce"
+          title="Work schedule"
+          description={`${staff.staffId} · set individual working days and hours`}
+        />
+        <StaffWorkSchedulePanel staff={staff} onUpdated={setStaff} />
       </CardContent>
     </Card>
   );

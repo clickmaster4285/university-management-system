@@ -1,13 +1,18 @@
 import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
 import { handle } from '../utils/asyncHandler.js';
-import { Department, StaffMember, User } from '../models/index.js';
+import { Department, StaffMember, User, PlatformRole } from '../models/index.js';
 import { generateStaffId } from '../utils/generateStaffId.js';
 import {
   mapPrimaryRoleToLegacyRole,
   PLATFORM_ROLES,
-  resolveModuleAccess,
+  serializeModuleAccess,
 } from '../utils/moduleAccessDefaults.js';
+import { getModuleAccessForRole } from '../utils/platformRoleAccess.js';
+
+async function findPlatformRoleByName(name) {
+  return PlatformRole.findOne({ name, isDeleted: notDeleted });
+}
 
 const notDeleted = { $ne: true };
 
@@ -19,9 +24,18 @@ async function findStaffByIdentifier(identifier) {
   return StaffMember.findOne({ $or: query, isDeleted: notDeleted });
 }
 
+const WEEKDAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+
+const DEFAULT_WORK_SCHEDULE = WEEKDAYS.map((day) => ({
+  day,
+  isWorkingDay: !['Saturday', 'Sunday'].includes(day),
+  startTime: '09:00',
+  endTime: '17:00',
+}));
+
 function populateStaff(query) {
   return query
-    .populate('userId', 'firstName lastName email role primaryRole status')
+    .populate('userId', 'firstName lastName email role primaryRole status moduleAccess')
     .populate('employments.departmentId', 'name code')
     .populate('employments.campusId', 'name campusCode');
 }
@@ -85,6 +99,47 @@ function buildTeacherProfile(isAcademic, teacherProfile = {}) {
   };
 }
 
+function normalizeWorkSchedule(workSchedule) {
+  if (!Array.isArray(workSchedule) || workSchedule.length === 0) {
+    return DEFAULT_WORK_SCHEDULE;
+  }
+
+  return WEEKDAYS.map((day) => {
+    const entry = workSchedule.find((item) => item.day === day) || {};
+    return {
+      day,
+      isWorkingDay: entry.isWorkingDay !== undefined
+        ? Boolean(entry.isWorkingDay)
+        : !['Saturday', 'Sunday'].includes(day),
+      startTime: entry.startTime || '09:00',
+      endTime: entry.endTime || '17:00',
+    };
+  });
+}
+
+function normalizeCompensation(compensation = {}) {
+  return {
+    basicSalary: Number(compensation.basicSalary) || 0,
+    allowances: Number(compensation.allowances) || 0,
+    currency: compensation.currency || 'PKR',
+    payFrequency: compensation.payFrequency || 'Monthly',
+    bankName: compensation.bankName || '',
+    accountTitle: compensation.accountTitle || '',
+    accountNumber: compensation.accountNumber || '',
+    iban: compensation.iban || '',
+    effectiveFrom: compensation.effectiveFrom ? new Date(compensation.effectiveFrom) : null,
+  };
+}
+
+function serializeStaffResponse(staff) {
+  if (!staff) return staff;
+  const plain = staff.toObject ? staff.toObject({ virtuals: true }) : { ...staff };
+  if (plain.userId?.moduleAccess) {
+    plain.userId.moduleAccess = serializeModuleAccess(plain.userId.moduleAccess);
+  }
+  return plain;
+}
+
 export const getStaffMembers = handle(async (req, res) => {
   const {
     departmentId,
@@ -121,7 +176,7 @@ export const getStaffMembers = handle(async (req, res) => {
     total,
     page: parseInt(page, 10),
     totalPages: Math.ceil(total / parseInt(limit, 10)),
-    data: staff,
+    data: staff.map(serializeStaffResponse),
   });
 });
 
@@ -131,7 +186,7 @@ export const getStaffMemberById = handle(async (req, res) => {
     return res.status(404).json({ success: false, message: 'Staff member not found' });
   }
   const staff = await populateStaff(StaffMember.findById(found._id));
-  res.json({ success: true, data: staff });
+  res.json({ success: true, data: serializeStaffResponse(staff) });
 });
 
 export const getStaffStats = handle(async (req, res) => {
@@ -154,12 +209,17 @@ export const createStaffMember = handle(async (req, res) => {
     firstName,
     lastName,
     email,
+    personalEmail,
     phone,
     cnic,
     dateOfBirth,
     gender,
     address,
     emergencyContact,
+    joiningDate,
+    jobDescription,
+    workSchedule,
+    compensation,
     status = 'Active',
     isAcademic = false,
     employments,
@@ -202,12 +262,17 @@ export const createStaffMember = handle(async (req, res) => {
     firstName: firstName.trim(),
     lastName: lastName.trim(),
     email: normalizedEmail,
+    personalEmail: personalEmail ? personalEmail.toLowerCase().trim() : '',
     phone: phone || '',
     cnic: cnic || '',
     dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : null,
     gender: gender || '',
     address: address || '',
     emergencyContact: emergencyContact || {},
+    joiningDate: joiningDate ? new Date(joiningDate) : null,
+    jobDescription: jobDescription || '',
+    workSchedule: normalizeWorkSchedule(workSchedule),
+    compensation: normalizeCompensation(compensation),
     status,
     isAcademic: Boolean(isAcademic),
     employments: employmentResult.data,
@@ -216,7 +281,7 @@ export const createStaffMember = handle(async (req, res) => {
   });
 
   const populated = await populateStaff(StaffMember.findById(staff._id));
-  res.status(201).json({ success: true, data: populated });
+  res.status(201).json({ success: true, data: serializeStaffResponse(populated) });
 });
 
 export const updateStaffMember = handle(async (req, res) => {
@@ -267,13 +332,17 @@ export const updateStaffMember = handle(async (req, res) => {
   }
 
   if (updates.dateOfBirth) updates.dateOfBirth = new Date(updates.dateOfBirth);
+  if (updates.joiningDate) updates.joiningDate = new Date(updates.joiningDate);
+  if (updates.personalEmail) updates.personalEmail = updates.personalEmail.toLowerCase().trim();
+  if (updates.workSchedule) updates.workSchedule = normalizeWorkSchedule(updates.workSchedule);
+  if (updates.compensation) updates.compensation = normalizeCompensation(updates.compensation);
 
   const updated = await StaffMember.findByIdAndUpdate(found._id, updates, {
     new: true,
     runValidators: true,
   });
   const populated = await populateStaff(StaffMember.findById(updated._id));
-  res.json({ success: true, data: populated });
+  res.json({ success: true, data: serializeStaffResponse(populated) });
 });
 
 export const deleteStaffMember = handle(async (req, res) => {
@@ -309,7 +378,9 @@ export const enableStaffLogin = handle(async (req, res) => {
       message: 'Password is required and must be at least 8 characters',
     });
   }
-  if (!PLATFORM_ROLES.includes(primaryRole)) {
+
+  const platformRole = await findPlatformRoleByName(primaryRole);
+  if (!platformRole) {
     return res.status(400).json({ success: false, message: 'Invalid primary role' });
   }
 
@@ -325,7 +396,7 @@ export const enableStaffLogin = handle(async (req, res) => {
   }
 
   const legacyRole = mapPrimaryRoleToLegacyRole(primaryRole);
-  const access = resolveModuleAccess(primaryRole, moduleAccess || {});
+  const access = await getModuleAccessForRole(primaryRole, moduleAccess || {});
   const hashedPassword = await bcrypt.hash(password, 10);
 
   const user = await User.create({
@@ -347,8 +418,47 @@ export const enableStaffLogin = handle(async (req, res) => {
   const populated = await populateStaff(StaffMember.findById(found._id));
   res.status(201).json({
     success: true,
-    data: populated,
+    data: serializeStaffResponse(populated),
     message: 'Login enabled successfully',
+  });
+});
+
+export const updateStaffLoginAccess = handle(async (req, res) => {
+  const found = await findStaffByIdentifier(req.params.id);
+  if (!found) {
+    return res.status(404).json({ success: false, message: 'Staff member not found' });
+  }
+  if (!found.userId) {
+    return res.status(400).json({ success: false, message: 'No login exists for this staff member' });
+  }
+
+  const { primaryRole, moduleAccess } = req.body;
+  const userUpdates = {};
+
+  if (primaryRole) {
+    const platformRole = await findPlatformRoleByName(primaryRole);
+    if (!platformRole) {
+      return res.status(400).json({ success: false, message: 'Invalid primary role' });
+    }
+    userUpdates.primaryRole = primaryRole;
+    userUpdates.role = mapPrimaryRoleToLegacyRole(primaryRole);
+    userUpdates.moduleAccess = await getModuleAccessForRole(primaryRole, moduleAccess || {});
+  } else if (moduleAccess && typeof moduleAccess === 'object') {
+    const currentRole = (await User.findById(found.userId))?.primaryRole || 'Faculty';
+    userUpdates.moduleAccess = await getModuleAccessForRole(currentRole, moduleAccess);
+  }
+
+  if (Object.keys(userUpdates).length === 0) {
+    return res.status(400).json({ success: false, message: 'primaryRole or moduleAccess is required' });
+  }
+
+  await User.findByIdAndUpdate(found.userId, userUpdates, { new: true, runValidators: true });
+
+  const populated = await populateStaff(StaffMember.findById(found._id));
+  res.json({
+    success: true,
+    data: serializeStaffResponse(populated),
+    message: 'Login access updated successfully',
   });
 });
 
@@ -374,11 +484,15 @@ export const disableStaffLogin = handle(async (req, res) => {
   const populated = await populateStaff(StaffMember.findById(found._id));
   res.json({
     success: true,
-    data: populated,
+    data: serializeStaffResponse(populated),
     message: 'Login disabled successfully',
   });
 });
 
 export const getPlatformRoles = handle(async (_req, res) => {
-  res.json({ success: true, data: PLATFORM_ROLES });
+  const roles = await PlatformRole.find({ isDeleted: notDeleted }).sort({ name: 1 }).select('name description');
+  res.json({
+    success: true,
+    data: roles.length ? roles.map((role) => role.name) : PLATFORM_ROLES,
+  });
 });

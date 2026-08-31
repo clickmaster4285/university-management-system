@@ -1,4 +1,7 @@
 import { Router } from "express";
+import { auth } from "../middleware/auth.js";
+import { requireModule } from "../middleware/requireModule.js";
+import { API_ROUTE_MODULES } from "../utils/apiRouteModules.js";
 import academicSessionRoutes from "./academicSession.routes.js";
 import admissionRoutes from "./admission.routes.js";
 import assignmentRoutes from "./assignment.routes.js";
@@ -15,11 +18,12 @@ import examRoutes from "./exam.routes.js";
 import facultyRoutes from "./faculty.routes.js";
 import feeChallanRoutes from "./feeChallan.routes.js";
 import financeRoutes from "./finance.routes.js";
-import hrRoutes from "./hr.routes.js";
 import notificationRoutes from "./notification.routes.js";
 import programSemesterFeeScheduleRoutes from "./programSemesterFeeSchedule.routes.js";
 import semesterRegistrationRoutes from "./semesterRegistration.routes.js";
 import programRoutes from "./program.routes.js";
+import platformRoleRoutes from "./platformRole.routes.js";
+import payrollRoutes from "./payroll.routes.js";
 import subjectRoutes from "./subject.routes.js";
 import reportRoutes from "./report.routes.js";
 import roleAssignmentRoutes from "./roleAssignment.routes.js";
@@ -31,34 +35,45 @@ import universityRoutes from "./university.routes.js";
 
 const router = Router();
 
-router.use("/students", studentRoutes);
-router.use("/departments", departmentRoutes);
-router.use("/offerings", courseOfferingRoutes);
-router.use("/program-semester-fees", programSemesterFeeScheduleRoutes);
-router.use("/semester-registrations", semesterRegistrationRoutes);
-router.use("/programs", programRoutes);
-router.use("/subjects", subjectRoutes);
-router.use("/attendance", attendanceRoutes);
-router.use("/admissions", admissionRoutes);
-router.use("/assignments", assignmentRoutes);
-router.use("/exams", examRoutes);
-router.use("/faculties", facultyRoutes);
-router.use("/books", bookRoutes);
-router.use("/transport", transportRoutes);
-router.use("/events", eventRoutes);
-router.use("/challans", feeChallanRoutes);
-router.use("/finance", financeRoutes);
-router.use("/hr", hrRoutes);
-router.use("/reports", reportRoutes);
-router.use("/dashboard", dashboardRoutes);
-router.use("/notifications", notificationRoutes);
-router.use("/settings", settingsRoutes);
-router.use("/staff", staffMemberRoutes);
-router.use("/role-assignments", roleAssignmentRoutes);
+/** Mount a route with auth + module guard (routes still keep their own auth/authorize for backward compat) */
+const mount = (path, routeHandler) => {
+  const moduleKey = API_ROUTE_MODULES[path];
+  if (moduleKey) {
+    router.use(path, auth, requireModule(moduleKey), routeHandler);
+  } else {
+    router.use(path, routeHandler);
+  }
+};
+
+mount("/students", studentRoutes);
+mount("/departments", departmentRoutes);
+mount("/offerings", courseOfferingRoutes);
+mount("/program-semester-fees", programSemesterFeeScheduleRoutes);
+mount("/semester-registrations", semesterRegistrationRoutes);
+mount("/programs", programRoutes);
+mount("/platform-roles", platformRoleRoutes);
+mount("/subjects", subjectRoutes);
+mount("/attendance", attendanceRoutes);
+mount("/admissions", admissionRoutes);
+mount("/assignments", assignmentRoutes);
+mount("/exams", examRoutes);
+mount("/faculties", facultyRoutes);
+mount("/books", bookRoutes);
+mount("/transport", transportRoutes);
+mount("/events", eventRoutes);
+mount("/challans", feeChallanRoutes);
+mount("/finance", financeRoutes);
+mount("/payroll", payrollRoutes);
+mount("/reports", reportRoutes);
+mount("/dashboard", dashboardRoutes);
+mount("/notifications", notificationRoutes);
+mount("/settings", settingsRoutes);
+mount("/staff", staffMemberRoutes);
+mount("/role-assignments", roleAssignmentRoutes);
 router.use("/auth", authRoutes);
-router.use("/academic-sessions", academicSessionRoutes);
-router.use("/batches", batchRoutes);
-router.use("/universities", universityRoutes);
-router.use("/campuses", campusRoutes);
+mount("/academic-sessions", academicSessionRoutes);
+mount("/batches", batchRoutes);
+mount("/universities", universityRoutes);
+mount("/campuses", campusRoutes);
 
 export default router;

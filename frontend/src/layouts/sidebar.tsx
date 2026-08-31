@@ -1,9 +1,10 @@
 import { useState, useEffect, useMemo } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/lib/auth";
+import { hasModuleAccess } from "@/lib/routeModules";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent,
-  SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem,
+  SidebarMenu, SidebarMenuButton, SidebarMenuItem,
   SidebarHeader, SidebarFooter,
 } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
@@ -12,10 +13,23 @@ import {
   Users, UserPlus, UserCheck, CalendarCheck, ClipboardList, ClipboardCheck,
   Video, Calendar, School, Library, Home, Bus, QrCode,
   DollarSign, Wallet, Briefcase, BarChart3, Settings, Bell, Receipt,
-  Sparkles, University, BookMarked, ChevronRight,
+  Sparkles, University, BookMarked, ChevronRight, Clock, Shield, UserCog,
 } from "lucide-react";
 
-const sidebarNav = [
+type NavItem = {
+  to: string;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  module: string;
+  exact?: boolean;
+};
+
+type NavSection = {
+  label: string;
+  items: NavItem[];
+};
+
+const sidebarNav: NavSection[] = [
   {
     label: "Overview",
     items: [
@@ -25,44 +39,57 @@ const sidebarNav = [
     ],
   },
   {
-    label: "Academic Structure",
+    label: "Governance",
     items: [
       { to: "/university", label: "University", icon: University, module: "governance" },
       { to: "/campuses", label: "Campuses", icon: School, module: "governance" },
       { to: "/faculties", label: "Faculties", icon: Building2, module: "governance" },
       { to: "/departments", label: "Departments", icon: Layers, module: "governance" },
-      { to: "/subjects", label: "Subjects", icon: BookOpen, module: "academic_catalog" },
-      { to: "/programs", label: "Programs", icon: BookMarked, module: "academic_catalog" },
     ],
   },
   {
-    label: "People",
+    label: "Academic Catalog",
     items: [
-      { to: "/staff", label: "Staff", icon: Briefcase, module: "staff" },
+      { to: "/programs", label: "Programs", icon: BookMarked, module: "academic_catalog" },
+      { to: "/subjects", label: "Subjects", icon: BookOpen, module: "academic_catalog" },
+    ],
+  },
+  {
+    label: "HR & Staff",
+    items: [
+      { to: "/staff", label: "Staff Directory", icon: Briefcase, module: "staff" },
+      { to: "/workforce", label: "Workforce", icon: Clock, module: "hr" },
+      { to: "/access", label: "Portal Access", icon: Shield, module: "staff" },
+      { to: "/role-assignments", label: "Role Assignments", icon: UserCog, module: "academic_ops" },
+    ],
+  },
+  {
+    label: "Students",
+    items: [
       { to: "/students", label: "Students", icon: GraduationCap, module: "students" },
       { to: "/admissions", label: "Admissions", icon: UserPlus, module: "admissions" },
     ],
   },
   {
-    label: "Academics",
+    label: "Academic Operations",
     items: [
-      { to: "/offerings", label: "Offerings", icon: BookOpen, module: "academic_ops" },
-      { to: "/semester-registrations", label: "Semester Registrations", icon: UserCheck, module: "academic_ops" },
-      { to: "/attendance", label: "Attendance", icon: CalendarCheck, module: "assessments" },
-      { to: "/batches", label: "Batches", icon: Layers, module: "academic_ops" },
       { to: "/academic-sessions", label: "Sessions", icon: Calendar, module: "academic_ops" },
+      { to: "/batches", label: "Batches", icon: Layers, module: "academic_ops" },
+      { to: "/offerings", label: "Offerings", icon: BookOpen, module: "academic_ops" },
+      { to: "/semester-registrations", label: "Registrations", icon: UserCheck, module: "academic_ops" },
     ],
   },
   {
     label: "Assessments",
     items: [
+      { to: "/attendance", label: "Attendance", icon: CalendarCheck, module: "assessments" },
       { to: "/assignments", label: "Assignments", icon: ClipboardList, module: "assessments" },
       { to: "/exams", label: "Exam Grades", icon: ClipboardCheck, module: "assessments" },
       { to: "/online-classes", label: "Online Classes", icon: Video, module: "assessments" },
     ],
   },
   {
-    label: "Campus Facilities",
+    label: "Campus Services",
     items: [
       { to: "/library", label: "Library", icon: Library, module: "library" },
       { to: "/hostel", label: "Hostel", icon: Home, module: "hostel" },
@@ -72,13 +99,20 @@ const sidebarNav = [
     ],
   },
   {
-    label: "Finance & Admin",
+    label: "Finance",
     items: [
+      { to: "/payroll", label: "Payroll", icon: DollarSign, module: "finance" },
       { to: "/challans", label: "Challans", icon: Receipt, module: "finance" },
       { to: "/finance", label: "Finance", icon: Wallet, module: "finance" },
-      { to: "/hr", label: "Human Resources", icon: Briefcase, module: "hr" },
       { to: "/reports", label: "Reports", icon: BarChart3, module: "reports" },
-      { to: "/settings", label: "Settings", icon: Settings, module: "settings" },
+    ],
+  },
+  {
+    label: "Settings & Configuration",
+    items: [
+      { to: "/settings", label: "Configuration", icon: Settings, module: "settings", exact: true },
+      { to: "/settings/profile", label: "Admin Profile", icon: UserCog, module: "settings" },
+      { to: "/settings/roles", label: "Roles & Permissions", icon: Shield, module: "settings" },
     ],
   },
 ];
@@ -90,8 +124,7 @@ export function AppSidebar() {
 
   const canAccessModule = (module?: string) => {
     if (!module) return true;
-    if (!user?.moduleAccess) return true;
-    return user.moduleAccess[module] !== false;
+    return hasModuleAccess(user?.moduleAccess, module);
   };
 
   const visibleNav = useMemo(
@@ -165,6 +198,7 @@ export function AppSidebar() {
               {idx > 0 && <div className="my-1.5 mx-2 border-t border-border/50" />}
               <SidebarGroup className="p-0">
                 <button
+                  type="button"
                   onClick={() => toggleGroup(section.label)}
                   className="flex w-full items-center gap-1 px-2 py-1.5 rounded-md text-[11px] font-semibold text-muted-foreground uppercase tracking-wider hover:text-foreground hover:bg-muted/50 transition-all group-data-[collapsible=icon]:justify-center"
                 >

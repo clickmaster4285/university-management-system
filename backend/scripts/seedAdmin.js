@@ -1,6 +1,7 @@
 import dotenv from 'dotenv';
 import bcrypt from 'bcryptjs';
 import { User } from '../models/index.js';
+import { DEFAULT_MODULE_ACCESS } from '../utils/moduleAccessDefaults.js';
 
 dotenv.config();
 
@@ -17,7 +18,14 @@ export const seedDefaultAdmin = async () => {
 
     const existingAdmin = await User.findOne({ email });
     if (existingAdmin) {
-      console.info(`✅ Admin user already exists: ${email}`);
+      if (!existingAdmin.primaryRole || !existingAdmin.moduleAccess?.size) {
+        existingAdmin.primaryRole = 'System Admin';
+        existingAdmin.moduleAccess = DEFAULT_MODULE_ACCESS['System Admin'];
+        await existingAdmin.save();
+        console.info(`✅ Admin permissions updated: ${email}`);
+      } else {
+        console.info(`✅ Admin user already exists: ${email}`);
+      }
       return;
     }
 
@@ -28,6 +36,8 @@ export const seedDefaultAdmin = async () => {
       email,
       password: hashedPassword,
       role: 'Admin',
+      primaryRole: 'System Admin',
+      moduleAccess: DEFAULT_MODULE_ACCESS['System Admin'],
       status: 'Active',
     });
 

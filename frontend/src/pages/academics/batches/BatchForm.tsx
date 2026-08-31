@@ -42,17 +42,55 @@ const suggestBatchCode = (programCode: string, year: number) =>
 
 const resolveDeptId = (dept: Department) => dept._id || dept.departmentId || "";
 
+const resolveRefId = (value: string | { _id?: string; sessionId?: string } | null | undefined) => {
+  if (!value) return "";
+  if (typeof value === "object") return value._id || value.sessionId || "";
+  return String(value);
+};
+
+const resolveProgramId = (batch: Batch, programs: Program[]) => {
+  const raw = batch.programId;
+  if (!raw) {
+    const byName = programs.find(
+      (program) => program.name === batch.program || program.code === batch.program
+    );
+    return byName?._id || "";
+  }
+  if (typeof raw === "object") {
+    return (raw as { _id?: string })._id || "";
+  }
+  const id = String(raw);
+  if (programs.some((program) => program._id === id)) return id;
+  const match = programs.find(
+    (program) =>
+      program._id === id ||
+      program.code === id ||
+      program.programId === id ||
+      program.name === id ||
+      program.name === batch.program
+  );
+  return match?._id || id;
+};
+
 const getBatchRecordId = (batch: Batch) => batch._id || batch.batchId || "";
 
-const toFormData = (batch: Batch): BatchFormData => ({
+const toFormData = (batch: Batch, programs: Program[] = []): BatchFormData => ({
   year: batch.year || new Date().getFullYear(),
   code: batch.code || "",
-  department: batch.department || "",
-  departmentId: batch.departmentId || "",
+  department:
+    typeof batch.departmentId === "object" && batch.departmentId
+      ? (batch.departmentId as { name?: string }).name || batch.department || ""
+      : batch.department || "",
+  departmentId: resolveRefId(batch.departmentId as string | { _id?: string } | null | undefined),
   program: batch.program || "",
-  programId: batch.programId || "",
-  admissionSession: batch.admissionSession || "",
-  admissionSessionId: batch.admissionSessionId || "",
+  programId: resolveProgramId(batch, programs),
+  admissionSession:
+    typeof batch.admissionSessionId === "object" && batch.admissionSessionId
+      ? (batch.admissionSessionId as { name?: string }).name || batch.admissionSession || ""
+      : batch.admissionSession || "",
+  admissionSessionId: resolveRefId(
+    batch.admissionSessionId as string | { _id?: string; sessionId?: string } | null | undefined
+  ),
   admissionSemester: batch.admissionSemester || "Fall",
   expectedGraduation: batch.expectedGraduation || new Date().getFullYear() + 4,
   status: batch.status || "Upcoming",
@@ -121,11 +159,11 @@ export function BatchForm({ mode, batch }: BatchFormProps) {
   }, [mode]);
 
   useEffect(() => {
-    if (mode === "edit" && batch) {
-      setFormData(toFormData(batch));
+    if (mode === "edit" && batch && !loadingOptions) {
+      setFormData(toFormData(batch, programs));
       setCodeManuallyEdited(true);
     }
-  }, [mode, batch]);
+  }, [mode, batch, loadingOptions, programs]);
 
   const filteredPrograms = useMemo(() => {
     if (!formData.departmentId) return programs;
@@ -203,7 +241,9 @@ export function BatchForm({ mode, batch }: BatchFormProps) {
 
   const handleSessionChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const sessionId = e.target.value;
-    const session = sessions.find((s) => s._id === sessionId || s.sessionId === sessionId);
+    const session = sessions.find(
+      (s) => s._id === sessionId || s.sessionId === sessionId
+    );
     setFormData((prev) => ({
       ...prev,
       admissionSessionId: sessionId,
@@ -467,12 +507,15 @@ export function BatchForm({ mode, batch }: BatchFormProps) {
                     required
                   >
                     <option value="">Select admission session</option>
-                    {sessions.map((session) => (
-                      <option key={session._id} value={session._id}>
-                        {session.name}
-                        {session.isCurrent ? " (current)" : ""}
-                      </option>
-                    ))}
+                    {sessions.map((session) => {
+                      const sessionId = session._id || session.sessionId || "";
+                      return (
+                        <option key={sessionId} value={sessionId}>
+                          {session.name}
+                          {session.isCurrent ? " (current)" : ""}
+                        </option>
+                      );
+                    })}
                   </select>
                 </div>
                 <div className="space-y-2">

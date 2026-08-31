@@ -2,6 +2,44 @@ import api from './axios';
 
 export type StaffStatus = 'Active' | 'On Leave' | 'Resigned' | 'Terminated' | 'Retired';
 export type EmploymentType = 'Full-time' | 'Part-time' | 'Contract' | 'Visiting' | 'Intern';
+export type PayFrequency = 'Monthly' | 'Bi-weekly' | 'Weekly';
+export type Weekday =
+  | 'Monday'
+  | 'Tuesday'
+  | 'Wednesday'
+  | 'Thursday'
+  | 'Friday'
+  | 'Saturday'
+  | 'Sunday';
+
+export const WEEKDAYS: Weekday[] = [
+  'Monday',
+  'Tuesday',
+  'Wednesday',
+  'Thursday',
+  'Friday',
+  'Saturday',
+  'Sunday',
+];
+
+export interface WorkScheduleDay {
+  day: Weekday;
+  isWorkingDay: boolean;
+  startTime: string;
+  endTime: string;
+}
+
+export interface StaffCompensation {
+  basicSalary?: number;
+  allowances?: number;
+  currency?: string;
+  payFrequency?: PayFrequency;
+  bankName?: string;
+  accountTitle?: string;
+  accountNumber?: string;
+  iban?: string;
+  effectiveFrom?: string | null;
+}
 
 export interface StaffEmployment {
   _id?: string;
@@ -44,10 +82,23 @@ export interface TeacherProfile {
 export interface StaffMember {
   _id?: string;
   staffId?: string;
-  userId?: string | { _id: string; firstName?: string; lastName?: string; email?: string; role?: string; primaryRole?: string; status?: string } | null;
+  userId?:
+    | string
+    | {
+        _id: string;
+        firstName?: string;
+        lastName?: string;
+        email?: string;
+        role?: string;
+        primaryRole?: string;
+        status?: string;
+        moduleAccess?: Record<string, boolean>;
+      }
+    | null;
   firstName: string;
   lastName: string;
   email: string;
+  personalEmail?: string;
   phone?: string;
   cnic?: string;
   dateOfBirth?: string | null;
@@ -58,6 +109,10 @@ export interface StaffMember {
     phone?: string;
     relation?: string;
   };
+  joiningDate?: string | null;
+  jobDescription?: string;
+  workSchedule?: WorkScheduleDay[];
+  compensation?: StaffCompensation;
   status: StaffStatus;
   isAcademic?: boolean;
   employments: StaffEmployment[];
@@ -65,6 +120,27 @@ export interface StaffMember {
   notes?: string;
   fullName?: string;
   createdAt?: string;
+}
+
+export interface StaffPayroll {
+  _id?: string;
+  payrollId?: string;
+  staffMember?: string;
+  employeeName?: string;
+  month: string;
+  year: number;
+  baseSalary: number;
+  allowances?: number;
+  bonuses?: number;
+  deductions?: {
+    tax?: number;
+    insurance?: number;
+    other?: number;
+  };
+  netPay?: number;
+  status?: 'Draft' | 'Processed' | 'Paid' | 'Cancelled';
+  paymentDate?: string | null;
+  paymentMethod?: 'Bank Transfer' | 'Cash' | 'Cheque';
 }
 
 export interface StaffStats {
@@ -76,6 +152,14 @@ export interface StaffStats {
 
 export const getStaffDisplayName = (staff: Pick<StaffMember, 'firstName' | 'lastName' | 'fullName'>) =>
   staff.fullName || `${staff.firstName} ${staff.lastName}`.trim();
+
+export const defaultWorkSchedule = (): WorkScheduleDay[] =>
+  WEEKDAYS.map((day) => ({
+    day,
+    isWorkingDay: !['Saturday', 'Sunday'].includes(day),
+    startTime: '09:00',
+    endTime: '17:00',
+  }));
 
 export type StaffPayload = Omit<StaffMember, '_id' | 'staffId' | 'userId' | 'fullName' | 'createdAt'>;
 
@@ -135,9 +219,37 @@ class StaffMemberAPI {
     return res.data?.data as StaffMember;
   }
 
+  async updateLoginAccess(
+    id: string,
+    payload: { primaryRole?: string; moduleAccess?: Record<string, boolean> }
+  ) {
+    const res = await api.put(`/staff/${id}/login-access`, payload);
+    return res.data?.data as StaffMember;
+  }
+
   async disableLogin(id: string) {
     const res = await api.post(`/staff/${id}/disable-login`);
     return res.data?.data as StaffMember;
+  }
+
+  async getPayrolls(id: string) {
+    const res = await api.get(`/staff/${id}/payroll`);
+    return (res.data?.data ?? []) as StaffPayroll[];
+  }
+
+  async createPayroll(id: string, payload: Omit<StaffPayroll, '_id' | 'payrollId' | 'netPay'>) {
+    const res = await api.post(`/staff/${id}/payroll`, payload);
+    return res.data?.data as StaffPayroll;
+  }
+
+  async updatePayroll(id: string, payrollId: string, payload: Partial<StaffPayroll>) {
+    const res = await api.put(`/staff/${id}/payroll/${payrollId}`, payload);
+    return res.data?.data as StaffPayroll;
+  }
+
+  async deletePayroll(id: string, payrollId: string) {
+    const res = await api.delete(`/staff/${id}/payroll/${payrollId}`);
+    return res.data;
   }
 }
 

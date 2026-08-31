@@ -6,6 +6,7 @@ import morgan from 'morgan';
 import connectDB from './config/database.js';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
 import { seedDefaultAdmin } from './scripts/seedAdmin.js';
+import { seedPlatformRoles } from './scripts/seedPlatformRoles.js';
 import apiRoutes from './routes/index.js';
 import './jobs/statusUpdate.js';
 
@@ -35,6 +36,7 @@ async function startServer() {
   try {
     await connectDB();
     await seedDefaultAdmin();
+    await seedPlatformRoles();
 
     app.listen(port, host, () => {
       console.log(`🚀 Server running on http://${host}:${port}`);

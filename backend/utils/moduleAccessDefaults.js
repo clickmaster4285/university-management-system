@@ -90,6 +90,51 @@ export const DEFAULT_MODULE_ACCESS = {
   Student: pick('dashboard'),
 };
 
+export const MODULE_LABELS = {
+  dashboard: 'Dashboard & Overview',
+  governance: 'Governance',
+  academic_catalog: 'Academic Catalog',
+  academic_ops: 'Academic Operations',
+  assessments: 'Assessments',
+  admissions: 'Admissions',
+  students: 'Students',
+  staff: 'Staff',
+  library: 'Library',
+  hostel: 'Hostel',
+  transport: 'Transport',
+  events: 'Events',
+  finance: 'Finance',
+  hr: 'Human Resources',
+  reports: 'Reports',
+  settings: 'Settings',
+};
+
+export const ROLE_DESCRIPTIONS = {
+  'System Admin': 'Full access including settings',
+  'University Admin': 'Registrar / VC office — broad access',
+  'Academic Admin': 'Academic structure, programs, sessions, offerings',
+  'Department Head': 'Department-scoped academics and staff view',
+  Faculty: 'Teaching staff — own offerings and assessments',
+  Examination: 'Exam controller — exams and academic read',
+  Admissions: 'Admissions office — student intake',
+  Finance: 'Accounts / bursar — fees and finance',
+  HR: 'HR office — staff and payroll',
+  'Student Affairs': 'Student welfare and events',
+  Librarian: 'Library module',
+  Transport: 'Transport module',
+  Hostel: 'Hostel module',
+  'Campus Ops': 'Events and campus operations',
+  Student: 'Student portal (future)',
+};
+
+export const serializeModuleAccess = (moduleAccess) => {
+  if (!moduleAccess) return {};
+  if (moduleAccess instanceof Map) {
+    return Object.fromEntries(moduleAccess.entries());
+  }
+  return { ...moduleAccess };
+};
+
 /** Map expanded platform role to legacy JWT role */
 export const mapPrimaryRoleToLegacyRole = (primaryRole) => {
   switch (primaryRole) {
