@@ -58,6 +58,7 @@ export interface SemesterRegistration {
   semesterFeeSnapshot: SemesterFeeSnapshot;
   enrollmentIds?: string[];
   feeId?: string | null;
+  feeId_populated?: { feeId?: string; paymentStatus?: string };
   status: RegistrationStatus;
   registeredAt?: string;
   warnings?: Array<{ code?: string; message: string }>;
@@ -142,6 +143,14 @@ class SemesterRegistrationAPI {
   async drop(id: string) {
     const res = await api.patch(`/semester-registrations/${id}/drop`);
     return res.data?.data as SemesterRegistration;
+  }
+
+  async generateChallan(id: string, payload?: { dueDays?: number; dueDate?: string; notes?: string }) {
+    const res = await api.post(`/semester-registrations/${id}/generate-challan`, payload || {});
+    return res.data?.data as {
+      challan: { _id: string; feeId: string; amount: number; paymentStatus: string };
+      registration: SemesterRegistration;
+    };
   }
 
   async getStats(params?: {

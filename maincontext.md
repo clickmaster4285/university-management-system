@@ -313,13 +313,14 @@ Startup seeds **admin only** (`seedDefaultAdmin`). Legacy `seedCourses` removed.
 
 ### Now (current sprint direction)
 
-- **Fee Phase F5** — Challan integration (`SemesterRegistration` → `Fee` record, partial payment).
-- **Teachers / professors module** — refactor UI, real department refs, profile, teaching assignments via offerings.
+- **People module v1** — see `people-and-permissions-plan.md`.
+- Academic setup complete: sessions/batches full-page, fee packages, offerings, challans (F5 ✅).
 
-### Next (after fees F5 / teachers)
+### Next
 
-- HR ↔ Teacher alignment (single person record or explicit link).
-- Teacher portal basics (my offerings, my students).
+- **People module v1** — `StaffMember`, employments, generous `TeacherProfile`, module-wise permissions (`people-and-permissions-plan.md`).
+- HR ↔ legacy `Employee` migration into unified staff model.
+- Optional login per staff (admin-created only in v1).
 - `per_subject` and `mixed` registration modes on SemesterRegistration.
 
 ### Later (paused / deferred)
@@ -372,7 +373,9 @@ All features must be **easy to use, easy to follow, and easy to understand**.
 /programs, /programs/:id/curriculum, /programs/:id/semester-fees
 /offerings                          ← running classes
 /semester-registrations             ← package-mode semester registration (F4)
+/challans                           ← fee challans from registrations (F5)
 /departments, /programs, /batches, /academic-sessions
+/academic-sessions/create, /academic-sessions/edit/:id
 /teachers, /students
 ```
 
@@ -384,6 +387,7 @@ All features must be **easy to use, easy to follow, and easy to understand**.
 |------|----------|
 | `maincontext.md` | **This file** — vision, status, rules, roadmap |
 | `fee-plan.md` | Sessions, batches, offerings setup order + full fee plan (both modes) |
+| `people-and-permissions-plan.md` | Staff, employments, teacher portfolio, roles & module permissions (design — not built) |
 | `academic-architecture-plan.md` | Deep spec: models, APIs, fee policies, phases |
 | `backend/backendcontext.md` | Models list, API conventions, seed commands |
 | `frontend/frontendcontext.md` | Tech stack, routes, feature modules, UI patterns |

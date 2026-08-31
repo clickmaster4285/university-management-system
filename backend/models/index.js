@@ -37,10 +37,15 @@ export {
   REGISTRATION_MODES,
   REGISTRATION_STATUSES,
 } from "./SemesterRegistration.model.js";
+export {
+  default as RoleAssignment,
+  ROLE_TYPES,
+  SCOPE_TYPES,
+} from "./RoleAssignment.model.js";
 export { default as Settings } from "./Settings.model.js";
+export { default as StaffMember } from "./StaffMember.model.js";
 export { default as Subject } from "./Subject.model.js";
 export { default as SubjectFeeHistory, FEE_TYPES } from "./SubjectFeeHistory.model.js";
 export { default as Student } from "./Student.model.js";
-export { default as Teacher } from "./Teacher.model.js";
 export { default as University } from "./University.model.js";
 export { default as User } from "./User.model.js";

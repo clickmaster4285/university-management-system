@@ -38,6 +38,7 @@ import {
   Users,
 } from "lucide-react";
 import { toast } from "sonner";
+import { Link } from "react-router-dom";
 
 const STUDENT_CATEGORIES: StudentCategory[] = [
   "Regular",
@@ -96,6 +97,7 @@ export default function SemesterRegistrationsPage() {
   const [preview, setPreview] = useState<RegistrationPreview | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [generatingChallanId, setGeneratingChallanId] = useState<string | null>(null);
 
   const [form, setForm] = useState({
     studentId: "",
@@ -133,9 +135,9 @@ export default function SemesterRegistrationsPage() {
         registered: statData.byStatus?.Registered ?? 0,
       });
       setStudents(studentList);
-      setPrograms(programList);
-      setBatches(batchList);
-      setSessions(sessionList);
+      setPrograms(programList?.data || []);
+      setBatches(batchList?.data || []);
+      setSessions(sessionList?.data || []);
     } catch {
       toast.error("Failed to load semester registrations");
     } finally {
@@ -210,18 +212,54 @@ export default function SemesterRegistrationsPage() {
     {
       key: "actions",
       header: "",
-      cell: (row) =>
-        row.status === "Registered" ? (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => handleDrop(row)}
-          >
-            Drop
-          </Button>
-        ) : null,
+      cell: (row) => (
+        <div className="flex gap-1">
+          {!row.feeId && row.status !== "Dropped" && (
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled={generatingChallanId === (row.registrationId || row._id)}
+              onClick={() => handleGenerateChallan(row)}
+            >
+              {generatingChallanId === (row.registrationId || row._id) ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                "Challan"
+              )}
+            </Button>
+          )}
+          {row.feeId && (
+            <Button variant="ghost" size="sm" asChild>
+              <Link to="/challans">View bill</Link>
+            </Button>
+          )}
+          {row.status === "Registered" && !row.feeId && (
+            <Button variant="ghost" size="sm" onClick={() => handleDrop(row)}>
+              Drop
+            </Button>
+          )}
+        </div>
+      ),
     },
   ];
+
+  const handleGenerateChallan = async (row: SemesterRegistration) => {
+    const id = row.registrationId || row._id;
+    if (!id) return;
+    setGeneratingChallanId(id);
+    try {
+      const result = await semesterRegistrationAPI.generateChallan(id, { dueDays: 30 });
+      toast.success(`Challan ${result.challan.feeId} generated`);
+      loadData();
+    } catch (err: unknown) {
+      const message =
+        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+        "Failed to generate challan";
+      toast.error(message);
+    } finally {
+      setGeneratingChallanId(null);
+    }
+  };
 
   const handleDrop = async (row: SemesterRegistration) => {
     const id = row.registrationId || row._id;

@@ -2,13 +2,13 @@
 import { handle } from "../utils/asyncHandler.js";
 
 // Get dashboard statistics
-import { Admission, Attendance, CourseOffering, Department, Employee, Fee, Leave, Student, Teacher } from "../models/index.js";
+import { Admission, Attendance, CourseOffering, Department, Employee, Fee, Leave, Student, StaffMember } from "../models/index.js";
 export const getDashboardStats = handle(async (req, res) => {
   
   // Get counts from all collections
   const [totalStudents, totalTeachers, totalDepartments, totalOfferings, totalAdmissions, totalEmployees] = await Promise.all([
     Student.countDocuments({ isDeleted: { $ne: true } }),
-    Teacher.countDocuments({ isDeleted: { $ne: true } }),
+    StaffMember.countDocuments({ isDeleted: { $ne: true }, isAcademic: true }),
     Department?.countDocuments({ isDeleted: { $ne: true } }) || 0,
     CourseOffering?.countDocuments({ isDeleted: { $ne: true } }) || 0,
     Admission.countDocuments({ isDeleted: { $ne: true } }),
@@ -154,7 +154,7 @@ export const getRecentActivities = handle(async (req, res) => {
 // Get dashboard overview
 export const getDashboardOverview = handle(async (req, res) => {
   const totalStudents = await Student.countDocuments({ isDeleted: { $ne: true } });
-  const totalTeachers = await Teacher.countDocuments({ isDeleted: { $ne: true } });
+  const totalTeachers = await StaffMember.countDocuments({ isDeleted: { $ne: true }, isAcademic: true });
   const totalDepartments = await Department?.countDocuments({ isDeleted: { $ne: true } }) || 0;
   const totalOfferings = await CourseOffering?.countDocuments({ isDeleted: { $ne: true } }) || 0;
   

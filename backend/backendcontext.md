@@ -248,6 +248,13 @@ Mutations require `auth + authorize("Admin")`.
 - `GET /api/students/:id/semester-registrations` — student history
 - `feeId` reserved for F5 challan; status: Registered / Paid / Partial / Dropped
 
+## Fee challans (F5)
+
+- Extended `Fee` model: `semesterRegistrationId`, `source: semester_package`, `challanSnapshot`
+- `POST /api/semester-registrations/:id/generate-challan`
+- `GET /api/challans`, `GET /api/challans/stats`, `GET /api/challans/:id`
+- `POST /api/challans/:id/payments` — partial/full payment; updates registration status
+
 ## Removed legacy (Aug 2026)
 
 - **`Semester` model + `/api/semesters`** — calendar sub-periods inside a session; unused by offerings, batches, or fee packages. Use **program semester** (1–8) on curriculum/offerings instead.

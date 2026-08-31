@@ -36,6 +36,20 @@ const userSchema = new mongoose.Schema({
     enum: ['Admin', 'Teacher', 'Student', 'Staff'],
     default: 'Student'
   },
+  primaryRole: {
+    type: String,
+    default: 'Student',
+  },
+  moduleAccess: {
+    type: Map,
+    of: Boolean,
+    default: undefined,
+  },
+  staffMemberId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'StaffMember',
+    default: null,
+  },
   status: {
     type: String,
     enum: ['Active', 'Inactive', 'Suspended'],

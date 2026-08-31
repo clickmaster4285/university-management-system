@@ -264,7 +264,7 @@ export function SubjectFeePanel({ subject }: SubjectFeePanelProps) {
                 id="feePerCredit"
                 type="number"
                 min={0}
-                step={100}
+                step={1}
                 value={form.feePerCredit}
                 onChange={(e) => setForm((prev) => ({ ...prev, feePerCredit: e.target.value }))}
                 placeholder="e.g. 5000"

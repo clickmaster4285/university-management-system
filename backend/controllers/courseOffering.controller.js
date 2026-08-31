@@ -7,13 +7,18 @@ import {
   Program,
   Batch,
   AcademicSession,
-  Teacher,
+  StaffMember,
   Student,
   ProgramCurriculum,
   OFFERING_STATUSES,
 } from '../models/index.js';
 import { generateOfferingId } from '../utils/generateOfferingId.js';
 import { buildEnrollmentFeeSnapshot } from '../utils/resolveSubjectFee.js';
+import {
+  loadUserScopes,
+  userCanManageAllOfferings,
+  userIsFacultyOnly,
+} from '../utils/userScopes.js';
 
 const notDeleted = { $ne: true };
 
@@ -22,7 +27,7 @@ const offeringPopulate = [
   { path: 'programId', select: 'programId code name' },
   { path: 'batchId', select: 'batchId code year program' },
   { path: 'academicSessionId', select: 'sessionId name year status' },
-  { path: 'instructorId', select: 'teacherId name email' },
+  { path: 'instructorId', select: 'staffId firstName lastName email' },
 ];
 
 async function findOfferingByIdentifier(identifier) {
@@ -60,7 +65,7 @@ async function validateOfferingRefs({ subjectId, programId, batchId, academicSes
   }
 
   if (instructorId) {
-    const instructor = await Teacher.findOne({ _id: instructorId, isDeleted: notDeleted });
+    const instructor = await StaffMember.findOne({ _id: instructorId, isDeleted: notDeleted, isAcademic: true });
     if (!instructor) return { status: 400, message: 'Instructor not found' };
   }
 
@@ -87,6 +92,30 @@ export const getOfferings = handle(async (req, res) => {
   if (subjectId) filter.subjectId = subjectId;
   if (status) filter.status = status;
   if (semester) filter.semester = parseInt(semester, 10);
+
+  const scopes = req.scopes || (await loadUserScopes(req.user));
+  if (!scopes.isGlobal) {
+    if (userIsFacultyOnly(scopes, req.user)) {
+      filter.instructorId = scopes.staffMemberId;
+    } else if (userCanManageAllOfferings(scopes, req.user) && scopes.departmentIds.length > 0) {
+      const [departmentPrograms, departmentSubjects] = await Promise.all([
+        Program.find({ departmentId: { $in: scopes.departmentIds }, isDeleted: notDeleted }).select('_id'),
+        Subject.find({ departmentId: { $in: scopes.departmentIds }, isDeleted: notDeleted }).select('_id'),
+      ]);
+      const scopedProgramIds = departmentPrograms.map((item) => item._id);
+      const scopedSubjectIds = departmentSubjects.map((item) => item._id);
+      filter.$or = [
+        ...(scopedProgramIds.length ? [{ programId: { $in: scopedProgramIds } }] : []),
+        ...(scopedSubjectIds.length ? [{ subjectId: { $in: scopedSubjectIds } }] : []),
+        ...(scopes.staffMemberId ? [{ instructorId: scopes.staffMemberId }] : []),
+      ];
+      if (!filter.$or.length) {
+        filter._id = null;
+      }
+    } else if (scopes.staffMemberId) {
+      filter.instructorId = scopes.staffMemberId;
+    }
+  }
 
   const parsedLimit = parseInt(limit, 10);
   const parsedPage = parseInt(page, 10);
@@ -291,7 +320,7 @@ export const updateOffering = handle(async (req, res) => {
   }
 
   if (instructorId) {
-    const instructor = await Teacher.findOne({ _id: instructorId, isDeleted: notDeleted });
+    const instructor = await StaffMember.findOne({ _id: instructorId, isDeleted: notDeleted, isAcademic: true });
     if (!instructor) {
       return res.status(400).json({ success: false, message: 'Instructor not found' });
     }

@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
 import { handle } from "../utils/asyncHandler.js";
-import { Department, Subject, Teacher, Faculty, Program, Batch } from '../models/index.js';
+import { Department, Subject, StaffMember, Faculty, Program, Batch } from '../models/index.js';
 import { generateDepartmentId } from "../utils/generateDepartmentId.js";
 
 async function findDepartmentByIdentifier(identifier) {
@@ -11,11 +11,11 @@ async function findDepartmentByIdentifier(identifier) {
   return Department.findOne({ $or: query, isDeleted: { $ne: true } });
 }
 
-async function validateTeacherRef(headId) {
+async function validateStaffHeadRef(headId) {
   if (!headId) return null;
-  const head = await Teacher.findOne({ _id: headId, isDeleted: { $ne: true } });
+  const head = await StaffMember.findOne({ _id: headId, isDeleted: { $ne: true } });
   if (!head) {
-    return { message: `Teacher ${headId} not found` };
+    return { message: `Staff member ${headId} not found` };
   }
   return null;
 }
@@ -70,7 +70,7 @@ export const getDepartments = handle(async (req, res) => {
     .sort({ name: 1 })
     .populate('campusId', 'name campusCode')
     .populate('facultyId', 'name code')
-    .populate('headId', 'name email designation')
+    .populate('headId', 'staffId firstName lastName email')
     .select('-__v');
 
   const totalCount = await Department.countDocuments(filter);
@@ -98,7 +98,7 @@ export const getDepartmentById = handle(async (req, res) => {
   const populated = await Department.findById(department._id)
     .populate('campusId', 'name campusCode')
     .populate('facultyId', 'name code')
-    .populate('headId', 'name email designation');
+    .populate('headId', 'staffId firstName lastName email');
 
   res.json({ success: true, data: populated });
 });
@@ -141,7 +141,7 @@ export const createDepartment = handle(async (req, res) => {
     return res.status(duplicate.isDeleted ? 409 : 400).json({ success: false, message });
   }
 
-  const headError = await validateTeacherRef(headId);
+  const headError = await validateStaffHeadRef(headId);
   if (headError) {
     return res.status(400).json({ success: false, message: headError.message });
   }
@@ -173,7 +173,7 @@ export const createDepartment = handle(async (req, res) => {
   const populated = await Department.findById(department._id)
     .populate('campusId', 'name campusCode')
     .populate('facultyId', 'name code')
-    .populate('headId', 'name email designation');
+    .populate('headId', 'staffId firstName lastName email');
 
   res.status(201).json({
     success: true,
@@ -240,7 +240,7 @@ export const updateDepartment = handle(async (req, res) => {
   }
 
   if (headId !== undefined) {
-    const headError = await validateTeacherRef(headId);
+    const headError = await validateStaffHeadRef(headId);
     if (headError) {
       return res.status(400).json({ success: false, message: headError.message });
     }
@@ -269,7 +269,7 @@ export const updateDepartment = handle(async (req, res) => {
   const populated = await Department.findById(department._id)
     .populate('campusId', 'name campusCode')
     .populate('facultyId', 'name code')
-    .populate('headId', 'name email designation');
+    .populate('headId', 'staffId firstName lastName email');
 
   res.json({
     success: true,
@@ -294,7 +294,7 @@ export const deleteDepartment = handle(async (req, res) => {
   const [programCount, subjectCount, teacherCount, batchCount] = await Promise.all([
     Program.countDocuments(deptFilter),
     Subject.countDocuments(deptFilter),
-    Teacher.countDocuments(deptFilter),
+    StaffMember.countDocuments({ 'employments.departmentId': department._id, isDeleted: { $ne: true } }),
     Batch.countDocuments(deptFilter),
   ]);
 

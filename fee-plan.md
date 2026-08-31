@@ -541,7 +541,7 @@ Store `feePolicyApplied` on enrollment and semester registration for audit.
 | POST | `/api/semester-registrations` | ✅ F4 |
 | POST | `/api/semester-registrations/preview` | ✅ F4 |
 | GET | `/api/students/:id/semester-registrations` | ✅ F4 |
-| POST | `/api/semester-registrations/:id/generate-challan` | 📋 F5 |
+| POST | `/api/semester-registrations/:id/generate-challan` | ✅ F5 |
 
 ---
 
@@ -604,11 +604,15 @@ Store `feePolicyApplied` on enrollment and semester registration for audit.
 - Frontend: `/semester-registrations` admin page + `features/semesterRegistration.ts`
 - Challan link deferred to F5 (`feeId` field reserved)
 
-### Fee Phase F5 — Challan integration
+### Fee Phase F5 — Challan integration ✅
 
-- Link `SemesterRegistration` → `Fee` challan
-- Partial payment, installments (FeeStructure already has installment schema)
-- Student fee portal view
+- `Fee` model extended with `semesterRegistrationId`, `source: semester_package`, `challanSnapshot`
+- `POST /api/semester-registrations/:id/generate-challan` — create challan from registration snapshot
+- `GET /api/challans` — list semester package challans
+- `GET /api/challans/stats` — KPI stats
+- `GET /api/challans/:id` — challan detail
+- `POST /api/challans/:id/payments` — record partial or full payment; syncs registration status
+- Frontend: `/challans` page + generate challan from Semester Registrations
 
 ### Fee Phase F6 — Policies & adjustments
 

@@ -3,7 +3,7 @@ import mongoose from 'mongoose';
 import { handle } from "../utils/asyncHandler.js";
 
 // Helper: derive a readable name from an email local-part
-import { Admission, Attendance, Employee, Fee, Leave, Report, Student, Teacher } from '../models/index.js';
+import { Admission, Attendance, Employee, Fee, Leave, Report, Student, StaffMember } from '../models/index.js';
 const deriveNameFromEmail = (email) => {
   if (!email || typeof email !== 'string') return 'N/A';
   const local = email.split('@')[0] || '';
@@ -106,43 +106,51 @@ const generateStudentReport = async (params = {}) => {
 // Helper: Generate teacher report
 const generateTeacherReport = async (params = {}) => {
   const { department, status } = params;
-  
-  const query = {};
-  query.isDeleted = { $ne: true };
-  if (department) query.department = department;
+
+  const query = { isDeleted: { $ne: true }, isAcademic: true };
   if (status) query.status = status;
-  
-  const teachers = await Teacher.find(query).sort({ createdAt: -1 });
-  
+  if (department) {
+    query['employments.departmentId'] = department;
+  }
+
+  const teachers = await StaffMember.find(query).sort({ createdAt: -1 });
+
   const totalTeachers = teachers.length;
-  const activeTeachers = teachers.filter(t => t.status === 'Active').length;
+  const activeTeachers = teachers.filter((t) => t.status === 'Active').length;
   const byDepartment = {};
   const byDesignation = {};
-  
-  teachers.forEach(t => {
-    byDepartment[t.department] = (byDepartment[t.department] || 0) + 1;
-    byDesignation[t.designation] = (byDesignation[t.designation] || 0) + 1;
+
+  teachers.forEach((teacher) => {
+    const primaryEmployment =
+      teacher.employments?.find((item) => item.isPrimary) || teacher.employments?.[0];
+    const departmentLabel = primaryEmployment?.departmentId?.toString() || 'Unassigned';
+    const designation = primaryEmployment?.designation || 'Unassigned';
+    byDepartment[departmentLabel] = (byDepartment[departmentLabel] || 0) + 1;
+    byDesignation[designation] = (byDesignation[designation] || 0) + 1;
   });
-  
+
   return {
-    title: 'Teacher Performance Report',
+    title: 'Academic Staff Report',
     generatedAt: new Date().toISOString(),
     summary: {
       total: totalTeachers,
       active: activeTeachers,
-      inactive: totalTeachers - activeTeachers
+      inactive: totalTeachers - activeTeachers,
     },
     byDepartment,
     byDesignation,
-    teachers: teachers.map(t => ({
-      id: t._id,
-      name: t.name || 'N/A',
-      email: t.email || '',
-      department: t.department || '',
-      designation: t.designation || '',
-      status: t.status || '',
-      rating: t.rating || 0
-    }))
+    teachers: teachers.map((teacher) => {
+      const primaryEmployment =
+        teacher.employments?.find((item) => item.isPrimary) || teacher.employments?.[0];
+      return {
+        id: teacher._id,
+        name: `${teacher.firstName} ${teacher.lastName}`.trim(),
+        email: teacher.email || '',
+        department: primaryEmployment?.departmentId?.toString() || '',
+        designation: primaryEmployment?.designation || '',
+        status: teacher.status || '',
+      };
+    }),
   };
 };
 
@@ -640,7 +648,7 @@ export const getReportStats = handle(async (req, res) => {
 export const getReportCategories = handle(async (req, res) => {
   const categories = [
     { id: 'Student', label: 'Student Enrollment', icon: 'Users' },
-    { id: 'Teacher', label: 'Teacher Performance', icon: 'Users' },
+    { id: 'Teacher', label: 'Academic Staff', icon: 'Users' },
     { id: 'Admission', label: 'Admissions Funnel', icon: 'FileText' },
     { id: 'Attendance', label: 'Attendance Analytics', icon: 'Calendar' },
     { id: 'Finance', label: 'Finance Summary', icon: 'Wallet' },

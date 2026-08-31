@@ -1,5 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Link, useLocation } from "react-router-dom";
+import { useAuth } from "@/lib/auth";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent,
   SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem,
@@ -10,7 +11,7 @@ import {
   LayoutDashboard, GraduationCap, Building2, Layers, BookOpen,
   Users, UserPlus, UserCheck, CalendarCheck, ClipboardList, ClipboardCheck,
   Video, Calendar, School, Library, Home, Bus, QrCode,
-  DollarSign, Wallet, Briefcase, BarChart3, Settings, Bell,
+  DollarSign, Wallet, Briefcase, BarChart3, Settings, Bell, Receipt,
   Sparkles, University, BookMarked, ChevronRight,
 } from "lucide-react";
 
@@ -18,65 +19,66 @@ const sidebarNav = [
   {
     label: "Overview",
     items: [
-      { to: "/", label: "Dashboard", icon: LayoutDashboard, exact: true },
-      { to: "/notifications", label: "Notifications", icon: Bell },
-      { to: "/ai", label: "AI Assistant", icon: Sparkles },
+      { to: "/", label: "Dashboard", icon: LayoutDashboard, exact: true, module: "dashboard" },
+      { to: "/notifications", label: "Notifications", icon: Bell, module: "dashboard" },
+      { to: "/ai", label: "AI Assistant", icon: Sparkles, module: "dashboard" },
     ],
   },
   {
     label: "Academic Structure",
     items: [
-      { to: "/university", label: "University", icon: University },
-      { to: "/campuses", label: "Campuses", icon: School },
-      { to: "/faculties", label: "Faculties", icon: Building2 },
-      { to: "/departments", label: "Departments", icon: Layers },
-      { to: "/subjects", label: "Subjects", icon: BookOpen },
-      { to: "/programs", label: "Programs", icon: BookMarked },
+      { to: "/university", label: "University", icon: University, module: "governance" },
+      { to: "/campuses", label: "Campuses", icon: School, module: "governance" },
+      { to: "/faculties", label: "Faculties", icon: Building2, module: "governance" },
+      { to: "/departments", label: "Departments", icon: Layers, module: "governance" },
+      { to: "/subjects", label: "Subjects", icon: BookOpen, module: "academic_catalog" },
+      { to: "/programs", label: "Programs", icon: BookMarked, module: "academic_catalog" },
     ],
   },
   {
     label: "People",
     items: [
-      { to: "/teachers", label: "Teachers", icon: Users },
-      { to: "/students", label: "Students", icon: GraduationCap },
-      { to: "/admissions", label: "Admissions", icon: UserPlus },
+      { to: "/staff", label: "Staff", icon: Briefcase, module: "staff" },
+      { to: "/students", label: "Students", icon: GraduationCap, module: "students" },
+      { to: "/admissions", label: "Admissions", icon: UserPlus, module: "admissions" },
     ],
   },
   {
     label: "Academics",
     items: [
-      { to: "/offerings", label: "Offerings", icon: BookOpen },
-      { to: "/semester-registrations", label: "Semester Registrations", icon: UserCheck },
-      { to: "/attendance", label: "Attendance", icon: CalendarCheck },
-      { to: "/batches", label: "Batches", icon: Layers },
-      { to: "/academic-sessions", label: "Sessions", icon: Calendar },
+      { to: "/offerings", label: "Offerings", icon: BookOpen, module: "academic_ops" },
+      { to: "/semester-registrations", label: "Semester Registrations", icon: UserCheck, module: "academic_ops" },
+      { to: "/attendance", label: "Attendance", icon: CalendarCheck, module: "assessments" },
+      { to: "/batches", label: "Batches", icon: Layers, module: "academic_ops" },
+      { to: "/academic-sessions", label: "Sessions", icon: Calendar, module: "academic_ops" },
     ],
   },
   {
     label: "Assessments",
     items: [
-      { to: "/assignments", label: "Assignments", icon: ClipboardList },
-      { to: "/exams", label: "Exam Grades", icon: ClipboardCheck },
-      { to: "/online-classes", label: "Online Classes", icon: Video },
+      { to: "/assignments", label: "Assignments", icon: ClipboardList, module: "assessments" },
+      { to: "/exams", label: "Exam Grades", icon: ClipboardCheck, module: "assessments" },
+      { to: "/online-classes", label: "Online Classes", icon: Video, module: "assessments" },
     ],
   },
   {
     label: "Campus Facilities",
     items: [
-      { to: "/library", label: "Library", icon: Library },
-      { to: "/hostel", label: "Hostel", icon: Home },
-      { to: "/transport", label: "Transport", icon: Bus },
-      { to: "/events", label: "Events", icon: Calendar },
-      { to: "/qr", label: "Smart QR", icon: QrCode },
+      { to: "/library", label: "Library", icon: Library, module: "library" },
+      { to: "/hostel", label: "Hostel", icon: Home, module: "hostel" },
+      { to: "/transport", label: "Transport", icon: Bus, module: "transport" },
+      { to: "/events", label: "Events", icon: Calendar, module: "events" },
+      { to: "/qr", label: "Smart QR", icon: QrCode, module: "events" },
     ],
   },
   {
     label: "Finance & Admin",
     items: [
-      { to: "/finance", label: "Finance", icon: Wallet },
-      { to: "/hr", label: "Human Resources", icon: Briefcase },
-      { to: "/reports", label: "Reports", icon: BarChart3 },
-      { to: "/settings", label: "Settings", icon: Settings },
+      { to: "/challans", label: "Challans", icon: Receipt, module: "finance" },
+      { to: "/finance", label: "Finance", icon: Wallet, module: "finance" },
+      { to: "/hr", label: "Human Resources", icon: Briefcase, module: "hr" },
+      { to: "/reports", label: "Reports", icon: BarChart3, module: "reports" },
+      { to: "/settings", label: "Settings", icon: Settings, module: "settings" },
     ],
   },
 ];
@@ -84,10 +86,28 @@ const sidebarNav = [
 export function AppSidebar() {
   const location = useLocation();
   const path = location.pathname;
+  const { user } = useAuth();
+
+  const canAccessModule = (module?: string) => {
+    if (!module) return true;
+    if (!user?.moduleAccess) return true;
+    return user.moduleAccess[module] !== false;
+  };
+
+  const visibleNav = useMemo(
+    () =>
+      sidebarNav
+        .map((section) => ({
+          ...section,
+          items: section.items.filter((item) => canAccessModule(item.module)),
+        }))
+        .filter((section) => section.items.length > 0),
+    [user]
+  );
 
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {
     const initial: Record<string, boolean> = {};
-    for (const section of sidebarNav) {
+    for (const section of visibleNav) {
       const hasActive = section.items.some((it) =>
         it.exact || it.to === "/" ? path === it.to : path === it.to || path.startsWith(it.to + "/")
       );
@@ -100,7 +120,7 @@ export function AppSidebar() {
   useEffect(() => {
     setOpenGroups((prev) => {
       const next = { ...prev };
-      for (const section of sidebarNav) {
+      for (const section of visibleNav) {
         const hasActive = section.items.some((it) =>
           it.exact || it.to === "/" ? path === it.to : path === it.to || path.startsWith(it.to + "/")
         );
@@ -108,7 +128,7 @@ export function AppSidebar() {
       }
       return next;
     });
-  }, [path]);
+  }, [path, visibleNav]);
 
   const toggleGroup = (label: string) => {
     setOpenGroups((prev) => ({ ...prev, [label]: !prev[label] }));
@@ -138,7 +158,7 @@ export function AppSidebar() {
       <Separator />
 
       <SidebarContent className="scrollbar-thin px-2 py-2">
-        {sidebarNav.map((section, idx) => {
+        {visibleNav.map((section, idx) => {
           const isOpen = openGroups[section.label] ?? false;
           return (
             <div key={section.label}>

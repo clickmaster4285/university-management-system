@@ -8,7 +8,7 @@ import {
 import { programAPI, type Program, type ProgramCurriculumItem } from "@/features/programs";
 import { batchAPI, type Batch } from "@/features/batches";
 import { academicSessionAPI, type AcademicSession } from "@/features/academicSession";
-import { teacherAPI, type Teacher } from "@/features/teachers";
+import { staffMemberAPI, getStaffDisplayName, type StaffMember } from "@/features/staffMembers";
 import { studentAPI, type Student } from "@/features/students";
 import { DataTable, type Column } from "@/components/data-table";
 import { KpiCard } from "@/components/dashboard/kpi-card";
@@ -61,7 +61,7 @@ export default function OfferingsPage() {
   const [programs, setPrograms] = useState<Program[]>([]);
   const [batches, setBatches] = useState<Batch[]>([]);
   const [sessions, setSessions] = useState<AcademicSession[]>([]);
-  const [teachers, setTeachers] = useState<Teacher[]>([]);
+  const [instructors, setInstructors] = useState<StaffMember[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
   const [curriculum, setCurriculum] = useState<ProgramCurriculumItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -99,19 +99,20 @@ export default function OfferingsPage() {
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
-      const [offeringRes, programRes, batchRes, sessionRes, teacherRes, statsRes] = await Promise.all([
+      const [offeringRes, programRes, batchRes, sessionRes, instructorRes, statsRes] =
+        await Promise.all([
         offeringAPI.getAll({ limit: 500 }),
         programAPI.getAll({ limit: 100 }),
         batchAPI.getAll(),
         academicSessionAPI.getAll(),
-        teacherAPI.getAll({ limit: 200 }),
+        staffMemberAPI.listAcademic(200),
         offeringAPI.getStats(),
       ]);
       setOfferings(offeringRes?.data || []);
       setPrograms(programRes?.data || []);
       setBatches(batchRes?.data || []);
       setSessions(sessionRes?.data || []);
-      setTeachers(teacherRes || []);
+      setInstructors(instructorRes);
       setStats(statsRes?.data || { total: 0, active: 0, draft: 0, completed: 0, totalEnrollments: 0 });
     } catch {
       toast.error("Failed to load offerings");
@@ -585,9 +586,9 @@ export default function OfferingsPage() {
                 onChange={(e) => setForm((f) => ({ ...f, instructorId: e.target.value }))}
               >
                 <option value="">Unassigned</option>
-                {teachers.map((t) => (
-                  <option key={t._id} value={t._id}>
-                    {t.name}
+                {instructors.map((instructor) => (
+                  <option key={instructor._id} value={instructor._id}>
+                    {getStaffDisplayName(instructor)}
                   </option>
                 ))}
               </select>

@@ -2,6 +2,7 @@ import { Link, useParams } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { ListTree, Receipt } from "lucide-react";
 
+      
 type ProgramProgramNavProps = {
   active: "curriculum" | "semester-fees";
   programCode?: string;

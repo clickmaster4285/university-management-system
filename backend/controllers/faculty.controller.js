@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
 import { handle } from "../utils/asyncHandler.js";
-import { Faculty, Department } from '../models/index.js';
+import { Faculty, Department, StaffMember } from '../models/index.js';
 import { generateFacultyId } from "../utils/generateFacultyId.js";
 
 async function findFacultyByIdentifier(identifier) {
@@ -31,7 +31,7 @@ export const getFaculties = handle(async (req, res) => {
     .limit(parseInt(limit))
     .sort({ name: 1 })
     .populate('campusId', 'name campusCode')
-    .populate('headId', 'name email designation')
+    .populate('headId', 'staffId firstName lastName email')
     .select('-__v');
 
   const totalCount = await Faculty.countDocuments(filter);
@@ -58,7 +58,7 @@ export const getFacultyById = handle(async (req, res) => {
 
   const populated = await Faculty.findById(faculty._id)
     .populate('campusId', 'name campusCode')
-    .populate('headId', 'name email designation');
+    .populate('headId', 'staffId firstName lastName email');
 
   res.json({ success: true, data: populated });
 });
@@ -97,12 +97,11 @@ export const createFaculty = handle(async (req, res) => {
 
   // Verify headId if provided
   if (headId) {
-    const { default: Teacher } = await import('../models/Teacher.model.js');
-    const head = await Teacher.findOne({ _id: headId, isDeleted: { $ne: true } });
+    const head = await StaffMember.findOne({ _id: headId, isDeleted: { $ne: true } });
     if (!head) {
       return res.status(400).json({
         success: false,
-        message: `Teacher ${headId} not found`,
+        message: `Staff member ${headId} not found`,
       });
     }
   }
@@ -128,7 +127,7 @@ export const createFaculty = handle(async (req, res) => {
 
   const populated = await Faculty.findById(faculty._id)
     .populate('campusId', 'name campusCode')
-    .populate('headId', 'name email designation');
+    .populate('headId', 'staffId firstName lastName email');
 
   res.status(201).json({
     success: true,
@@ -195,7 +194,7 @@ export const updateFaculty = handle(async (req, res) => {
 
   const populated = await Faculty.findById(faculty._id)
     .populate('campusId', 'name campusCode')
-    .populate('headId', 'name email designation');
+    .populate('headId', 'staffId firstName lastName email');
 
   res.json({
     success: true,

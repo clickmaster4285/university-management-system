@@ -59,6 +59,25 @@ const feeSchema = new mongoose.Schema({
     type: String,
     trim: true
   },
+  semesterRegistrationId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'SemesterRegistration',
+    default: null,
+  },
+  registrationId: {
+    type: String,
+    trim: true,
+    default: '',
+  },
+  source: {
+    type: String,
+    enum: ['semester_package', 'manual', 'legacy'],
+    default: 'manual',
+  },
+  challanSnapshot: {
+    type: mongoose.Schema.Types.Mixed,
+    default: null,
+  },
 
   // ==================== FEE BREAKDOWN ====================
   feeBreakdown: {
@@ -476,6 +495,8 @@ feeSchema.index({ dueDate: 1 });
 feeSchema.index({ feeStructureId: 1 });
 feeSchema.index({ program: 1 });
 feeSchema.index({ semester: 1 });
+feeSchema.index({ semesterRegistrationId: 1 });
+feeSchema.index({ source: 1 });
 feeSchema.index({ isActive: 1 });
 feeSchema.index({ invoiceNumber: 1 });
 feeSchema.index({ 'installmentDetails.dueDate': 1 });

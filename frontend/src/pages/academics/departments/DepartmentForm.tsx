@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { departmentAPI, type Department } from "@/features/departments";
 import { campusAPI, type Campus } from "@/features/campus";
-import { teacherAPI, type Teacher } from "@/features/teachers";
+import { staffMemberAPI, getStaffDisplayName, type StaffMember } from "@/features/staffMembers";
 import { facultyAPI, type Faculty } from "@/features/faculties";
 
 export type DepartmentFormData = {
@@ -65,7 +65,7 @@ export function DepartmentForm({ mode, department }: DepartmentFormProps) {
   const navigate = useNavigate();
   const [formData, setFormData] = useState<DepartmentFormData>(EMPTY_FORM);
   const [campuses, setCampuses] = useState<Campus[]>([]);
-  const [teachers, setTeachers] = useState<Teacher[]>([]);
+  const [staffMembers, setStaffMembers] = useState<StaffMember[]>([]);
   const [faculties, setFaculties] = useState<Faculty[]>([]);
   const [loadingOptions, setLoadingOptions] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -74,13 +74,13 @@ export function DepartmentForm({ mode, department }: DepartmentFormProps) {
     const fetchOptions = async () => {
       try {
         setLoadingOptions(true);
-        const [campusRes, teacherRes, facRes] = await Promise.all([
+        const [campusRes, staffRes, facRes] = await Promise.all([
           campusAPI.getAll(),
-          teacherAPI.getAll(),
+          staffMemberAPI.listAcademic(),
           facultyAPI.getAll(),
         ]);
         setCampuses(Array.isArray(campusRes?.data) ? campusRes.data : []);
-        setTeachers(Array.isArray(teacherRes) ? teacherRes : teacherRes?.data || []);
+        setStaffMembers(staffRes);
         setFaculties(Array.isArray(facRes?.data) ? facRes.data : []);
       } catch {
         toast.error("Failed to load form options");
@@ -204,7 +204,11 @@ export function DepartmentForm({ mode, department }: DepartmentFormProps) {
                 <select id="headId" name="headId" value={formData.headId} onChange={handleChange}
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
                   <option value="">Select HOD</option>
-                  {teachers.map((t) => <option key={t._id} value={t._id}>{t.name}</option>)}
+                  {staffMembers.map((member) => (
+                    <option key={member._id} value={member._id}>
+                      {getStaffDisplayName(member)}
+                    </option>
+                  ))}
                 </select>
               </div>
             </div>

@@ -40,10 +40,16 @@ const SubjectEditPage = lazy(() => import("./pages/academics/subjects/SubjectEdi
 const FacultiesPage = lazy(() => import("./pages/academics/faculties/FacultiesPage"));
 const OfferingsPage = lazy(() => import("./pages/academics/offerings/OfferingsPage"));
 const AcademicSessionsPage = lazy(() => import("./pages/academics/sessions/AcademicSessionsPage"));
+const SessionCreatePage = lazy(() => import("./pages/academics/sessions/SessionCreatePage"));
+const SessionEditPage = lazy(() => import("./pages/academics/sessions/SessionEditPage"));
 const BatchesPage = lazy(() => import("./pages/academics/batches/BatchesPage"));
+const BatchCreatePage = lazy(() => import("./pages/academics/batches/BatchCreatePage"));
+const BatchEditPage = lazy(() => import("./pages/academics/batches/BatchEditPage"));
 const SemesterRegistrationsPage = lazy(() => import("./pages/academics/registrations/SemesterRegistrationsPage"));
 const StudentsPage = lazy(() => import("./pages/academics/students/StudentsPage"));
-const TeachersPage = lazy(() => import("./pages/academics/teachers/TeachersPage"));
+const StaffPage = lazy(() => import("./pages/people/staff/StaffPage"));
+const StaffCreatePage = lazy(() => import("./pages/people/staff/StaffCreatePage"));
+const StaffEditPage = lazy(() => import("./pages/people/staff/StaffEditPage"));
 const AttendancePage = lazy(() => import("./pages/academics/attendance/AttendancePage"));
 const AssignmentsPage = lazy(() => import("./pages/academics/assignments/AssignmentsPage"));
 const ExamsPage = lazy(() => import("./pages/academics/exams/ExamsPage"));
@@ -58,6 +64,7 @@ const SmartQrPage = lazy(() => import("./pages/campus/qr/SmartQrPage"));
 
 // Operations & Administration
 const FinancePage = lazy(() => import("./pages/operations/finance/FinancePage"));
+const ChallansPage = lazy(() => import("./pages/operations/challans/ChallansPage"));
 const HrPage = lazy(() => import("./pages/operations/hr/HrPage"));
 const ReportsPage = lazy(() => import("./pages/operations/reports/ReportsPage"));
 const SettingsPage = lazy(() => import("./pages/operations/settings/SettingsPage"));
@@ -117,10 +124,16 @@ export const App = () => (
                 <Route path="faculties" element={<FacultiesPage />} />
                 <Route path="offerings" element={<OfferingsPage />} />
                 <Route path="academic-sessions" element={<AcademicSessionsPage />} />
+                <Route path="academic-sessions/create" element={<SessionCreatePage />} />
+                <Route path="academic-sessions/edit/:id" element={<SessionEditPage />} />
                 <Route path="batches" element={<BatchesPage />} />
+                <Route path="batches/create" element={<BatchCreatePage />} />
+                <Route path="batches/edit/:id" element={<BatchEditPage />} />
                 <Route path="semester-registrations" element={<SemesterRegistrationsPage />} />
                 <Route path="students" element={<StudentsPage />} />
-                <Route path="teachers" element={<TeachersPage />} />
+                <Route path="staff" element={<StaffPage />} />
+                <Route path="staff/create" element={<StaffCreatePage />} />
+                <Route path="staff/edit/:id" element={<StaffEditPage />} />
                 <Route path="attendance" element={<AttendancePage />} />
                 <Route path="assignments" element={<AssignmentsPage />} />
                 <Route path="exams" element={<ExamsPage />} />
@@ -135,6 +148,7 @@ export const App = () => (
 
                 {/* Operations */}
                 <Route path="finance" element={<FinancePage />} />
+                <Route path="challans" element={<ChallansPage />} />
                 <Route path="hr" element={<HrPage />} />
                 <Route path="reports" element={<ReportsPage />} />
                 <Route path="settings" element={<SettingsPage />} />

@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { facultyAPI, type Faculty } from "@/features/faculties";
 import { campusAPI, type Campus } from "@/features/campus";
-import { teacherAPI, type Teacher } from "@/features/teachers";
+import { staffMemberAPI, getStaffDisplayName, type StaffMember } from "@/features/staffMembers";
 import { DataTable, type Column } from "@/components/data-table";
 import { KpiCard } from "@/components/dashboard/kpi-card";
 import { Badge } from "@/components/ui/badge";
@@ -52,7 +52,7 @@ const buildPayload = (form: FacultyFormData): Partial<Faculty> => ({
 export default function FacultiesPage() {
   const [faculties, setFaculties] = useState<Faculty[]>([]);
   const [campuses, setCampuses] = useState<Campus[]>([]);
-  const [teachers, setTeachers] = useState<Teacher[]>([]);
+  const [staffMembers, setStaffMembers] = useState<StaffMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -65,14 +65,14 @@ export default function FacultiesPage() {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [facRes, campRes, teachRes] = await Promise.all([
+      const [facRes, campRes, staffRes] = await Promise.all([
         facultyAPI.getAll(),
         campusAPI.getAll(),
-        teacherAPI.getAll()
+        staffMemberAPI.listAcademic(),
       ]);
       setFaculties(facRes?.data || []);
       setCampuses(Array.isArray(campRes?.data) ? campRes.data : []);
-      setTeachers(Array.isArray(teachRes) ? teachRes : teachRes?.data || []);
+      setStaffMembers(staffRes);
       const facStats = await facultyAPI.getStats();
       setStats(facStats?.data || { total: 0, active: 0, inactive: 0 });
     } catch (err) {
@@ -109,9 +109,15 @@ export default function FacultiesPage() {
 
   const getHeadName = (head: Faculty["headId"]) => {
     if (!head) return "—";
-    if (typeof head === "object") return head.name;
-    const found = teachers.find(t => t._id === head);
-    return found?.name || head;
+    if (typeof head === "object") {
+      return getStaffDisplayName({
+        firstName: (head as { firstName?: string }).firstName || "",
+        lastName: (head as { lastName?: string }).lastName || "",
+        fullName: (head as { name?: string }).name,
+      });
+    }
+    const found = staffMembers.find((member) => member._id === head);
+    return found ? getStaffDisplayName(found) : head;
   };
 
   const openCreate = () => {
@@ -321,8 +327,12 @@ export default function FacultiesPage() {
                     value={form.headId}
                     onChange={(e) => setForm({ ...form, headId: e.target.value })}
                   >
-                    <option value="">Select teacher</option>
-                    {teachers.map(t => <option key={t._id} value={t._id}>{t.name}</option>)}
+                    <option value="">Select staff head</option>
+                    {staffMembers.map((member) => (
+                      <option key={member._id} value={member._id}>
+                        {getStaffDisplayName(member)}
+                      </option>
+                    ))}
                   </select>
                 </div>
               </div>

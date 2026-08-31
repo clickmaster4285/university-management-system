@@ -99,7 +99,10 @@ Routes sit under `<AppLayout />` (which handles auth + sidebar + topbar + render
 /offerings          → OfferingsPage (Phase 5 — course offerings + enrollments)
 /courses            → CoursesPage (legacy — remove in Phase 8)
 /academic-sessions  → AcademicSessionsPage
+/academic-sessions/create → SessionCreatePage
+/academic-sessions/edit/:id → SessionEditPage
 /batches            → BatchesPage
+/challans           → ChallansPage (F5)
 /students           → StudentsPage
 /teachers           → TeachersPage
 /attendance         → AttendancePage
@@ -139,7 +142,8 @@ Key barrel export: `features/index.ts` re-exports everything.
 - **`features/subjects.ts`** — `Subject` interface + CRUD + stats + fee history API (Phase 1–3)
 - **`features/offerings.ts`** — `CourseOffering`, `Enrollment`, `FeeSnapshot` + CRUD/enroll API (Phase 5)
 - **`features/programSemesterFee.ts`** — `ProgramSemesterFeeSchedule` + generate/activate/refresh API (F2/F3)
-- **`features/semesterRegistration.ts`** — `SemesterRegistration` + preview/create/drop API (F4)
+- **`features/semesterRegistration.ts`** — `SemesterRegistration` + preview/create/drop/generateChallan API (F4/F5)
+- **`features/feeChallan.ts`** — challan list, stats, record payment (F5)
 - **`SubjectEditPage`** — tabs: Details (`SubjectForm`) + Fee History (`SubjectFeePanel`, grouped by program scope)
 - **`features/programs.ts`** — Program CRUD + stats + `getCurriculum` / `updateCurriculum`
 - **`features/faculties.ts`** — `Faculty` interface + `FacultyAPI` class with `getAll`, `getById`, `getStats`, `create`, `update`, `delete`.

@@ -8,12 +8,14 @@ import {
   ProgramSemesterFeeSchedule,
   CourseOffering,
   Enrollment,
+  Fee,
   SemesterRegistration,
   REGISTRATION_MODES,
   REGISTRATION_STATUSES,
 } from '../models/index.js';
 import { generateRegistrationId } from '../utils/generateRegistrationId.js';
 import { buildSemesterFeeSnapshotFromSchedule } from '../utils/buildSemesterRegistrationSnapshot.js';
+import { buildChallanFromRegistration } from '../utils/buildChallanFromRegistration.js';
 
 const notDeleted = { $ne: true };
 
@@ -433,6 +435,60 @@ export const createSemesterRegistration = handle(async (req, res) => {
     success: true,
     data: populated,
     warnings,
+  });
+});
+
+export const generateSemesterRegistrationChallan = handle(async (req, res) => {
+  const found = await findByIdentifier(SemesterRegistration, req.params.id, 'registrationId');
+  if (!found) {
+    return res.status(404).json({ success: false, message: 'Semester registration not found' });
+  }
+
+  if (found.status === 'Dropped') {
+    return res.status(400).json({ success: false, message: 'Cannot generate challan for a dropped registration' });
+  }
+
+  if (found.feeId) {
+    const existing = await Fee.findById(found.feeId);
+    if (existing && !existing.isDeleted) {
+      return res.status(409).json({
+        success: false,
+        message: 'Challan already exists for this registration',
+        data: { feeId: existing.feeId, _id: existing._id },
+      });
+    }
+  }
+
+  const registration = await populateRegistration(SemesterRegistration.findById(found._id));
+  const student = registration.studentId;
+  if (!student || !student._id) {
+    return res.status(400).json({ success: false, message: 'Student not found for registration' });
+  }
+
+  const { dueDate, dueDays, notes } = req.body || {};
+  const challanData = buildChallanFromRegistration(registration, student, { dueDate, dueDays, notes });
+  challanData.createdBy = req.user?._id || null;
+
+  const fee = await Fee.create(challanData);
+
+  registration.feeId = fee._id;
+  if (registration.status === 'Registered') {
+    registration.status = 'Registered';
+  }
+  await registration.save();
+
+  const populatedFee = await Fee.findById(fee._id).populate(
+    'semesterRegistrationId',
+    'registrationId programSemester status'
+  );
+
+  res.status(201).json({
+    success: true,
+    data: {
+      challan: populatedFee,
+      registration: await populateRegistration(SemesterRegistration.findById(registration._id)),
+    },
+    message: 'Challan generated successfully',
   });
 });
 

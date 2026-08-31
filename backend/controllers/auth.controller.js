@@ -4,6 +4,25 @@ import { JWT_SECRET, JWT_EXPIRES_IN } from '../config/constants.js';
 import { handle } from '../utils/asyncHandler.js';
 
 import { University, User } from '../models/index.js';
+import { resolveModuleAccess } from '../utils/moduleAccessDefaults.js';
+
+const serializeModuleAccess = (user) => {
+  if (user.moduleAccess && user.moduleAccess.size > 0) {
+    return Object.fromEntries(user.moduleAccess.entries());
+  }
+  const role = user.primaryRole || user.role;
+  if (role === 'Admin' || role === 'System Admin' || role === 'University Admin') {
+    return resolveModuleAccess('System Admin');
+  }
+  if (role === 'Teacher' || role === 'Faculty') {
+    return resolveModuleAccess('Faculty');
+  }
+  if (role === 'Staff' || role === 'HR') {
+    return resolveModuleAccess('HR');
+  }
+  return resolveModuleAccess('Student');
+};
+
 const buildUser = (user) => ({
   _id: user._id.toString(),
   name: `${user.firstName} ${user.lastName}`,
@@ -11,8 +30,11 @@ const buildUser = (user) => ({
   lastName: user.lastName,
   email: user.email,
   role: user.role,
+  primaryRole: user.primaryRole || user.role,
+  moduleAccess: serializeModuleAccess(user),
   phoneNumber: user.phoneNumber || '',
   universityId: user.universityId || null,
+  staffMemberId: user.staffMemberId || null,
 });
 
 export const login = handle(async (req, res) => {

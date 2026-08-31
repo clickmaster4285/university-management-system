@@ -16,6 +16,9 @@ export interface User {
   location?: string;
   profileImage?: string;
   role?: string;
+  primaryRole?: string;
+  moduleAccess?: Record<string, boolean>;
+  staffMemberId?: string | null;
   universityId?: string | null;
   createdAt?: string;
   updatedAt?: string;

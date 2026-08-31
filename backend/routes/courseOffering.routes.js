@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { auth, authorize } from '../middleware/auth.js';
+import { attachUserScopes } from '../middleware/scopes.js';
 import {
   getOfferings,
   getOfferingStats,
@@ -16,7 +17,7 @@ const router = Router();
 
 router.use(auth);
 
-router.get('/', getOfferings);
+router.get('/', attachUserScopes, getOfferings);
 router.get('/stats', getOfferingStats);
 router.post('/', authorize('Admin'), createOffering);
 router.get('/:id', getOfferingById);

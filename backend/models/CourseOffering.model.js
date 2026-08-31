@@ -45,7 +45,7 @@ const courseOfferingSchema = new mongoose.Schema({
   },
   instructorId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Teacher',
+    ref: 'StaffMember',
     default: null,
   },
   schedule: scheduleSchema,
