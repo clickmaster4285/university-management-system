@@ -88,29 +88,4 @@ export interface PermissionAuditLog {
 
 export const platformRoleAPI = new PlatformRoleAPI();
 
-export const MODULE_GROUPS = [
-  {
-    label: 'Overview',
-    keys: ['dashboard'],
-  },
-  {
-    label: 'Governance',
-    keys: ['governance'],
-  },
-  {
-    label: 'Academics',
-    keys: ['academic_catalog', 'academic_ops', 'assessments'],
-  },
-  {
-    label: 'People',
-    keys: ['admissions', 'students', 'staff'],
-  },
-  {
-    label: 'Campus',
-    keys: ['library', 'hostel', 'transport', 'events'],
-  },
-  {
-    label: 'Operations',
-    keys: ['finance', 'hr', 'reports', 'settings'],
-  },
-];
+export { ROLE_PERMISSION_SECTIONS, MODULE_GROUPS } from '@/lib/appRoutes';

@@ -103,7 +103,6 @@ const studentApplicationSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-studentApplicationSchema.index({ applicationId: 1 });
 studentApplicationSchema.index({ cnic: 1 });
 studentApplicationSchema.index({ email: 1 });
 studentApplicationSchema.index({ status: 1 });

@@ -31,14 +31,17 @@ const userSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'University'
   },
+  /** Legacy coarse bucket for JWT + authorize() — derived from platformRole when assigned */
   role: {
     type: String,
     enum: ['Admin', 'Teacher', 'Student', 'Staff'],
     default: 'Student'
   },
-  primaryRole: {
-    type: String,
-    default: 'Student',
+  /** Single link to Roles & Permissions template */
+  platformRole: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'PlatformRole',
+    default: null,
   },
   moduleAccess: {
     type: Map,
@@ -71,6 +74,8 @@ const userSchema = new mongoose.Schema({
 }, {
   timestamps: true
 });
+
+userSchema.index({ platformRole: 1 });
 
 const User = mongoose.models.User || mongoose.model('User', userSchema);
 export default User;

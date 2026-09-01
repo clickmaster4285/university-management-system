@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Building2, Users, BookOpen, X, Save,
-  Loader2, Pencil, Trash2 } from "lucide-react";
+  Loader2, Pencil, Trash2, Eye } from "lucide-react";
 import { toast } from "sonner";
 
 type FacultyFormData = {
@@ -61,6 +61,7 @@ export default function FacultiesPage() {
   const [stats, setStats] = useState({ total: 0, active: 0, inactive: 0 });
   const [campusFilter, setCampusFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [viewingFaculty, setViewingFaculty] = useState<Faculty | null>(null);
 
   const fetchData = async () => {
     try {
@@ -210,6 +211,15 @@ export default function FacultiesPage() {
             type="button"
             size="sm"
             variant="ghost"
+            onClick={() => setViewingFaculty(f)}
+            title="View faculty"
+          >
+            <Eye className="h-4 w-4" />
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
             onClick={(e) => { e.stopPropagation(); openEdit(f); }}
             title="Edit faculty"
           >
@@ -285,6 +295,61 @@ export default function FacultiesPage() {
             </div>
           )}
         />
+      )}
+
+      {viewingFaculty && (
+        <div
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+          onClick={(e) => { if (e.target === e.currentTarget) setViewingFaculty(null); }}
+        >
+          <div className="bg-background rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto border">
+            <div className="flex items-center justify-between p-5 border-b">
+              <div>
+                <h2 className="text-xl font-bold">{viewingFaculty.name}</h2>
+                <p className="text-sm text-muted-foreground font-mono">{viewingFaculty.code}</p>
+              </div>
+              <Button variant="ghost" size="sm" onClick={() => setViewingFaculty(null)}>Close</Button>
+            </div>
+            <div className="p-5 space-y-4 text-sm">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-muted-foreground">Campus</p>
+                  <p className="font-medium">{getCampusName(viewingFaculty.campusId)}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Head</p>
+                  <p className="font-medium">{getHeadName(viewingFaculty.headId)}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Email</p>
+                  <p className="font-medium">{viewingFaculty.email || "—"}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Phone</p>
+                  <p className="font-medium">{viewingFaculty.phone || "—"}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Status</p>
+                  <Badge className="mt-1" variant={viewingFaculty.status === "Active" ? "default" : "secondary"}>
+                    {viewingFaculty.status || "Active"}
+                  </Badge>
+                </div>
+              </div>
+              {viewingFaculty.description && (
+                <div>
+                  <p className="text-muted-foreground">Description</p>
+                  <p className="mt-1">{viewingFaculty.description}</p>
+                </div>
+              )}
+              <div className="flex gap-2 pt-2">
+                <Button variant="outline" onClick={() => setViewingFaculty(null)}>Close</Button>
+                <Button onClick={() => { openEdit(viewingFaculty); setViewingFaculty(null); }}>
+                  <Pencil className="h-4 w-4 mr-2" /> Edit faculty
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
       {showForm && createPortal(

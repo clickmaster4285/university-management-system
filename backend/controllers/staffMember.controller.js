@@ -10,10 +10,11 @@ import {
 } from '../utils/moduleAccessDefaults.js';
 import { getModuleAccessForRole } from '../utils/platformRoleAccess.js';
 import { logPermissionAudit } from '../utils/permissionAudit.js';
-
-async function findPlatformRoleByName(name) {
-  return PlatformRole.findOne({ name, isDeleted: notDeleted });
-}
+import {
+  findPlatformRoleByName,
+  getPlatformRoleName,
+  PLATFORM_ROLE_POPULATE,
+} from '../utils/userPlatformRole.js';
 
 const notDeleted = { $ne: true };
 
@@ -36,7 +37,11 @@ const DEFAULT_WORK_SCHEDULE = WEEKDAYS.map((day) => ({
 
 function populateStaff(query) {
   return query
-    .populate('userId', 'firstName lastName email role primaryRole status moduleAccess')
+    .populate({
+      path: 'userId',
+      select: 'firstName lastName email role status moduleAccess',
+      populate: PLATFORM_ROLE_POPULATE,
+    })
     .populate('employments.departmentId', 'name code')
     .populate('employments.campusId', 'name campusCode');
 }
@@ -407,7 +412,7 @@ export const enableStaffLogin = handle(async (req, res) => {
     phoneNumber: found.phone || '',
     password: hashedPassword,
     role: legacyRole,
-    primaryRole,
+    platformRole: platformRole._id,
     moduleAccess: access,
     staffMemberId: found._id,
     status: 'Active',
@@ -451,12 +456,13 @@ export const updateStaffLoginAccess = handle(async (req, res) => {
     if (!platformRole) {
       return res.status(400).json({ success: false, message: 'Invalid primary role' });
     }
-    userUpdates.primaryRole = primaryRole;
+    userUpdates.platformRole = platformRole._id;
     userUpdates.role = mapPrimaryRoleToLegacyRole(primaryRole);
     userUpdates.moduleAccess = await getModuleAccessForRole(primaryRole, moduleAccess || {});
   } else if (moduleAccess && typeof moduleAccess === 'object') {
-    const currentRole = (await User.findById(found.userId))?.primaryRole || 'Faculty';
-    userUpdates.moduleAccess = await getModuleAccessForRole(currentRole, moduleAccess);
+    const currentUser = await User.findById(found.userId).populate(PLATFORM_ROLE_POPULATE);
+    const currentRoleName = getPlatformRoleName(currentUser) || 'Faculty';
+    userUpdates.moduleAccess = await getModuleAccessForRole(currentRoleName, moduleAccess);
   }
 
   if (Object.keys(userUpdates).length === 0) {

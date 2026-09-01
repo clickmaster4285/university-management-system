@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/lib/auth";
-import { hasModuleAccess } from "@/lib/routeModules";
+import { hasModuleAccess, SIDEBAR_NAV } from "@/lib/appRoutes";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent,
   SidebarMenu, SidebarMenuButton, SidebarMenuItem,
@@ -17,110 +17,55 @@ import {
   CalendarDays,
 } from "lucide-react";
 
-type NavItem = {
-  to: string;
-  label: string;
-  icon: React.ComponentType<{ className?: string }>;
-  module: string;
-  exact?: boolean;
+const SIDEBAR_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
+  "/dashboard": LayoutDashboard,
+  "/notifications": Bell,
+  "/ai": Sparkles,
+  "/university": University,
+  "/campuses": School,
+  "/faculties": Building2,
+  "/departments": Layers,
+  "/programs": BookMarked,
+  "/subjects": BookOpen,
+  "/staff": Briefcase,
+  "/workforce": Clock,
+  "/workforce/leaves": CalendarDays,
+  "/workforce/attendance": CalendarCheck,
+  "/workforce/recruitment": Briefcase,
+  "/access": Shield,
+  "/role-assignments": UserCog,
+  "/admissions": UserPlus,
+  "/students": GraduationCap,
+  "/academic-sessions": Calendar,
+  "/batches": Layers,
+  "/offerings": BookOpen,
+  "/semester-registrations": UserCheck,
+  "/attendance": CalendarCheck,
+  "/assignments": ClipboardList,
+  "/exams": ClipboardCheck,
+  "/online-classes": Video,
+  "/library": Library,
+  "/hostel": Home,
+  "/transport": Bus,
+  "/events": Calendar,
+  "/qr": QrCode,
+  "/payroll": DollarSign,
+  "/challans": Receipt,
+  "/finance": Wallet,
+  "/reports": BarChart3,
+  "/settings": Settings,
+  "/settings/profile": UserCog,
+  "/settings/roles": Shield,
+  "/settings/permission-audit": Shield,
 };
 
-type NavSection = {
-  label: string;
-  items: NavItem[];
-};
-
-const sidebarNav: NavSection[] = [
-  {
-    label: "Overview",
-    items: [
-      { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard, exact: true, module: "dashboard" },
-      { to: "/notifications", label: "Notifications", icon: Bell, module: "dashboard" },
-      { to: "/ai", label: "AI Assistant", icon: Sparkles, module: "dashboard" },
-    ],
-  },
-  {
-    label: "Governance",
-    items: [
-      { to: "/university", label: "University", icon: University, module: "governance" },
-      { to: "/campuses", label: "Campuses", icon: School, module: "governance" },
-      { to: "/faculties", label: "Faculties", icon: Building2, module: "governance" },
-      { to: "/departments", label: "Departments", icon: Layers, module: "governance" },
-    ],
-  },
-  {
-    label: "Academic Catalog",
-    items: [
-      { to: "/programs", label: "Programs", icon: BookMarked, module: "academic_catalog" },
-      { to: "/subjects", label: "Subjects", icon: BookOpen, module: "academic_catalog" },
-    ],
-  },
-  {
-    label: "HR & Staff",
-    items: [
-      { to: "/staff", label: "Staff Directory", icon: Briefcase, module: "staff" },
-      { to: "/workforce", label: "Workforce", icon: Clock, module: "hr" },
-      { to: "/workforce/leaves", label: "Leave Management", icon: CalendarDays, module: "hr" },
-      { to: "/workforce/attendance", label: "Staff Attendance", icon: CalendarCheck, module: "hr" },
-      { to: "/workforce/recruitment", label: "Recruitment", icon: Briefcase, module: "hr" },
-      { to: "/access", label: "Portal Access", icon: Shield, module: "staff" },
-      { to: "/role-assignments", label: "Role Assignments", icon: UserCog, module: "academic_ops" },
-    ],
-  },
-  {
-    label: "Students",
-    items: [
-      { to: "/admissions", label: "Applications", icon: UserPlus, module: "admissions" },
-      { to: "/students", label: "Student Directory", icon: GraduationCap, module: "students" },
-    ],
-  },
-  {
-    label: "Academic Operations",
-    items: [
-      { to: "/academic-sessions", label: "Sessions", icon: Calendar, module: "academic_ops" },
-      { to: "/batches", label: "Batches", icon: Layers, module: "academic_ops" },
-      { to: "/offerings", label: "Offerings", icon: BookOpen, module: "academic_ops" },
-      { to: "/semester-registrations", label: "Registrations", icon: UserCheck, module: "academic_ops" },
-    ],
-  },
-  {
-    label: "Assessments",
-    items: [
-      { to: "/attendance", label: "Attendance", icon: CalendarCheck, module: "assessments" },
-      { to: "/assignments", label: "Assignments", icon: ClipboardList, module: "assessments" },
-      { to: "/exams", label: "Exam Grades", icon: ClipboardCheck, module: "assessments" },
-      { to: "/online-classes", label: "Online Classes", icon: Video, module: "assessments" },
-    ],
-  },
-  {
-    label: "Campus Services",
-    items: [
-      { to: "/library", label: "Library", icon: Library, module: "library" },
-      { to: "/hostel", label: "Hostel", icon: Home, module: "hostel" },
-      { to: "/transport", label: "Transport", icon: Bus, module: "transport" },
-      { to: "/events", label: "Events", icon: Calendar, module: "events" },
-      { to: "/qr", label: "Smart QR", icon: QrCode, module: "events" },
-    ],
-  },
-  {
-    label: "Finance",
-    items: [
-      { to: "/payroll", label: "Payroll", icon: DollarSign, module: "finance" },
-      { to: "/challans", label: "Challans", icon: Receipt, module: "finance" },
-      { to: "/finance", label: "Finance", icon: Wallet, module: "finance" },
-      { to: "/reports", label: "Reports", icon: BarChart3, module: "reports" },
-    ],
-  },
-  {
-    label: "Settings & Configuration",
-    items: [
-      { to: "/settings", label: "Configuration", icon: Settings, module: "settings", exact: true },
-      { to: "/settings/profile", label: "Admin Profile", icon: UserCog, module: "settings" },
-      { to: "/settings/roles", label: "Roles & Permissions", icon: Shield, module: "settings" },
-      { to: "/settings/permission-audit", label: "Permission Audit", icon: Shield, module: "settings" },
-    ],
-  },
-];
+const sidebarNav = SIDEBAR_NAV.map((section) => ({
+  ...section,
+  items: section.items.map((item) => ({
+    ...item,
+    icon: SIDEBAR_ICONS[item.to] || Settings,
+  })),
+}));
 
 export function AppSidebar() {
   const location = useLocation();
@@ -129,7 +74,7 @@ export function AppSidebar() {
 
   const canAccessModule = (module?: string) => {
     if (!module) return true;
-    return hasModuleAccess(user?.moduleAccess, module);
+    return hasModuleAccess(user?.moduleAccess, module, user?.primaryRole);
   };
 
   const visibleNav = useMemo(

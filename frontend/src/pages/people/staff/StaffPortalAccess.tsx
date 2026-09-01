@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   platformRoleAPI,
   MODULE_GROUPS,
+  ROLE_PERMISSION_SECTIONS,
   type PlatformRole,
 } from "@/features/platformRoles";
 import { staffMemberAPI, type StaffMember } from "@/features/staffMembers";
@@ -209,22 +210,22 @@ export function StaffPortalAccess({ staff, onUpdated }: StaffPortalAccessProps) 
           </div>
         )}
         <div className="space-y-4 border rounded-lg p-4">
-          {MODULE_GROUPS.map((group) => (
-            <div key={group.label}>
+          {ROLE_PERMISSION_SECTIONS.map((section) => (
+            <div key={section.label}>
               <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">
-                {group.label}
+                {section.label}
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {group.keys.map((key) => (
+                {section.items.map((item) => (
                   <label
-                    key={key}
+                    key={item.key}
                     className="flex items-center justify-between gap-3 rounded-md border px-3 py-2"
                   >
-                    <span className="text-sm">{moduleLabels[key] || key}</span>
+                    <span className="text-sm">{item.label}</span>
                     <Switch
-                      checked={Boolean(moduleAccess[key])}
+                      checked={Boolean(moduleAccess[item.moduleKey])}
                       onCheckedChange={(checked) =>
-                        setModuleAccess((prev) => ({ ...prev, [key]: checked }))
+                        setModuleAccess((prev) => ({ ...prev, [item.moduleKey]: checked }))
                       }
                     />
                   </label>

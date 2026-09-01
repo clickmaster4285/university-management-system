@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Loader2, Pencil, Shield, UserCheck } from "lucide-react";
+import { Eye, Loader2, Pencil, Shield, UserCheck } from "lucide-react";
 import { toast } from "sonner";
 import { DataTable, type Column } from "@/components/data-table";
 import { KpiCard } from "@/components/dashboard/kpi-card";
@@ -72,13 +72,24 @@ export default function AccessPage() {
       key: "actions",
       header: "Actions",
       cell: (row) => (
-        <Button
-          size="sm"
-          variant="ghost"
-          onClick={() => navigate(`/access/${getStaffRecordId(row)}`)}
-        >
-          <Pencil className="h-4 w-4" />
-        </Button>
+        <div className="flex gap-1">
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => navigate(`/access/${getStaffRecordId(row)}`)}
+            title="View"
+          >
+            <Eye className="h-4 w-4" />
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => navigate(`/access/${getStaffRecordId(row)}`)}
+            title="Manage access"
+          >
+            <Pencil className="h-4 w-4" />
+          </Button>
+        </div>
       ),
     },
   ];

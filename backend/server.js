@@ -10,6 +10,7 @@ import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
 import { seedDefaultAdmin } from './scripts/seedAdmin.js';
 import { seedPlatformRoles } from './scripts/seedPlatformRoles.js';
 import { seedTestRoleUsers } from './scripts/seedTestRoleUsers.js';
+import { migrateUsersToPlatformRoleRef } from './utils/userPlatformRole.js';
 import { UPLOAD_ROOT } from './utils/uploadPaths.js';
 import apiRoutes from './routes/index.js';
 import './jobs/statusUpdate.js';
@@ -43,8 +44,9 @@ app.use(errorHandler);
 async function startServer() {
   try {
     await connectDB();
-    await seedDefaultAdmin();
     await seedPlatformRoles();
+    await migrateUsersToPlatformRoleRef();
+    await seedDefaultAdmin();
     await seedTestRoleUsers();
 
     app.listen(port, host, () => {

@@ -1,6 +1,6 @@
 import dotenv from 'dotenv';
 import bcrypt from 'bcryptjs';
-import { User } from '../models/index.js';
+import { User, PlatformRole } from '../models/index.js';
 import { PLATFORM_ROLES, mapPrimaryRoleToLegacyRole } from '../utils/moduleAccessDefaults.js';
 import { getModuleAccessForRole } from '../utils/platformRoleAccess.js';
 
@@ -23,17 +23,20 @@ export const seedTestRoleUsers = async () => {
   }
 
   let created = 0;
-  for (const primaryRole of PLATFORM_ROLES) {
-    if (SKIP_ROLES.has(primaryRole)) continue;
+  for (const roleName of PLATFORM_ROLES) {
+    if (SKIP_ROLES.has(roleName)) continue;
 
-    const email = roleToEmail(primaryRole);
+    const email = roleToEmail(roleName);
     const existing = await User.findOne({ email });
     if (existing) continue;
 
-    const moduleAccess = await getModuleAccessForRole(primaryRole);
-    const password = roleToPassword(primaryRole);
+    const platformRole = await PlatformRole.findOne({ name: roleName, isDeleted: { $ne: true } });
+    if (!platformRole) continue;
+
+    const moduleAccess = await getModuleAccessForRole(roleName);
+    const password = roleToPassword(roleName);
     const hashedPassword = await bcrypt.hash(password, 10);
-    const [firstName, ...rest] = primaryRole.split(' ');
+    const [firstName, ...rest] = roleName.split(' ');
     const lastName = rest.join(' ') || 'User';
 
     await User.create({
@@ -41,14 +44,14 @@ export const seedTestRoleUsers = async () => {
       lastName,
       email,
       password: hashedPassword,
-      role: mapPrimaryRoleToLegacyRole(primaryRole),
-      primaryRole,
+      role: mapPrimaryRoleToLegacyRole(roleName),
+      platformRole: platformRole._id,
       moduleAccess,
       status: 'Active',
     });
 
     created += 1;
-    console.info(`✅ Seeded test user: ${email} (${primaryRole}) / ${password}`);
+    console.info(`✅ Seeded test user: ${email} (${roleName}) / ${password}`);
   }
 
   if (created > 0) {

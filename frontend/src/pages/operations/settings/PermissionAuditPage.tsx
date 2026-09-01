@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { APP_ROUTES } from "@/lib/appRoutes";
 import { History, Loader2 } from "lucide-react";
 import { DataTable, type Column } from "@/components/data-table";
 import { Button } from "@/components/ui/button";
@@ -76,7 +77,7 @@ export default function PermissionAuditPage() {
           </p>
         </div>
         <Button variant="secondary" asChild>
-          <Link to="/settings/roles">Back to roles</Link>
+          <Link to={APP_ROUTES.settings.roles}>Back to roles</Link>
         </Button>
       </div>
 

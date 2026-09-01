@@ -39,7 +39,5 @@ const platformRoleSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-platformRoleSchema.index({ name: 1 });
-
 const PlatformRole = mongoose.model('PlatformRole', platformRoleSchema);
 export default PlatformRole;

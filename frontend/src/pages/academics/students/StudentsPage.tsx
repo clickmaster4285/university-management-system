@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { studentAPI, type Student } from "@/features/students";
-import { GraduationCap, Loader2, Pencil, Trash2, Users } from "lucide-react";
+import { GraduationCap, Eye, Loader2, Pencil, Trash2, Users } from "lucide-react";
 import { toast } from "sonner";
 
 const resolveRefLabel = (value: Student["programId"], fallback?: string) => {
@@ -97,12 +97,25 @@ export default function StudentsPage() {
       key: "actions",
       header: "",
       cell: (row) => (
-        <div className="flex gap-2">
-          <Button size="sm" variant="outline" onClick={() => navigate(`/students/${getStudentRecordId(row)}`)}>
+        <div className="flex gap-1">
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => navigate(`/students/${getStudentRecordId(row)}`)}
+            title="View"
+          >
+            <Eye className="h-4 w-4" />
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => navigate(`/students/${getStudentRecordId(row)}`)}
+            title="Edit"
+          >
             <Pencil className="h-4 w-4" />
           </Button>
-          <Button size="sm" variant="outline" onClick={() => handleDelete(row)}>
-            <Trash2 className="h-4 w-4" />
+          <Button size="sm" variant="ghost" onClick={() => handleDelete(row)} title="Delete">
+            <Trash2 className="h-4 w-4 text-destructive" />
           </Button>
         </div>
       ),

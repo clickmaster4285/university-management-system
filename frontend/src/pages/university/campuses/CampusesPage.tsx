@@ -22,6 +22,7 @@ import {
   MoreHorizontal,
   Pencil,
   Trash2,
+  Eye,
   Star,
   MapPin,
   Phone,
@@ -44,6 +45,7 @@ export function CampusesPage() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
   const [showFilters, setShowFilters] = useState(false);
+  const [viewingCampus, setViewingCampus] = useState<Campus | null>(null);
 
   const fetchCampuses = async () => {
     try {
@@ -251,8 +253,7 @@ export function CampusesPage() {
               {filtered.map((campus) => (
                 <Card
                   key={campus._id}
-                  className="group hover:shadow-md transition-shadow cursor-pointer"
-                  onClick={() => navigate(`/campuses/edit/${campus._id}`)}
+                  className="group hover:shadow-md transition-shadow"
                 >
                   <CardContent className="p-5">
                     <div className="flex items-start justify-between gap-2">
@@ -273,43 +274,46 @@ export function CampusesPage() {
                         </div>
                       </div>
 
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          title="View"
+                          onClick={() => setViewingCampus(campus)}
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
                           <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0">
                             <MoreHorizontal className="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => setViewingCampus(campus)}>
+                            <Eye className="h-4 w-4 mr-2" /> View
+                          </DropdownMenuItem>
                           <DropdownMenuItem
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              navigate(`/campuses/edit/${campus._id}`);
-                            }}
+                            onClick={() => navigate(`/campuses/edit/${campus._id}`)}
                           >
                             <Pencil className="h-4 w-4 mr-2" /> Edit
                           </DropdownMenuItem>
                           {!campus.isMainCampus && (
-                            <DropdownMenuItem
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleSetMain(campus);
-                              }}
-                            >
+                            <DropdownMenuItem onClick={() => handleSetMain(campus)}>
                               <Star className="h-4 w-4 mr-2" /> Set as Main
                             </DropdownMenuItem>
                           )}
                           <DropdownMenuSeparator />
                           <DropdownMenuItem
                             className="text-destructive focus:text-destructive"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDelete(campus);
-                            }}
+                            onClick={() => handleDelete(campus)}
                           >
                             <Trash2 className="h-4 w-4 mr-2" /> Delete
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
+                      </div>
                     </div>
 
                     <div className="mt-4 space-y-1.5 text-sm text-muted-foreground">
@@ -347,6 +351,59 @@ export function CampusesPage() {
           )}
         </CardContent>
       </Card>
+
+      {viewingCampus && (
+        <div
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+          onClick={(e) => { if (e.target === e.currentTarget) setViewingCampus(null); }}
+        >
+          <div className="bg-background rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto border">
+            <div className="flex items-center justify-between p-5 border-b">
+              <div>
+                <h2 className="text-xl font-bold">{viewingCampus.name}</h2>
+                <p className="text-sm text-muted-foreground font-mono">
+                  {viewingCampus.campusId} · {viewingCampus.campusCode}
+                </p>
+              </div>
+              <Button variant="ghost" size="sm" onClick={() => setViewingCampus(null)}>Close</Button>
+            </div>
+            <div className="p-5 space-y-4 text-sm">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-muted-foreground">Type</p>
+                  <p className="font-medium">{viewingCampus.type}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Status</p>
+                  <div className="mt-1">{statusBadge(viewingCampus.status || "Active")}</div>
+                </div>
+                <div className="col-span-2">
+                  <p className="text-muted-foreground">Address</p>
+                  <p className="font-medium">
+                    {[viewingCampus.address?.street, viewingCampus.address?.city, viewingCampus.address?.province]
+                      .filter(Boolean)
+                      .join(", ") || "—"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Phone</p>
+                  <p className="font-medium">{viewingCampus.phone || "—"}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Email</p>
+                  <p className="font-medium">{viewingCampus.email || "—"}</p>
+                </div>
+              </div>
+              <div className="flex gap-2 pt-2">
+                <Button variant="outline" onClick={() => setViewingCampus(null)}>Close</Button>
+                <Button onClick={() => { navigate(`/campuses/edit/${viewingCampus._id}`); setViewingCampus(null); }}>
+                  <Pencil className="h-4 w-4 mr-2" /> Edit campus
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

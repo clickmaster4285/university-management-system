@@ -16,6 +16,8 @@ export interface User {
   location?: string;
   profileImage?: string;
   role?: string;
+  platformRole?: string | null;
+  /** Computed from populated platformRole — not stored on user */
   primaryRole?: string;
   moduleAccess?: Record<string, boolean>;
   staffMemberId?: string | null;

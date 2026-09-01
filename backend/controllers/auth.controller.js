@@ -3,21 +3,25 @@ import jwt from 'jsonwebtoken';
 import { JWT_SECRET, JWT_EXPIRES_IN } from '../config/constants.js';
 import { handle } from '../utils/asyncHandler.js';
 
-import { University, User } from '../models/index.js';
+import { University, User, PlatformRole } from '../models/index.js';
 import { resolveModuleAccess } from '../utils/moduleAccessDefaults.js';
+import { getPlatformRoleName, PLATFORM_ROLE_POPULATE } from '../utils/userPlatformRole.js';
 
 const serializeModuleAccess = (user) => {
   if (user.moduleAccess && user.moduleAccess.size > 0) {
     return Object.fromEntries(user.moduleAccess.entries());
   }
-  const role = user.primaryRole || user.role;
-  if (role === 'Admin' || role === 'System Admin' || role === 'University Admin') {
+  const roleName = getPlatformRoleName(user);
+  if (roleName) {
+    return resolveModuleAccess(roleName);
+  }
+  if (user.role === 'Admin') {
     return resolveModuleAccess('System Admin');
   }
-  if (role === 'Teacher' || role === 'Faculty') {
+  if (user.role === 'Teacher') {
     return resolveModuleAccess('Faculty');
   }
-  if (role === 'Staff' || role === 'HR') {
+  if (user.role === 'Staff') {
     return resolveModuleAccess('HR');
   }
   return resolveModuleAccess('Student');
@@ -30,7 +34,8 @@ const buildUser = (user) => ({
   lastName: user.lastName,
   email: user.email,
   role: user.role,
-  primaryRole: user.primaryRole || user.role,
+  platformRole: user.platformRole?._id?.toString() || user.platformRole?.toString() || null,
+  primaryRole: getPlatformRoleName(user) || (user.role === 'Student' ? 'Student' : user.role),
   moduleAccess: serializeModuleAccess(user),
   phoneNumber: user.phoneNumber || '',
   universityId: user.universityId || null,
@@ -47,7 +52,7 @@ export const login = handle(async (req, res) => {
     email: email.toLowerCase(),
     isDeleted: { $ne: true },
     status: 'Active',
-  });
+  }).populate(PLATFORM_ROLE_POPULATE);
   if (!user) {
     return res.status(401).json({ success: false, message: 'Invalid email or password' });
   }
@@ -76,8 +81,8 @@ export const register = handle(async (req, res) => {
 
   const hashedPassword = await bcrypt.hash(password, 10);
 
-  // Link the student to the single university if one exists
   const university = await University.findOne({ isDeleted: { $ne: true } });
+  const studentRole = await PlatformRole.findOne({ name: 'Student', isDeleted: { $ne: true } });
 
   const user = new User({
     firstName: firstName.trim(),
@@ -86,10 +91,12 @@ export const register = handle(async (req, res) => {
     password: hashedPassword,
     phoneNumber: phoneNumber || '',
     role: 'Student',
+    platformRole: studentRole?._id || null,
     universityId: university?._id || null,
     status: 'Active',
   });
   await user.save();
+  await user.populate(PLATFORM_ROLE_POPULATE);
 
   const token = jwt.sign({ id: user._id.toString(), role: user.role }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
 
@@ -122,7 +129,7 @@ export const updateProfile = handle(async (req, res) => {
     { _id: req.user._id, isDeleted: { $ne: true } },
     updates,
     { new: true, runValidators: true }
-  );
+  ).populate(PLATFORM_ROLE_POPULATE);
 
   if (!updated) {
     return res.status(404).json({ success: false, message: 'User not found' });

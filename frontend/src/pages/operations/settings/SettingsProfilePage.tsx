@@ -16,6 +16,7 @@ import {
   ChevronLeft,
 } from "lucide-react";
 import { Link } from "react-router-dom";
+import { APP_ROUTES } from "@/lib/appRoutes";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { settingsAPI, Settings } from "@/features/settings";
@@ -207,7 +208,7 @@ export function SettingsProfilePage() {
     <>
       <div className="mb-6">
         <Button variant="ghost" size="sm" className="mb-3 -ml-2" asChild>
-          <Link to="/settings">
+          <Link to={APP_ROUTES.settings.index}>
             <ChevronLeft className="h-4 w-4 mr-1" />
             Back to settings
           </Link>

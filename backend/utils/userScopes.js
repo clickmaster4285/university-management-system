@@ -1,4 +1,5 @@
 import { RoleAssignment } from '../models/index.js';
+import { getPlatformRoleName } from './userPlatformRole.js';
 
 const GLOBAL_PRIMARY_ROLES = new Set([
   'System Admin',
@@ -25,7 +26,8 @@ export async function loadUserScopes(user) {
     return { ...empty, isGlobal: true };
   }
 
-  if (GLOBAL_LEGACY_ROLES.has(user.role) || GLOBAL_PRIMARY_ROLES.has(user.primaryRole)) {
+  const platformRoleName = getPlatformRoleName(user);
+  if (GLOBAL_LEGACY_ROLES.has(user.role) || GLOBAL_PRIMARY_ROLES.has(platformRoleName)) {
     return { ...empty, isGlobal: true };
   }
 
@@ -84,7 +86,7 @@ export function userIsFacultyOnly(scopes, user) {
   if (scopes.isGlobal) return false;
   const facultyRole =
     user?.role === 'Teacher' ||
-    user?.primaryRole === 'Faculty' ||
+    getPlatformRoleName(user) === 'Faculty' ||
     scopes.roleTypes.length === 0;
   return facultyRole && Boolean(scopes.staffMemberId);
 }

@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { departmentAPI, type Department } from "@/features/departments";
 import { staffMemberAPI, type StaffMember } from "@/features/staffMembers";
-import { Briefcase, GraduationCap, Loader2, Pencil, Trash2, UserCheck, Users } from "lucide-react";
+import { Briefcase, Eye, GraduationCap, Loader2, Pencil, Trash2, UserCheck, Users } from "lucide-react";
 import { toast } from "sonner";
 
 const resolveRefId = (value: string | { _id: string; name?: string; code?: string } | null | undefined) => {
@@ -148,6 +148,15 @@ export default function StaffPage() {
       header: "Actions",
       cell: (row) => (
         <div className="flex gap-1">
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            onClick={() => navigate(`/staff/${getStaffRecordId(row)}`)}
+            title="View"
+          >
+            <Eye className="h-4 w-4" />
+          </Button>
           <Button
             type="button"
             size="sm"

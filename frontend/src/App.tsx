@@ -4,6 +4,7 @@ import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/lib/auth";
+import { APP_ROUTES } from "@/lib/appRoutes";
 
 // Public & Layout Imports
 const PublicSiteLayout = lazy(() => import("./layouts/PublicSiteLayout"));
@@ -178,7 +179,7 @@ export const App = () => (
                 <Route path="/payroll" element={<PayrollPage />} />
                 <Route path="/payroll/:id" element={<StaffPayrollPage />} />
                 <Route path="/access" element={<AccessPage />} />
-                <Route path="/access/roles" element={<Navigate to="/settings/roles" replace />} />
+                <Route path={APP_ROUTES.legacy.accessRoles} element={<Navigate to={APP_ROUTES.settings.roles} replace />} />
                 <Route path="/access/:id" element={<StaffAccessPage />} />
                 <Route path="/role-assignments" element={<RoleAssignmentsPage />} />
                 <Route path="/role-assignments/staff/:staffId" element={<RoleAssignmentsPage />} />
@@ -198,10 +199,10 @@ export const App = () => (
                 <Route path="/finance" element={<FinancePage />} />
                 <Route path="/challans" element={<ChallansPage />} />
                 <Route path="/reports" element={<ReportsPage />} />
-                <Route path="/settings" element={<SettingsPage />} />
-                <Route path="/settings/profile" element={<SettingsProfilePage />} />
-                <Route path="/settings/roles" element={<RolesPermissionsPage />} />
-                <Route path="/settings/permission-audit" element={<PermissionAuditPage />} />
+                <Route path={APP_ROUTES.settings.index} element={<SettingsPage />} />
+                <Route path={APP_ROUTES.settings.profile} element={<SettingsProfilePage />} />
+                <Route path={APP_ROUTES.settings.roles} element={<RolesPermissionsPage />} />
+                <Route path={APP_ROUTES.settings.permissionAudit} element={<PermissionAuditPage />} />
               </Route>
 
               {/* 404 Fallback Route */}

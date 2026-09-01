@@ -1,7 +1,7 @@
 import dotenv from 'dotenv';
 import bcrypt from 'bcryptjs';
-import { User } from '../models/index.js';
-import { DEFAULT_MODULE_ACCESS } from '../utils/moduleAccessDefaults.js';
+import { User, PlatformRole } from '../models/index.js';
+import { DEFAULT_MODULE_ACCESS, serializeModuleAccess } from '../utils/moduleAccessDefaults.js';
 
 dotenv.config();
 
@@ -16,13 +16,24 @@ export const seedDefaultAdmin = async () => {
       throw new Error('ADMIN_FIRST_NAME, ADMIN_LAST_NAME, ADMIN_EMAIL, and ADMIN_PASSWORD must be configured');
     }
 
+    const systemRole = await PlatformRole.findOne({ name: 'System Admin', isDeleted: { $ne: true } });
+    if (!systemRole) {
+      throw new Error('System Admin platform role not found — seed platform roles first');
+    }
+
     const existingAdmin = await User.findOne({ email });
     if (existingAdmin) {
-      if (!existingAdmin.primaryRole || !existingAdmin.moduleAccess?.size) {
-        existingAdmin.primaryRole = 'System Admin';
+      const access = serializeModuleAccess(existingAdmin.moduleAccess);
+      const shouldSyncSystemAdmin =
+        existingAdmin.platformRole?.toString() === systemRole._id.toString() && access.settings !== true;
+      const shouldInitialize = !existingAdmin.platformRole || !existingAdmin.moduleAccess?.size;
+
+      if (shouldInitialize || shouldSyncSystemAdmin) {
+        existingAdmin.role = 'Admin';
+        existingAdmin.platformRole = systemRole._id;
         existingAdmin.moduleAccess = DEFAULT_MODULE_ACCESS['System Admin'];
         await existingAdmin.save();
-        console.info(`✅ Admin permissions updated: ${email}`);
+        console.info(`✅ System Admin permissions synced: ${email}`);
       } else {
         console.info(`✅ Admin user already exists: ${email}`);
       }
@@ -36,7 +47,7 @@ export const seedDefaultAdmin = async () => {
       email,
       password: hashedPassword,
       role: 'Admin',
-      primaryRole: 'System Admin',
+      platformRole: systemRole._id,
       moduleAccess: DEFAULT_MODULE_ACCESS['System Admin'],
       status: 'Active',
     });

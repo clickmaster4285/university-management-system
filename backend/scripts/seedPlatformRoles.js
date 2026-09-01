@@ -1,9 +1,11 @@
+import dotenv from 'dotenv';
+import { fileURLToPath } from 'url';
+import path from 'path';
+import connectDB from '../config/database.js';
 import { PlatformRole } from '../models/index.js';
-import {
-  DEFAULT_MODULE_ACCESS,
-  PLATFORM_ROLES,
-  ROLE_DESCRIPTIONS,
-} from '../utils/moduleAccessDefaults.js';
+import { reseedPlatformRolesData } from '../utils/reseedPlatformRoles.js';
+
+dotenv.config();
 
 export const seedPlatformRoles = async () => {
   try {
@@ -13,17 +15,33 @@ export const seedPlatformRoles = async () => {
       return;
     }
 
-    const roles = PLATFORM_ROLES.map((name) => ({
-      name,
-      description: ROLE_DESCRIPTIONS[name] || '',
-      moduleAccess: DEFAULT_MODULE_ACCESS[name] || {},
-      isSystem: true,
-    }));
-
-    await PlatformRole.insertMany(roles);
-    console.info(`✅ Seeded ${roles.length} platform roles`);
+    const result = await reseedPlatformRolesData({ mode: 'missing' });
+    console.info(`✅ Seeded ${result.created} platform roles`);
   } catch (error) {
     console.error('❌ Failed to seed platform roles:', error);
     throw error;
   }
 };
+
+const isMain =
+  process.argv[1] &&
+  fileURLToPath(import.meta.url) === path.resolve(process.argv[1]);
+
+if (isMain) {
+  const mode = process.argv.includes('--reset') ? 'reset' : 'missing';
+
+  try {
+    await connectDB();
+    const result = await reseedPlatformRolesData({ mode });
+    console.info(`✅ ${result.message}`);
+    if (mode === 'reset') {
+      console.info(`   Updated: ${result.updated}`);
+    } else {
+      console.info(`   Created: ${result.created}, restored: ${result.restored}`);
+    }
+    process.exit(0);
+  } catch (error) {
+    console.error('❌ Failed to seed platform roles:', error);
+    process.exit(1);
+  }
+}

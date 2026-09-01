@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { CalendarDays, Check, Loader2, Plus, X } from "lucide-react";
+import { CalendarDays, Check, Eye, Loader2, Plus, X } from "lucide-react";
 import { toast } from "sonner";
 import { DataTable, type Column } from "@/components/data-table";
 import { KpiCard } from "@/components/dashboard/kpi-card";
@@ -38,6 +38,7 @@ export default function WorkforceLeavePage() {
     reason: "",
   });
   const [leaveBalance, setLeaveBalance] = useState<StaffLeaveBalance | null>(null);
+  const [viewingLeave, setViewingLeave] = useState<StaffLeave | null>(null);
 
   const loadBalance = useCallback(async (staffMemberId: string) => {
     if (!staffMemberId) {
@@ -135,17 +136,23 @@ export default function WorkforceLeavePage() {
     {
       key: "actions",
       header: "Actions",
-      cell: (row) =>
-        row.status === "Pending" ? (
-          <div className="flex gap-1">
-            <Button size="sm" variant="ghost" onClick={() => handleStatus(row, "Approved")}>
-              <Check className="h-4 w-4 text-green-600" />
-            </Button>
-            <Button size="sm" variant="ghost" onClick={() => handleStatus(row, "Rejected")}>
-              <X className="h-4 w-4 text-destructive" />
-            </Button>
-          </div>
-        ) : null,
+      cell: (row) => (
+        <div className="flex gap-1">
+          <Button size="sm" variant="ghost" onClick={() => setViewingLeave(row)} title="View">
+            <Eye className="h-4 w-4" />
+          </Button>
+          {row.status === "Pending" ? (
+            <>
+              <Button size="sm" variant="ghost" onClick={() => handleStatus(row, "Approved")} title="Approve">
+                <Check className="h-4 w-4 text-green-600" />
+              </Button>
+              <Button size="sm" variant="ghost" onClick={() => handleStatus(row, "Rejected")} title="Reject">
+                <X className="h-4 w-4 text-destructive" />
+              </Button>
+            </>
+          ) : null}
+        </div>
+      ),
     },
   ];
 
@@ -270,6 +277,54 @@ export default function WorkforceLeavePage() {
           addLabel="New leave request"
           onAdd={() => setShowForm(true)}
         />
+      )}
+
+      {viewingLeave && (
+        <div
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+          onClick={(e) => { if (e.target === e.currentTarget) setViewingLeave(null); }}
+        >
+          <div className="bg-background rounded-2xl shadow-2xl w-full max-w-md border">
+            <div className="flex items-center justify-between p-5 border-b">
+              <h2 className="text-lg font-bold">Leave request</h2>
+              <Button variant="ghost" size="sm" onClick={() => setViewingLeave(null)}>Close</Button>
+            </div>
+            <div className="p-5 space-y-3 text-sm">
+              <div>
+                <p className="text-muted-foreground">Staff</p>
+                <p className="font-medium">{viewingLeave.staffName}</p>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-muted-foreground">Type</p>
+                  <Badge variant="outline" className="mt-1">{viewingLeave.type}</Badge>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Status</p>
+                  <Badge className="mt-1">{viewingLeave.status}</Badge>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Start</p>
+                  <p className="font-medium">{viewingLeave.startDate?.slice(0, 10)}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">End</p>
+                  <p className="font-medium">{viewingLeave.endDate?.slice(0, 10)}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Days</p>
+                  <p className="font-medium">{viewingLeave.days}</p>
+                </div>
+              </div>
+              {viewingLeave.reason && (
+                <div>
+                  <p className="text-muted-foreground">Reason</p>
+                  <p className="mt-1">{viewingLeave.reason}</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       )}
     </>
   );

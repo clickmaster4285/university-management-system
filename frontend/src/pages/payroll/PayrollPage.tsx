@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { DollarSign, Loader2, Pencil, Receipt } from "lucide-react";
+import { DollarSign, Eye, Loader2, Pencil, Receipt } from "lucide-react";
 import { toast } from "sonner";
 import { DataTable, type Column } from "@/components/data-table";
 import { KpiCard } from "@/components/dashboard/kpi-card";
@@ -77,13 +77,24 @@ export default function PayrollPage() {
       key: "actions",
       header: "Actions",
       cell: (row) => (
-        <Button
-          size="sm"
-          variant="ghost"
-          onClick={() => navigate(`/payroll/${getStaffRecordId(row)}`)}
-        >
-          <Pencil className="h-4 w-4" />
-        </Button>
+        <div className="flex gap-1">
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => navigate(`/payroll/${getStaffRecordId(row)}`)}
+            title="View"
+          >
+            <Eye className="h-4 w-4" />
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => navigate(`/payroll/${getStaffRecordId(row)}`)}
+            title="Edit"
+          >
+            <Pencil className="h-4 w-4" />
+          </Button>
+        </div>
       ),
     },
   ];

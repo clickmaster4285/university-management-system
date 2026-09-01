@@ -11,6 +11,7 @@ import {
   Users,
 } from "lucide-react";
 import { toast } from "sonner";
+import { APP_ROUTES } from "@/lib/appRoutes";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -20,7 +21,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
   platformRoleAPI,
-  MODULE_GROUPS,
+  ROLE_PERMISSION_SECTIONS,
   type PlatformRole,
 } from "@/features/platformRoles";
 
@@ -214,7 +215,7 @@ export default function RolesPermissionsPage() {
     <div className="space-y-6">
       <div>
         <Button variant="ghost" size="sm" className="mb-3 -ml-2" asChild>
-          <Link to="/settings">
+          <Link to={APP_ROUTES.settings.index}>
             <ChevronLeft className="h-4 w-4 mr-1" />
             Back to settings & configuration
           </Link>
@@ -232,7 +233,7 @@ export default function RolesPermissionsPage() {
           </div>
           <div className="flex flex-wrap gap-2">
             <Button variant="outline" size="sm" asChild>
-              <Link to="/settings/permission-audit">Audit log</Link>
+              <Link to={APP_ROUTES.settings.permissionAudit}>Audit log</Link>
             </Button>
             <Button variant="outline" size="sm" onClick={() => handleReseed("missing")} disabled={reseeding}>
               <RefreshCw className={`h-4 w-4 mr-2 ${reseeding ? "animate-spin" : ""}`} />
@@ -375,24 +376,31 @@ export default function RolesPermissionsPage() {
                   </div>
                 </div>
 
-                {MODULE_GROUPS.map((group) => (
-                  <div key={group.label} className="space-y-3">
+                {ROLE_PERMISSION_SECTIONS.map((section) => (
+                  <div key={section.label} className="space-y-3">
                     <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-                      {group.label}
+                      {section.label}
                     </h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      {group.keys.map((key) => (
+                      {section.items.map((item) => (
                         <div
-                          key={key}
+                          key={item.key}
                           className="flex items-center justify-between rounded-lg border px-3 py-2"
                         >
-                          <Label htmlFor={`module-${key}`} className="cursor-pointer">
-                            {moduleLabels[key] || key}
-                          </Label>
+                          <div className="min-w-0 pr-3">
+                            <Label htmlFor={`module-${item.key}`} className="cursor-pointer">
+                              {item.label}
+                            </Label>
+                            <p className="text-[10px] text-muted-foreground mt-0.5 truncate">
+                              {moduleLabels[item.moduleKey] || item.moduleKey}
+                            </p>
+                          </div>
                           <Switch
-                            id={`module-${key}`}
-                            checked={Boolean(moduleAccess[key])}
-                            onCheckedChange={(checked) => handleToggleModule(key, checked)}
+                            id={`module-${item.key}`}
+                            checked={Boolean(moduleAccess[item.moduleKey])}
+                            onCheckedChange={(checked) =>
+                              handleToggleModule(item.moduleKey, checked)
+                            }
                           />
                         </div>
                       ))}

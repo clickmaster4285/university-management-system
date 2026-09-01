@@ -1,4 +1,5 @@
 import { serializeModuleAccess } from '../utils/moduleAccessDefaults.js';
+import { getPlatformRoleName } from '../utils/userPlatformRole.js';
 
 export const getUserModuleAccess = (user) => {
   if (!user?.moduleAccess) return null;
@@ -19,6 +20,10 @@ export const requireModule =
         success: false,
         message: 'Authentication required',
       });
+    }
+
+    if (getPlatformRoleName(req.user) === 'System Admin') {
+      return next();
     }
 
     const access = getUserModuleAccess(req.user);

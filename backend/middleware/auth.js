@@ -3,6 +3,7 @@ import jwt from "jsonwebtoken";
 import { JWT_SECRET } from "../config/constants.js";
 
 import { User } from "../models/index.js";
+import { PLATFORM_ROLE_POPULATE } from "../utils/userPlatformRole.js";
 export const auth = async (req, res, next) => {
   try {
     const token = req.headers.authorization?.split(' ')[1];
@@ -15,7 +16,9 @@ export const auth = async (req, res, next) => {
     }
 
     const decoded = jwt.verify(token, JWT_SECRET);
-    const user = await User.findOne({ _id: decoded.id, isDeleted: { $ne: true } }).select('-password');
+    const user = await User.findOne({ _id: decoded.id, isDeleted: { $ne: true } })
+      .select('-password')
+      .populate(PLATFORM_ROLE_POPULATE);
 
     if (!user) {
       return res.status(401).json({

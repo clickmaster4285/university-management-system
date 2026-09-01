@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { CalendarDays, ChevronRight, Clock, FileText, Briefcase, Loader2, Pencil } from "lucide-react";
+import { CalendarDays, ChevronRight, Clock, Eye, FileText, Briefcase, Loader2, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { DataTable, type Column } from "@/components/data-table";
 import { KpiCard } from "@/components/dashboard/kpi-card";
@@ -67,13 +67,24 @@ export default function WorkforcePage() {
       key: "actions",
       header: "Actions",
       cell: (row) => (
-        <Button
-          size="sm"
-          variant="ghost"
-          onClick={() => navigate(`/workforce/${getStaffRecordId(row)}`)}
-        >
-          <Pencil className="h-4 w-4" />
-        </Button>
+        <div className="flex gap-1">
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => navigate(`/workforce/${getStaffRecordId(row)}`)}
+            title="View schedule"
+          >
+            <Eye className="h-4 w-4" />
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => navigate(`/workforce/${getStaffRecordId(row)}`)}
+            title="Edit schedule"
+          >
+            <Pencil className="h-4 w-4" />
+          </Button>
+        </div>
       ),
     },
   ];

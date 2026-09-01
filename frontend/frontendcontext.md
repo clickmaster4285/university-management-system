@@ -1,5 +1,7 @@
 # Frontend Context
 
+> **Last updated:** 2026-08-31 — public site at `/`, dashboard at `/dashboard`, view buttons, theme refresh
+
 ## Tech Stack
 
 - **React 19** + **TypeScript** + **Vite 8**
@@ -31,12 +33,11 @@ When adding a page, match **Academic CRUD UI Pattern** below before inventing ne
 frontend/src/
 ├── App.tsx              ← Route definitions + lazy imports
 ├── main.tsx             ← Entry point
-├── styles.css           ← Global styles + Tailwind
-├── components/          ← Shared UI (data-table, kpi-card, ui/*, sidebar)
+├── styles.css           ← Global theme (CSS variables: --primary, --brand, gradient-brand)
+├── components/          ← Shared UI (data-table, kpi-card, ui/*, student/*, staff/*)
 ├── features/            ← API service classes (one file per domain)
-├── hooks/               ← Custom hooks
-├── layouts/             ← AppLayout, sidebar.tsx (AppSidebar)
-├── lib/                 ← auth.tsx (AuthProvider + AuthContext), utils
+├── layouts/             ← PublicSiteLayout, AppLayout, sidebar.tsx
+├── lib/                 ← auth.tsx, routeModules.ts, utils
 └── pages/               ← Page components organized by domain
 ```
 
@@ -60,74 +61,77 @@ pages/academics/departments/
 - Types and constants live in the form component file that uses them
 - Sub-components are exported as named exports, re-imported by the main page
 
+**List page action pattern (Aug 2026):** KPI row → DataTable → filters → **View** (eye) + Edit (pencil) + Delete. View opens detail modal or navigates to profile page. Examples: `StudentsPage`, `StaffPage`, `FacultiesPage`, `CampusesPage`, `WorkforceLeavePage`.
+
 **Refactored examples:**
-- `DepartmentsPage.tsx` — list aligned with Faculties (KPI cards, DataTable search/filters, icon actions)
-- `CampusesPage.tsx` — card grid + `CampusForm.tsx` on `/campuses/create` and `/campuses/edit/:id`
+- `DepartmentsPage.tsx` — list with `DepartmentViewModal`
+- `CampusesPage.tsx` — card grid + view modal + `CampusForm` on create/edit routes
+- `StudentsPage.tsx` — slim directory; profile at `/students/:id`
+- `ApplicationsPipelinePage.tsx` — replaces monolith `AdmissionsPage` for `/admissions`
 
-**Still pending refactor** (500+ lines): TransportPage (1513), AssignmentsPage (1466), LibraryPage (1198), ExamsPage (1198), EventsPage (1185), BatchesPage (1043).
+**Still pending refactor** (500+ lines): TransportPage, AssignmentsPage, LibraryPage, ExamsPage, EventsPage, BatchesPage.
 
-**Refactored (Aug 2026):** `StudentsPage` → slim directory; `ApplicationsPipelinePage` replaces monolith `AdmissionsPage` for `/admissions`.
+**Legacy (do not extend):** `pages/academics/admissions/AdmissionsPage.tsx` — old monolith; route uses `ApplicationsPipelinePage`.
 
 ## Routing
 
-All routes are defined in `App.tsx` using React Router DOM `<Routes>`. Pages are **lazy-loaded** with `React.lazy()`.
+All routes in `App.tsx`. Pages are **lazy-loaded** with `React.lazy()`.
 
-Routes sit under `<AppLayout />` (which handles auth + sidebar + topbar + renders `<Outlet />`):
+### Public site (`PublicSiteLayout`)
 
 ```
-/                   → DashboardPage
-/landing              → LandingPage (public)
-/apply                → ApplyPage (public — no auth)
-/apply/status         → ApplicationTrackPage (public)
-/login              → LoginPage
-/otp                → OtpPage
-/university         → UniversityProfilePage
-/campuses           → CampusesPage
-/campuses/create    → CampusCreatePage
-/campuses/edit/:id  → CampusEditPage
-/faculties          → FacultiesPage
-/ai                 → AiAssistantPage
-/notifications      → NotificationsPage
-/admissions         → ApplicationsPipelinePage
-/admissions/:id     → ApplicationReviewPage
-/admissions/dossier/:id → AdmissionDossierPage
-/departments        → DepartmentsPage
-/departments/create → DepartmentCreatePage
-/departments/edit/:id → DepartmentEditPage
-/programs           → ProgramsPage
-/programs/create    → ProgramCreatePage
-/programs/edit/:id  → ProgramEditPage
-/programs/:id/curriculum → ProgramCurriculumPage (semester subject plan)
-/programs/:id/semester-fees → ProgramSemesterFeesPage (F3 — fee packages)
-/semester-registrations → SemesterRegistrationsPage (F4 — package registration)
-/subjects           → SubjectsPage
-/subjects/create    → SubjectCreatePage
-/subjects/edit/:id  → SubjectEditPage
-/offerings          → OfferingsPage (Phase 5 — course offerings + enrollments)
-/courses            → CoursesPage (legacy — remove in Phase 8)
-/academic-sessions  → AcademicSessionsPage
-/academic-sessions/create → SessionCreatePage
-/academic-sessions/edit/:id → SessionEditPage
-/batches            → BatchesPage
-/challans           → ChallansPage (F5)
-/students           → StudentsPage (directory)
-/students/:id       → StudentProfilePage
-/students/:id/documents → StudentDocumentsPage
-/teachers           → TeachersPage
-/attendance         → AttendancePage
-/assignments        → AssignmentsPage
-/exams              → ExamsPage
-/online-classes     → OnlineClassesPage
-/library            → LibraryPage
-/hostel             → HostelPage
-/transport          → TransportPage
-/events             → EventsPage
-/qr                 → SmartQrPage
-/finance            → FinancePage
-/hr                 → HrPage
-/reports            → ReportsPage
-/settings           → SettingsPage
+/                     → HomePage
+/about                → AboutPage
+/contact              → ContactPage
+/apply                → ApplyPage
+/apply/status         → ApplicationTrackPage
+/landing              → Navigate to /
+/login                → LoginPage (staff)
+/forgot-password, /otp
 ```
+
+### Staff portal (`AppLayout` — auth required)
+
+Dashboard moved from `/` to `/dashboard`. Post-login redirect: `/dashboard`.
+
+```
+/dashboard            → DashboardPage
+/university, /campuses, /campuses/create, /campuses/edit/:id
+/faculties, /departments, /departments/create, /departments/edit/:id
+/programs, /programs/:id/curriculum, /programs/:id/semester-fees
+/subjects, /subjects/create, /subjects/edit/:id
+/offerings, /semester-registrations, /challans
+/academic-sessions, /academic-sessions/create, /academic-sessions/edit/:id
+/batches, /batches/create, /batches/edit/:id
+/admissions, /admissions/:id, /admissions/dossier/:id
+/students, /students/:id, /students/:id/documents
+/staff, /staff/create, /staff/:id, /staff/:id/documents
+/workforce, /workforce/:id, /workforce/leaves, /workforce/attendance, /workforce/recruitment
+/payroll, /payroll/:id, /access, /access/:id
+/role-assignments, /attendance, /assignments, /exams, /online-classes
+/library, /hostel, /transport, /events, /qr
+/finance, /reports, /settings, /settings/roles, /settings/permission-audit
+/ai, /notifications
+```
+
+**Removed routes:** `/courses` (legacy), `/hr` (legacy), `/` as dashboard (now public home).
+
+## Theme & styling
+
+All brand colors live in **`frontend/src/styles.css`** — not scattered per component.
+
+| Token | Purpose |
+|-------|---------|
+| `--primary` | Buttons, links, active nav |
+| `--brand`, `--brand-2` | `gradient-brand` utility (buttons, logos) |
+| `--background`, `--foreground` | Page base |
+| `--sidebar-*` | Sidebar colors |
+
+**Current palette (Aug 2026):** warm stone neutrals + forest green primary + bronze/gold accent. Replaced earlier blue/purple theme.
+
+Utilities: `gradient-brand`, `gradient-brand-text`, `gradient-mesh`, `glass`.
+
+To change colors app-wide, edit `:root` and `.dark` in `styles.css` only.
 
 ## Navigation / Sidebar
 
@@ -159,27 +163,66 @@ Key barrel export: `features/index.ts` re-exports everything.
 - **`features/campus.ts`** — `campusAPI.getAll()` (no params needed), `.getById(id)`, `.create(data)`, `.update(id, data)`, `.delete(id)`. No separate `setMain` — uses `update(id, { isMainCampus: true })`.
 - **`features/university.ts`** — Single-university pattern: `getUniversity()`, `createUniversity(data)`, `updateUniversity(data)`, `deleteUniversity()`.
 
-### Still using legacy `department` string (not yet updated)
+### Still using legacy patterns
 
-- `features/students.ts` — Student directory with `programId`/`campusId` refs; profile update
-- `features/studentApplications.ts` — public catalog/apply/track + internal application pipeline API
-- `features/studentAdmissions.ts` — admission dossier, documents, `completeAdmission`
-- `features/admissions.ts` — **legacy** monolithic Admission API (deprecated for new work)
+- `features/admissions.ts` — **deprecated** monolithic Admission API
+- Some large campus modules (Transport, Library, Events) — 1000+ line pages, not yet split
+- Assignment/Exam forms store subject code strings, not `offeringId` (Phase 6 paused)
+
+## Students & admissions (Aug 2026 — ✅)
+
+| Route | Page | Module |
+|-------|------|--------|
+| `/apply` | ApplyPage | public |
+| `/apply/status` | ApplicationTrackPage | public |
+| `/admissions` | ApplicationsPipelinePage | `admissions` |
+| `/admissions/:id` | ApplicationReviewPage | `admissions` |
+| `/admissions/dossier/:id` | AdmissionDossierPage + AdmissionDocumentsPanel | `admissions` |
+| `/students` | StudentsPage (directory) | `students` |
+| `/students/:id` | StudentProfilePage + StudentModuleLinks | `students` |
+| `/students/:id/documents` | StudentDocumentsPage | `students` |
+
+API: `features/students.ts`, `features/studentApplications.ts`, `features/studentAdmissions.ts`
+
+Components:
+- `components/student/StudentModuleLinks.tsx` — profile quick links
+- `components/student/StudentDocumentSlots.tsx` — per-type upload slots
+
+Documents optional for dossier completion (matches backend `REQUIRED_DOCUMENT_TYPES = []`).
 
 ## Auth
 
-`src/lib/auth.tsx` provides `AuthProvider` and `useAuth()` hook. Stores JWT in `localStorage` under `token`. User object stored in `localStorage` under `user`. Also stores `universityId` separately.
+`src/lib/auth.tsx` provides `AuthProvider` and `useAuth()` hook. JWT in `localStorage` (`token`, `user`, `universityId`).
 
-Roles defined in frontend: `'Super Admin' | 'Admin' | 'Teacher' | 'Student' | 'Student Affairs' | 'Finance' | 'Transport' | 'Library' | 'HR'` — but backend only has `Admin`, `Teacher`, `Student`, `Staff`.
+**Auth is handled by AppLayout** — redirects to `/login` if not authenticated. Public routes use `PublicSiteLayout` (no auth).
 
-**Auth is handled by AppLayout** — pages do NOT need to check authentication. AppLayout redirects to `/login` if user is not authenticated. Pages that need the `user` object (e.g., for form defaults) can call `useAuth()` directly — but no auth guard logic is needed.
+Post-login redirect: `/dashboard` (not `/`).
 
-## UI Components
+## Staff, workforce & permissions (Aug 2026 — ✅)
 
-- `components/data-table.tsx` — `DataTable<T>` generic table with `Column<T>[]` config (uses `cell` not `render`). Supports `searchKeys`, `filterPanel`, `hideSearch`, `addLabel`/`onAdd`. Filter button only shows when `filterPanel` is passed. Create button shows when `title`/`description`/`addLabel`/`actions` provided.
-- `components/dashboard/kpi-card.tsx` — `KpiCard` for stats display (uses `label` not `title`, `icon: LucideIcon`)
-- `components/ui/*` — shadcn/ui primitives (Badge, Button, Input, Label, Dialog, etc.)
-- `layouts/AppLayout.tsx` — auth check + SidebarProvider + AppSidebar + Topbar + `<Outlet />`. Pages render directly without wrappers.
+| Route | Page | Module key |
+|-------|------|------------|
+| `/staff` | StaffPage | `staff` |
+| `/staff/:id` | StaffEditPage | `staff` |
+| `/staff/:id/documents` | StaffDocumentsPage | `staff` |
+| `/workforce` | WorkforcePage (hub) | `hr` |
+| `/workforce/:id` | WorkforceSchedulePage | `hr` |
+| `/workforce/leaves` | WorkforceLeavePage | `hr` |
+| `/workforce/attendance` | WorkforceAttendancePage | `hr` |
+| `/workforce/recruitment` | WorkforceRecruitmentPage | `hr` |
+| `/payroll`, `/payroll/:id` | PayrollPage, StaffPayrollPage | `finance` |
+| `/access`, `/access/:id` | AccessPage, StaffAccessPage | `staff` |
+| `/settings/permission-audit` | PermissionAuditPage | `settings` |
+
+Legacy `/hr` removed. Staff profile shows `StaffModuleLinks` cards to related modules.
+
+Sidebar groups: Overview · Governance · Academic Catalog · HR & Staff · Students · Academic Operations · Assessments · Campus Services · Finance · Settings.
+
+Route guards: `lib/routeModules.ts` + `components/ModuleRoute.tsx` + sidebar `hasModuleAccess`.
+
+API: `features/staffMembers.ts`, `features/workforce.ts`, `features/platformRoles.ts`
+
+Staff documents: `StaffDocumentsPanel` — uploads to `uploads/hr/{staffId}/{documentType}/`
 
 ## Page Conventions
 
@@ -270,77 +313,60 @@ Frontend:
 - `/programs` — list with KPI cards, DataTable search/filters (department, degree level, status), icon actions
 - `/programs/create`, `/programs/edit/:id` — shared `ProgramForm.tsx`
 
-## What's NOT Done Yet (frontend)
+## List pages with View button (Aug 2026)
 
-- **Student pages** — left for later (student model not refactored yet)
-- **Legacy `department` string** in some features — students, admissions, assignment, exam, book, fee, feeStructure, finance, hr, auth
-- **Large page refactoring** — AdmissionsPage, TransportPage, AssignmentsPage, CoursesPage, LibraryPage, ExamsPage, EventsPage, StudentsPage, TeachersPage, BatchesPage all still 1000+ lines
+| Page | View action |
+|------|-------------|
+| StudentsPage | Navigate to `/students/:id` |
+| StaffPage | Navigate to `/staff/:id` |
+| CampusesPage | View modal on card |
+| FacultiesPage | View modal |
+| WorkforcePage | Navigate to `/workforce/:id` |
+| WorkforceLeavePage | View modal |
+| PayrollPage | Navigate to `/payroll/:id` |
+| AccessPage | Navigate to `/access/:id` |
+| DepartmentsPage, BatchesPage, AcademicSessionsPage | View modals (existing) |
 
-## Students & admissions (Aug 2026)
+## Implementation status summary
 
-| Route | Page | Module |
-|-------|------|--------|
-| `/apply` | ApplyPage | public (no auth) |
-| `/apply/status` | ApplicationTrackPage | public |
-| `/admissions` | ApplicationsPipelinePage | `admissions` |
-| `/admissions/:id` | ApplicationReviewPage | `admissions` |
-| `/admissions/dossier/:id` | AdmissionDossierPage + AdmissionDocumentsPanel | `admissions` |
-| `/students` | StudentsPage (directory) | `students` |
-| `/students/:id` | StudentProfilePage + StudentModuleLinks | `students` |
-| `/students/:id/documents` | StudentDocumentsPage | `students` |
+### ✅ Done (frontend)
 
-Sidebar **Students** group: Applications (`/admissions`), Student Directory (`/students`).
+| Area | Status |
+|------|--------|
+| Public website (`/`, About, Contact, Apply) | ✅ |
+| Staff portal at `/dashboard` + all module routes | ✅ |
+| Student intake UI (apply, pipeline, dossier, directory) | ✅ |
+| Staff distributed modules (staff, workforce, payroll, access) | ✅ |
+| Permissions UI (roles, module guards, sidebar filter) | ✅ |
+| View buttons on key list pages | ✅ |
+| Global theme refresh (forest green, not blue) | ✅ |
+| Document upload slots (student + admission) | ✅ |
 
-Components: `components/student/StudentModuleLinks.tsx` (mirrors `StaffModuleLinks`).
+### ⏳ Not done / remains (frontend)
 
-## Staff, workforce & permissions (Aug 2026)
+| Item | Priority | Notes |
+|------|----------|-------|
+| Student portal (logged-in student) | High | No student dashboard yet |
+| Leave quota admin UI | Medium | Backend balances exist |
+| Recruitment resume upload UI | Medium | Manage button only today |
+| Phase A manual verification | High | Test role logins + apply templates |
+| Large page refactors | Low | Transport, Assignments, Library, Exams, Events |
+| Phase 6 — offeringId in Assignment/Exam forms | Paused | |
+| Remove legacy `AdmissionsPage.tsx` | Low | File in repo, unused by routes |
+| `LandingPage.tsx` | Low | Orphaned; `/landing` redirects to `/` |
 
-### Distributed staff modules
+### Next frontend tasks (recommended)
 
-| Route | Page | Module key |
-|-------|------|------------|
-| `/staff` | StaffPage | `staff` |
-| `/staff/:id` | StaffEditPage | `staff` |
-| `/staff/:id/documents` | StaffDocumentsPage | `staff` |
-| `/workforce` | WorkforcePage (hub) | `hr` |
-| `/workforce/:id` | WorkforceSchedulePage | `hr` |
-| `/workforce/leaves` | WorkforceLeavePage | `hr` |
-| `/workforce/attendance` | WorkforceAttendancePage | `hr` |
-| `/payroll`, `/payroll/:id` | PayrollPage, StaffPayrollPage | `finance` |
-| `/access`, `/access/:id` | AccessPage, StaffAccessPage | `staff` |
-| `/workforce/recruitment` | WorkforceRecruitmentPage | `hr` |
-| `/settings/permission-audit` | PermissionAuditPage | `settings` |
+1. Student portal pages after backend `Student.userId`
+2. Leave quota editor on staff profile or HR settings
+3. Recruitment applicant CV upload in `WorkforceRecruitmentPage`
+4. Delete or merge `LandingPage.tsx` if no longer needed
+5. Phase 6 when resumed: offering picker stores `offeringId` on records
 
-Legacy `/hr` removed. Staff profile shows `StaffModuleLinks` cards to related modules.
+## UI Components
 
-### Sidebar groups (current)
-
-Overview · Governance · Academic Catalog · **HR & Staff** · **Students** · Academic Operations · Assessments · Campus Services · Finance · **Settings & Configuration**
-
-HR & Staff items: Staff Directory, Workforce, Leave Management, Staff Attendance, Portal Access, Role Assignments.
-
-### Route guards
-
-- `lib/routeModules.ts` — maps path prefix → module key
-- `components/ModuleRoute.tsx` — redirects if `user.moduleAccess[module] !== true`
-- Sidebar filters items the same way (`hasModuleAccess`)
-
-### API services
-
-- `features/staffMembers.ts` — StaffMember CRUD + stats
-- `features/workforce.ts` — leaves, attendance, documents (`workforceAPI`)
-- `features/platformRoles.ts` — role templates CRUD + apply-to-users
-
-### Staff documents UI
-
-- `StaffDocumentsPanel` — upload (type, name, file), list, download (blob via axios), delete
-- Files stored on server under `uploads/hr/{staffId}/{documentType}/` — see `backend/utils/uploadPaths.js`
-
-## What's next (frontend)
-
-| Item | Notes |
-|------|-------|
-| Student portal | Phase D |
-| Leave quota admin UI | Edit quotas per staff from HR |
-| Recruitment resume uploads | File upload for applicant CVs |
-| Large page refactors | TransportPage, AssignmentsPage, LibraryPage, etc. still 1000+ lines |
+- `components/data-table.tsx` — `DataTable<T>` with `Column<T>[]`, search, filters, add button
+- `components/dashboard/kpi-card.tsx` — `KpiCard` for stats (`label`, `icon`, optional `tone`)
+- `components/ui/*` — shadcn/ui primitives
+- `layouts/PublicSiteLayout.tsx` — public site shell
+- `layouts/AppLayout.tsx` — staff portal shell (auth + sidebar + topbar)

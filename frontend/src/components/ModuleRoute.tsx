@@ -1,7 +1,7 @@
 import { ReactNode } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/lib/auth';
-import { getModuleForPath, hasModuleAccess } from '@/lib/routeModules';
+import { getModuleForPath, hasModuleAccess } from '@/lib/appRoutes';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ShieldOff } from 'lucide-react';
@@ -21,7 +21,7 @@ export function ModuleRoute({ children, module }: ModuleRouteProps) {
     return <>{children}</>;
   }
 
-  if (!hasModuleAccess(user?.moduleAccess, moduleKey)) {
+  if (!hasModuleAccess(user?.moduleAccess, moduleKey, user?.primaryRole)) {
     return (
       <div className="flex items-center justify-center min-h-[50vh]">
         <Card className="max-w-md w-full">

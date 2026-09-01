@@ -1,7 +1,7 @@
 # UniversityMS — Master Project Context
 
 > **Purpose of this file:** Single source of truth for anyone (or any AI session) working on this codebase. Read this first. It tracks vision, what is built, what is deferred, what to do, what not to do, and the roadmap.  
-> **Last updated:** 2026-08-31  
+> **Last updated:** 2026-08-31 (evening — public site, view buttons, theme refresh)  
 > **Detailed academic spec:** `academic-architecture-plan.md`  
 > **Fees, sessions, batches & offerings flow:** `fee-plan.md`  
 > **Implementation details:** `backend/backendcontext.md`, `frontend/frontendcontext.md`
@@ -303,6 +303,26 @@ Documents: `uploads/students/{admissionId|studentId}/{documentType}/...`
 
 Legacy `Admission.model.js` and old `AdmissionsPage.tsx` remain in repo but are **not** used by new routes.
 
+### Public website & staff portal (Aug 2026 — ✅)
+
+| URL | Purpose |
+|-----|---------|
+| `/` | Public university site (Home, About, Contact) |
+| `/apply`, `/apply/status` | Public admission apply + track (no login) |
+| `/login` | Staff portal sign-in (secondary entry) |
+| `/dashboard` | Authenticated staff dashboard (was `/`) |
+| `/landing` | Redirects to `/` |
+
+Public layout: `PublicSiteLayout` — nav links + footer; admission CTA prominent; **Staff portal** link de-emphasized.
+
+### UI polish (Aug 2026 — ✅)
+
+| Item | Status |
+|------|--------|
+| Global theme in `frontend/src/styles.css` | ✅ Warm stone neutrals + forest green primary + bronze accent (replaced blue/purple) |
+| View (eye) buttons on list pages | ✅ Students, Staff, Campuses, Faculties, Workforce, Leave, Payroll, Access |
+| View modals | ✅ Campuses, Faculties, Leave requests (Departments/Batches/Sessions already had view) |
+
 ### Gaps / future
 
 | Priority | Work | Why |
@@ -310,7 +330,10 @@ Legacy `Admission.model.js` and old `AdmissionsPage.tsx` remain in repo but are 
 | **Next** | Student portal login (`Student.userId`) | Grades, fees, attendance self-service |
 | **Next** | Leave balance admin UI | Edit quotas per staff from HR screen |
 | **Next** | Recruitment resume uploads | Store applicant CVs in `uploads/hr/recruitment/` |
+| **Next** | Phase A manual verification | Role logins, apply permission templates, smoke-test workforce |
 | **Paused** | Wire Assignments / Exams / student Attendance to `offeringId` | Phase 6 |
+| **Cleanup** | Remove legacy `Admission` model + `AdmissionsPage.tsx` monolith | Replaced by StudentApplication pipeline |
+| **Cleanup** | Deprecate `Employee` model | Prefer `StaffMember` |
 
 ### Completed (Phase C + Student module — Aug 2026)
 
@@ -371,42 +394,52 @@ Legacy `Admission.model.js` and old `AdmissionsPage.tsx` remain in repo but are 
 
 ## 8. Roadmap summary
 
-### Now — your action (Phase A verify, ~15 min)
+### ✅ Done (Aug 2026)
 
-1. Restart backend if not already running (`cd backend && npm run dev`)
-2. Optional: set `SEED_TEST_USERS=true` in `.env`, restart
-3. Log in as **Finance**, **Faculty**, **HR** — confirm sidebar hides blocked modules
-4. Try a blocked API (e.g. Finance user → `GET /api/university`) — expect 403
-5. **Settings → Roles & Permissions** → click **Apply to all users** on each role template
-6. Smoke-test workforce: create leave → approve; mark attendance; upload a document
-
-### Next build sprint
-
-1. Student portal login (`Student.userId`)
-2. Leave quota admin UI
-3. Recruitment resume file uploads
-
-### Done (Aug 2026)
-
-| Phase | What |
-|-------|------|
+| Area | What |
+|------|------|
 | **Academic** | Subjects, curriculum, fees, offerings, semester registration, challans |
-| **People v1** | `StaffMember` distributed modules |
-| **Permissions** | `PlatformRole`, module guards, audit log |
+| **People v1** | `StaffMember` distributed modules (staff, workforce, payroll, access) |
+| **Permissions** | `PlatformRole`, module guards, audit log, test role users |
 | **Workforce** | Leave + balances, attendance + bulk, documents, recruitment |
-| **Students** | Public apply/track, application pipeline, admission dossier, student directory |
+| **Students** | Public apply/track, application pipeline, admission dossier + docs, student directory |
+| **Public site** | `/` = Home/About/Contact; `/apply` admission form; `/login` staff only |
+| **UI** | View buttons on key list pages; global theme (forest green, not blue) |
+
+### ⏳ Not done / remains
+
+| Item | Status | Notes |
+|------|--------|-------|
+| Phase A manual verify | ⏳ Pending | Log in as Finance/Faculty/HR; apply role templates in Settings |
+| Student portal login | 📋 Not started | Link `Student.userId` for self-service |
+| Leave quota admin UI | 📋 Not started | Backend balances exist; no HR edit screen |
+| Recruitment resume uploads | 📋 Not started | Postings work; CV file storage not wired |
+| Phase 6 — offerings → assignments/exams/attendance | ⏸ Paused | Forms pick offering but store subject code strings |
+| Phase 7 — BatchFeePolicy | 📋 Future | Continuing-student fee rules |
+| Legacy `Admission` model + old UI | 🗑 Cleanup | Keep until old data migrated or confirmed unused |
+| Legacy `Employee` model | 🗑 Cleanup | Use `StaffMember` for new work |
+| Large page refactors | 📋 Backlog | Transport, Assignments, Library, Exams, Events (1000+ lines each) |
+| Teacher ↔ StaffMember merge | 📋 Future | Two parallel paths today |
+
+### Next build sprint (recommended order)
+
+1. **Phase A verify** (~15 min) — restart backend, test role logins, apply permission templates
+2. **Student portal login** — `Student.userId` + limited student dashboard
+3. **Leave quota admin UI** — edit annual/sick/casual quotas per staff
+4. **Recruitment resume uploads** — multer path under `uploads/hr/recruitment/`
+5. **Legacy cleanup** — remove unused `Admission` monolith UI + migration scripts (already removed `migrateTeachersToStaff`)
 
 ### Later (paused / deferred)
 
-- Phase 6: Assignments, Exams, Attendance → `offeringId`
+- Phase 6: Assignments, Exams, Attendance → full `offeringId` link on records
 - Phase 7: BatchFeePolicy for continuing students
-- ~~Phase 8: Remove `Course` model~~ ✅ Done
+- Full finance integration: enrollment snapshots → challans → payments reconciliation
+- Attendance + gradebook per offering
+- Multi-campus reporting, accreditation exports
 
-### Long term
+### ~~Now — your action (Phase A verify, ~15 min)~~
 
-- Full finance integration from enrollment fee snapshots → challans → payments.
-- Attendance + gradebook per offering.
-- Multi-campus reporting, accreditation exports.
+Moved to **Not done / remains** above — still recommended before new features.
 
 ---
 
@@ -434,32 +467,38 @@ All features must be **easy to use, easy to follow, and easy to understand**.
 
 ## 11. Frontend layout system
 
-- **AppLayout** — auth gate, sidebar, topbar, `<Outlet />`
+- **PublicSiteLayout** — public header nav (Home, About, Contact, Admissions), footer, `<Outlet />`
+- **AppLayout** — auth gate, sidebar, topbar, `<Outlet />` (staff portal; dashboard at `/dashboard`)
 - **Sidebar** (`layouts/sidebar.tsx`) — collapsible groups; auto-expand active route
 - Pages are self-contained (no AppShell wrapper)
 - Auth check only in AppLayout — individual pages do not redirect
+- **Theme:** all colors in `frontend/src/styles.css` (`--primary`, `--brand`, `--brand-2`, `gradient-brand`, etc.)
 
-### Established academic routes
+### Public routes
 
 ```
-/subjects, /subjects/create, /subjects/edit/:id
-/programs, /programs/:id/curriculum, /programs/:id/semester-fees
-/offerings                          ← running classes
-/semester-registrations             ← package-mode semester registration (F4)
-/challans                           ← fee challans from registrations (F5)
-/apply, /apply/status               ← public admission apply + track (no auth)
-/admissions                         ← application pipeline (staff)
-/admissions/:id                     ← application review
-/admissions/dossier/:id             ← full admission dossier + documents
-/students                           ← enrolled student directory
-/students/:id                       ← student profile
-/students/:id/documents             ← post-enrollment documents
-/departments, /programs, /batches, /academic-sessions
-/academic-sessions/create, /academic-sessions/edit/:id
+/                     → HomePage (public)
+/about                → AboutPage
+/contact              → ContactPage
+/apply                → ApplyPage (admission form)
+/apply/status         → ApplicationTrackPage
+/login                → LoginPage (staff)
+/landing              → redirects to /
+```
+
+### Staff portal routes (authenticated)
+
+```
+/dashboard            → DashboardPage (staff home)
+/university, /campuses, /faculties, /departments, /programs, /subjects
+/offerings, /semester-registrations, /challans
+/admissions, /admissions/:id, /admissions/dossier/:id
+/students, /students/:id, /students/:id/documents
 /staff, /staff/:id, /staff/:id/documents
-/workforce, /workforce/leaves, /workforce/attendance, /workforce/:id
+/workforce, /workforce/leaves, /workforce/attendance, /workforce/recruitment, /workforce/:id
 /payroll, /access, /settings/roles, /role-assignments
-/teachers, /students
+/academic-sessions, /batches, /attendance, /assignments, /exams
+/library, /hostel, /transport, /events, /qr, /finance, /reports, /settings
 ```
 
 ---
@@ -481,14 +520,15 @@ All features must be **easy to use, easy to follow, and easy to understand**.
 
 ## 13. Session handoff checklist
 
-**Last session (Aug 2026):** Phase A + B built — permissions, workforce leave/attendance/documents.
+**Last session (Aug 2026):** Student module complete; public site at `/`; view buttons + theme refresh.
 
 When starting a new task, confirm:
 
 - [ ] Phase A manual verify done? (role logins, apply templates)
-- [ ] Which phase does this belong to? (C1 recruitment, C2 leave balances, etc.)
-- [ ] Is there an existing pattern (WorkforceLeavePage, StaffDocumentsPanel) to copy?
-- [ ] Does UI need KPI + DataTable + filters?
+- [ ] Is this public (`/`, `/apply`) or staff (`/dashboard`, `/admissions`, etc.)?
+- [ ] Which phase does this belong to? (student portal, leave quotas, recruitment uploads, Phase 6, etc.)
+- [ ] Is there an existing pattern (WorkforceLeavePage, DepartmentViewModal, ApplicationsPipelinePage) to copy?
+- [ ] Does UI need KPI + DataTable + filters + **View** (eye) action?
 - [ ] Does backend need stats endpoint + soft delete + indexes?
 - [ ] Update this file + `backendcontext.md` / `frontendcontext.md` when done
 

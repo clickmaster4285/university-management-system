@@ -1,13 +1,13 @@
 import { handle } from '../utils/asyncHandler.js';
 import { PlatformRole, User } from '../models/index.js';
 import {
-  DEFAULT_MODULE_ACCESS,
   MODULE_KEYS,
   MODULE_LABELS,
   PLATFORM_ROLES,
   ROLE_DESCRIPTIONS,
   serializeModuleAccess,
 } from '../utils/moduleAccessDefaults.js';
+import { reseedPlatformRolesData } from '../utils/reseedPlatformRoles.js';
 import { logPermissionAudit } from '../utils/permissionAudit.js';
 
 const notDeleted = { $ne: true };
@@ -113,7 +113,7 @@ export const updatePlatformRole = handle(async (req, res) => {
       return res.status(409).json({ success: false, message: `Role "${trimmedName}" already exists` });
     }
     const usersWithRole = await User.countDocuments({
-      primaryRole: role.name,
+      platformRole: role._id,
       isDeleted: notDeleted,
     });
     if (usersWithRole > 0) {
@@ -167,7 +167,7 @@ export const deletePlatformRole = handle(async (req, res) => {
   }
 
   const usersWithRole = await User.countDocuments({
-    primaryRole: role.name,
+    platformRole: role._id,
     isDeleted: notDeleted,
   });
   if (usersWithRole > 0) {
@@ -196,56 +196,29 @@ export const deletePlatformRole = handle(async (req, res) => {
 
 export const reseedPlatformRoles = handle(async (req, res) => {
   const { mode = 'missing' } = req.body || {};
-  let created = 0;
-  let updated = 0;
-
-  for (const name of PLATFORM_ROLES) {
-    const defaults = {
-      description: ROLE_DESCRIPTIONS[name] || '',
-      moduleAccess: DEFAULT_MODULE_ACCESS[name] || {},
-      isSystem: true,
-    };
-
-    const existing = await PlatformRole.findOne({ name, isDeleted: notDeleted });
-
-    if (!existing) {
-      await PlatformRole.create({ name, ...defaults });
-      created += 1;
-      continue;
-    }
-
-    if (mode === 'reset') {
-      existing.description = defaults.description;
-      existing.moduleAccess = defaults.moduleAccess;
-      existing.isSystem = true;
-      await existing.save();
-      updated += 1;
-    }
-  }
-
-  const roles = await PlatformRole.find({ isDeleted: notDeleted }).sort({ name: 1 });
+  const result = await reseedPlatformRolesData({ mode });
 
   await logPermissionAudit({
     action: 'role_reseeded',
     targetType: 'role',
     targetLabel: 'system roles',
     actor: req.user,
-    summary:
-      mode === 'reset'
-        ? `Restored ${updated} system role(s) to defaults`
-        : `Seeded ${created} missing system role(s)`,
-    changes: { mode, created, updated },
+    summary: result.message,
+    changes: {
+      mode,
+      created: result.created,
+      updated: result.updated,
+      restored: result.restored,
+    },
   });
 
   res.json({
     success: true,
-    data: roles.map(serializeRole),
-    message:
-      mode === 'reset'
-        ? `Restored ${updated} system role(s) to defaults`
-        : `Seeded ${created} missing system role(s)`,
-    created,
-    updated,
+    data: result.roles.map(serializeRole),
+    message: result.message,
+    created: result.created,
+    updated: result.updated,
+    restored: result.restored,
   });
 });
 
@@ -257,7 +230,7 @@ export const applyRoleToUsers = handle(async (req, res) => {
 
   const access = normalizeModuleAccess(serializeModuleAccess(role.moduleAccess));
   const result = await User.updateMany(
-    { primaryRole: role.name, isDeleted: notDeleted },
+    { platformRole: role._id, isDeleted: notDeleted },
     { $set: { moduleAccess: access } }
   );
 
