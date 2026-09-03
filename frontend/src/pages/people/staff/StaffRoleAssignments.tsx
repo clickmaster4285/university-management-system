@@ -105,10 +105,13 @@ export function StaffRoleAssignments({ staffMemberId }: StaffRoleAssignmentsProp
 
   const resolveScopeLabel = (assignment: RoleAssignment) => {
     if (assignment.scopeType === "University") return "Whole university";
-    const scopeId =
-      typeof assignment.scopeId === "object"
-        ? assignment.scopeId?._id
-        : assignment.scopeId || "";
+    const sid = assignment.scopeId;
+    let scopeId = "";
+    if (sid && typeof sid === "object") {
+      scopeId = sid._id;
+    } else if (typeof sid === "string") {
+      scopeId = sid;
+    }
     return scopeLabelMap.get(scopeId) || scopeId || "—";
   };
 

@@ -5,7 +5,7 @@ export interface RoleAssignment {
   staffMemberId: string | { _id: string; firstName?: string; lastName?: string; staffId?: string };
   roleType: string;
   scopeType: string;
-  scopeId?: string | null;
+  scopeId?: string | { _id: string } | null;
   academicSessionId?: string | { _id: string; name?: string; code?: string } | null;
   startDate?: string;
   endDate?: string | null;
@@ -32,7 +32,7 @@ class RoleAssignmentAPI {
     staffMemberId: string;
     roleType: string;
     scopeType: string;
-    scopeId?: string | null;
+  scopeId?: string | { _id: string } | null;
     academicSessionId?: string | null;
     startDate?: string;
     endDate?: string | null;

@@ -64,8 +64,10 @@ export default function ApplicationsPipelinePage() {
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
+      const params: Record<string, string | number> = { limit: 500 };
+      if (search) params.search = search;
       const [listRes, statsRes, programRes, campusRes] = await Promise.all([
-        studentApplicationsAPI.list({ limit: 500, search: search || undefined }),
+        studentApplicationsAPI.list(params),
         studentApplicationsAPI.getStats(),
         programAPI.getAll(),
         campusAPI.getAll(),

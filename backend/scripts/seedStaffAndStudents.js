@@ -14,7 +14,7 @@ import {
   Counter,
 } from '../models/index.js';
 
-const PASSWORD_HASH = bcrypt.hashSync('password123', 10);
+const PASSWORD_HASH = bcrypt.hashSync('123', 10);
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -603,7 +603,7 @@ export const seedStaffAndStudents = async () => {
     console.log(`  Staff          : ${STAFF.length}`);
     console.log(`  Total Users    : ${createdUsers.length}`);
     console.log('─'.repeat(60));
-    console.log('  Default password for all accounts: password123');
+    console.log('  Default password for all accounts: 123');
     console.log('═'.repeat(60) + '\n');
 
     return {

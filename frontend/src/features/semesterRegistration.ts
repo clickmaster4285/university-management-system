@@ -1,8 +1,9 @@
 import api from './axios';
+import { type StudentCategory } from './programSemesterFee';
 
+export type { StudentCategory };
 export type RegistrationMode = 'package' | 'per_subject' | 'mixed';
 export type RegistrationStatus = 'Registered' | 'Paid' | 'Partial' | 'Dropped';
-export type StudentCategory = 'Regular' | 'Self-Finance' | 'Scholarship' | 'International';
 
 export interface SemesterFeeSnapshot {
   scheduleId: string;

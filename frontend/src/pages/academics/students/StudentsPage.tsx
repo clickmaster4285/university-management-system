@@ -27,8 +27,10 @@ export default function StudentsPage() {
   const fetchData = async () => {
     try {
       setLoading(true);
+      const params: Record<string, string | number> = { limit: 500 };
+      if (search) params.search = search;
       const [list, statsRes] = await Promise.all([
-        studentAPI.getAll({ limit: 500, search: search || undefined }),
+        studentAPI.getAll(params),
         studentAPI.getStats(),
       ]);
       setStudents(list);
