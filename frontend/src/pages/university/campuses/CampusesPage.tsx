@@ -30,11 +30,6 @@ import {
   Building2,
   CheckCircle,
   XCircle,
-  Layers,
-  BookMarked,
-  GraduationCap,
-  Users,
-  BookOpen,
 } from "lucide-react";
 import { toast } from "sonner";
 import { campusAPI, type Campus } from "@/features/campus";
@@ -50,7 +45,7 @@ export function CampusesPage() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
   const [showFilters, setShowFilters] = useState(false);
-  const [viewingCampus, setViewingCampus] = useState<Campus | null>(null);
+
 
   const fetchCampuses = async () => {
     try {
@@ -285,7 +280,7 @@ export function CampusesPage() {
                           size="icon"
                           className="h-8 w-8"
                           title="View"
-                          onClick={() => setViewingCampus(campus)}
+                          onClick={() => navigate(`/campuses/detail/${campus._id}`)}
                         >
                           <Eye className="h-4 w-4" />
                         </Button>
@@ -296,7 +291,7 @@ export function CampusesPage() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => setViewingCampus(campus)}>
+                          <DropdownMenuItem onClick={() => navigate(`/campuses/detail/${campus._id}`)}>
                             <Eye className="h-4 w-4 mr-2" /> View
                           </DropdownMenuItem>
                           <DropdownMenuItem
@@ -356,96 +351,6 @@ export function CampusesPage() {
           )}
         </CardContent>
       </Card>
-
-      {viewingCampus && (
-        <div
-          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
-          onClick={(e) => { if (e.target === e.currentTarget) setViewingCampus(null); }}
-        >
-          <div className="bg-background rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto border">
-            <div className="flex items-center justify-between p-5 border-b">
-              <div>
-                <h2 className="text-xl font-bold">{viewingCampus.name}</h2>
-                <p className="text-sm text-muted-foreground font-mono">
-                  {viewingCampus.campusId} · {viewingCampus.campusCode}
-                </p>
-              </div>
-              <Button variant="ghost" size="sm" onClick={() => setViewingCampus(null)}>Close</Button>
-            </div>
-            <div className="p-5 space-y-4 text-sm">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-muted-foreground">Type</p>
-                  <p className="font-medium">{viewingCampus.type}</p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">Status</p>
-                  <div className="mt-1">{statusBadge(viewingCampus.status || "Active")}</div>
-                </div>
-                <div className="col-span-2">
-                  <p className="text-muted-foreground">Address</p>
-                  <p className="font-medium">
-                    {[viewingCampus.address?.street, viewingCampus.address?.city, viewingCampus.address?.province]
-                      .filter(Boolean)
-                      .join(", ") || "—"}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">Phone</p>
-                  <p className="font-medium">{viewingCampus.phone || "—"}</p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">Email</p>
-                  <p className="font-medium">{viewingCampus.email || "—"}</p>
-                </div>
-              </div>
-              {viewingCampus.stats && (
-                <div className="space-y-2">
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Academic Overview</p>
-                  <div className="grid grid-cols-3 gap-3">
-                    <div className="rounded-lg border bg-muted/30 p-3 text-center">
-                      <Building2 className="h-4 w-4 mx-auto mb-1 text-muted-foreground" />
-                      <p className="text-lg font-bold">{viewingCampus.stats.totalFaculties}</p>
-                      <p className="text-xs text-muted-foreground">Faculties</p>
-                    </div>
-                    <div className="rounded-lg border bg-muted/30 p-3 text-center">
-                      <Layers className="h-4 w-4 mx-auto mb-1 text-muted-foreground" />
-                      <p className="text-lg font-bold">{viewingCampus.stats.totalDepartments}</p>
-                      <p className="text-xs text-muted-foreground">Departments</p>
-                    </div>
-                    <div className="rounded-lg border bg-muted/30 p-3 text-center">
-                      <BookMarked className="h-4 w-4 mx-auto mb-1 text-muted-foreground" />
-                      <p className="text-lg font-bold">{viewingCampus.stats.totalPrograms}</p>
-                      <p className="text-xs text-muted-foreground">Programs</p>
-                    </div>
-                    <div className="rounded-lg border bg-muted/30 p-3 text-center">
-                      <BookOpen className="h-4 w-4 mx-auto mb-1 text-muted-foreground" />
-                      <p className="text-lg font-bold">{viewingCampus.stats.totalSubjects}</p>
-                      <p className="text-xs text-muted-foreground">Subjects</p>
-                    </div>
-                    <div className="rounded-lg border bg-muted/30 p-3 text-center">
-                      <Users className="h-4 w-4 mx-auto mb-1 text-muted-foreground" />
-                      <p className="text-lg font-bold">{viewingCampus.stats.totalTeachers}</p>
-                      <p className="text-xs text-muted-foreground">Teachers</p>
-                    </div>
-                    <div className="rounded-lg border bg-muted/30 p-3 text-center">
-                      <GraduationCap className="h-4 w-4 mx-auto mb-1 text-muted-foreground" />
-                      <p className="text-lg font-bold">{viewingCampus.stats.totalStudents}</p>
-                      <p className="text-xs text-muted-foreground">Students</p>
-                    </div>
-                  </div>
-                </div>
-              )}
-              <div className="flex gap-2 pt-2">
-                <Button variant="outline" onClick={() => setViewingCampus(null)}>Close</Button>
-                <Button onClick={() => { navigate(`/campuses/edit/${viewingCampus._id}`); setViewingCampus(null); }}>
-                  <Pencil className="h-4 w-4 mr-2" /> Edit campus
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </>
   );
 }

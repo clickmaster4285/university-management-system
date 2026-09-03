@@ -8,7 +8,6 @@ import { Label } from "@/components/ui/label";
 import { departmentAPI, type Department } from "@/features/departments";
 import { campusAPI, type Campus } from "@/features/campus";
 import { facultyAPI, type Faculty } from "@/features/faculties";
-import { DepartmentViewModal } from "./DepartmentViewModal";
 import {
   Building2, Users, BookOpen, Loader2,
   Eye, Pencil, Trash2,
@@ -33,9 +32,6 @@ export default function DepartmentsPage() {
   const [campusFilter, setCampusFilter] = useState("all");
   const [facultyFilter, setFacultyFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
-
-  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
-  const [viewingDepartment, setViewingDepartment] = useState<Department | null>(null);
 
   const fetchData = async () => {
     try {
@@ -104,9 +100,13 @@ export default function DepartmentsPage() {
     return found?.name || faculty;
   };
 
-  const openViewModal = (dept: Department) => {
-    setViewingDepartment(dept);
-    setIsViewModalOpen(true);
+  const goToDetail = (dept: Department) => {
+    const id = getDepartmentRecordId(dept);
+    if (!id) {
+      toast.error("Cannot view department: missing ID");
+      return;
+    }
+    navigate(`/departments/detail/${id}`);
   };
 
   const goToEdit = (dept: Department) => {
@@ -161,7 +161,7 @@ export default function DepartmentsPage() {
       header: "Actions",
       cell: (d) => (
         <div className="flex gap-1">
-          <Button type="button" size="sm" variant="ghost" onClick={() => openViewModal(d)} title="View department">
+          <Button type="button" size="sm" variant="ghost" onClick={() => goToDetail(d)} title="View department">
             <Eye className="h-4 w-4" />
           </Button>
           <Button type="button" size="sm" variant="ghost" onClick={() => goToEdit(d)} title="Edit department">
@@ -259,13 +259,6 @@ export default function DepartmentsPage() {
           )}
         />
       )}
-
-      <DepartmentViewModal
-        isOpen={isViewModalOpen}
-        department={viewingDepartment}
-        onClose={() => setIsViewModalOpen(false)}
-        onEdit={goToEdit}
-      />
     </>
   );
 }

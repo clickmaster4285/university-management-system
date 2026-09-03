@@ -25,10 +25,13 @@ const AiAssistantPage = lazy(() => import("./pages/ai/AiAssistantPage"));
 const NotificationsPage = lazy(() => import("./pages/notifications/NotificationsPage"));
 
 // University Governance
-const UniversityProfilePage = lazy(() => import("./pages/university/UniversityProfilePage"));
+const UniversityViewPage = lazy(() => import("./pages/university/UniversityViewPage"));
+const UniversityCreatePage = lazy(() => import("./pages/university/UniversityCreatePage"));
+const UniversityEditPage = lazy(() => import("./pages/university/UniversityEditPage"));
 const CampusesPage = lazy(() => import("./pages/university/campuses/CampusesPage"));
 const CampusCreatePage = lazy(() => import("./pages/university/campuses/CampusCreatePage"));
 const CampusEditPage = lazy(() => import("./pages/university/campuses/CampusEditPage"));
+const CampusDetailPage = lazy(() => import("./pages/university/campuses/CampusDetailPage"));
 
 // Academics Modular Pages
 const AdmissionsPage = lazy(() => import("./pages/admissions/ApplicationsPipelinePage"));
@@ -37,6 +40,7 @@ const AdmissionDossierPage = lazy(() => import("./pages/admissions/AdmissionDoss
 const DepartmentsPage = lazy(() => import("./pages/academics/departments/DepartmentsPage"));
 const DepartmentCreatePage = lazy(() => import("./pages/academics/departments/DepartmentCreatePage"));
 const DepartmentEditPage = lazy(() => import("./pages/academics/departments/DepartmentEditPage"));
+const DepartmentDetailPage = lazy(() => import("./pages/academics/departments/DepartmentDetailPage"));
 const ProgramsPage = lazy(() => import("./pages/academics/programs/ProgramsPage"));
 const ProgramCreatePage = lazy(() => import("./pages/academics/programs/ProgramCreatePage"));
 const ProgramEditPage = lazy(() => import("./pages/academics/programs/ProgramEditPage"));
@@ -46,6 +50,9 @@ const SubjectsPage = lazy(() => import("./pages/academics/subjects/SubjectsPage"
 const SubjectCreatePage = lazy(() => import("./pages/academics/subjects/SubjectCreatePage"));
 const SubjectEditPage = lazy(() => import("./pages/academics/subjects/SubjectEditPage"));
 const FacultiesPage = lazy(() => import("./pages/academics/faculties/FacultiesPage"));
+const FacultyCreatePage = lazy(() => import("./pages/academics/faculties/FacultyCreatePage"));
+const FacultyEditPage = lazy(() => import("./pages/academics/faculties/FacultyEditPage"));
+const FacultyDetailPage = lazy(() => import("./pages/academics/faculties/FacultyDetailPage"));
 const OfferingsPage = lazy(() => import("./pages/academics/offerings/OfferingsPage"));
 const AcademicSessionsPage = lazy(() => import("./pages/academics/sessions/AcademicSessionsPage"));
 const SessionCreatePage = lazy(() => import("./pages/academics/sessions/SessionCreatePage"));
@@ -133,10 +140,13 @@ export const App = () => (
               {/* Staff portal (authenticated) */}
               <Route element={<AppLayout />}>
                 <Route path="/dashboard" element={<DashboardPage />} />
-                <Route path="/university" element={<UniversityProfilePage />} />
+                <Route path="/university" element={<UniversityViewPage />} />
+                <Route path="/university/create" element={<UniversityCreatePage />} />
+                <Route path="/university/edit" element={<UniversityEditPage />} />
                 <Route path="/campuses" element={<CampusesPage />} />
                 <Route path="/campuses/create" element={<CampusCreatePage />} />
                 <Route path="/campuses/edit/:id" element={<CampusEditPage />} />
+                <Route path="/campuses/detail/:id" element={<CampusDetailPage />} />
                 <Route path="/ai" element={<AiAssistantPage />} />
                 <Route path="/notifications" element={<NotificationsPage />} />
 
@@ -147,6 +157,7 @@ export const App = () => (
                 <Route path="/departments" element={<DepartmentsPage />} />
                 <Route path="/departments/create" element={<DepartmentCreatePage />} />
                 <Route path="/departments/edit/:id" element={<DepartmentEditPage />} />
+                <Route path="/departments/detail/:id" element={<DepartmentDetailPage />} />
                 <Route path="/programs" element={<ProgramsPage />} />
                 <Route path="/programs/create" element={<ProgramCreatePage />} />
                 <Route path="/programs/edit/:id" element={<ProgramEditPage />} />
@@ -156,6 +167,9 @@ export const App = () => (
                 <Route path="/subjects/create" element={<SubjectCreatePage />} />
                 <Route path="/subjects/edit/:id" element={<SubjectEditPage />} />
                 <Route path="/faculties" element={<FacultiesPage />} />
+                <Route path="/faculties/create" element={<FacultyCreatePage />} />
+                <Route path="/faculties/edit/:id" element={<FacultyEditPage />} />
+                <Route path="/faculties/detail/:id" element={<FacultyDetailPage />} />
                 <Route path="/offerings" element={<OfferingsPage />} />
                 <Route path="/academic-sessions" element={<AcademicSessionsPage />} />
                 <Route path="/academic-sessions/create" element={<SessionCreatePage />} />
