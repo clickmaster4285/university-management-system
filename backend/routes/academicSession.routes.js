@@ -1,5 +1,6 @@
 // backend/src/routes/academicSession.routes.js
 import express from 'express';
+import { auth } from '../middleware/auth.js';
 import {
   getAcademicSessions,
   getAcademicSessionById,
@@ -13,28 +14,15 @@ import {
 
 const router = express.Router();
 
-// GET /api/academic-sessions
+router.use(auth);
+
 router.get('/', getAcademicSessions);
-
-// GET /api/academic-sessions/current
 router.get('/current', getCurrentAcademicSession);
-
-// GET /api/academic-sessions/stats
 router.get('/stats', getAcademicSessionStats);
-
-// GET /api/academic-sessions/:id
 router.get('/:id', getAcademicSessionById);
-
-// POST /api/academic-sessions
 router.post('/', createAcademicSession);
-
-// PUT /api/academic-sessions/:id
 router.put('/:id', updateAcademicSession);
-
-// PATCH /api/academic-sessions/:id/set-current
 router.patch('/:id/set-current', setCurrentAcademicSession);
-
-// DELETE /api/academic-sessions/:id
 router.delete('/:id', deleteAcademicSession);
 
 export default router;

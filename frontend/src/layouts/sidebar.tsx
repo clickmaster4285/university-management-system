@@ -1,129 +1,198 @@
+import { useState, useEffect, useMemo } from "react";
 import { Link, useLocation } from "react-router-dom";
+import { useAuth } from "@/lib/auth";
+import { hasModuleAccess, SIDEBAR_NAV } from "@/lib/appRoutes";
 import {
-  Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, 
-  SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem,
+  Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent,
+  SidebarMenu, SidebarMenuButton, SidebarMenuItem,
   SidebarHeader, SidebarFooter,
 } from "@/components/ui/sidebar";
-import { Button } from "@/components/ui/button";
-import { GraduationCap } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
 import {
-  LayoutDashboard, Users, GraduationCap as GraduationIcon, 
-  Building2, BookOpen, CalendarCheck, QrCode, Library, Home, 
-  Bus, DollarSign, FileText, ClipboardCheck, ClipboardList,
-  Video, Sparkles, Bell, BarChart3, Settings, UserPlus, 
-  Calendar, Briefcase, Wallet, Layers, University, School,
+  LayoutDashboard, GraduationCap, Building2, Layers, BookOpen,
+  Users, UserPlus, UserCheck, CalendarCheck, ClipboardList, ClipboardCheck,
+  Video, Calendar, School, Library, Home, Bus, QrCode,
+  DollarSign, Wallet, Briefcase, BarChart3, Settings, Bell, Receipt,
+  Sparkles, University, BookMarked, ChevronRight, Clock, Shield, UserCog,
+  CalendarDays,
 } from "lucide-react";
 
-// ✅ NAVIGATION CONFIGURATION IS HERE - INSIDE SIDEBAR
-// Anyone looking for sidebar changes will find it immediately
-const sidebarNav = [
-  {
-    label: "Overview",
-    items: [
-      { to: "/", label: "Dashboard", icon: LayoutDashboard, exact: true },
-      { to: "/university", label: "University", icon: University },
-      { to: "/campuses", label: "Campuses", icon: School },
-      { to: "/ai", label: "AI Assistant", icon: Sparkles },
-      { to: "/notifications", label: "Notifications", icon: Bell },
-    ],
-  },
-  {
-    label: "Academics",
-    items: [
-      { to: "/admissions", label: "Admissions", icon: UserPlus },
-      { to: "/departments", label: "Departments", icon: Building2 },
-      { to: "/teachers", label: "Teachers", icon: Users },
-      { to: "/students", label: "Students", icon: GraduationIcon },
-      { to: "/courses", label: "Courses", icon: BookOpen },
-      { to: "/attendance", label: "Attendance", icon: CalendarCheck },
-      { to: "/assignments", label: "Assignments", icon: ClipboardList },
-      { to: "/exams", label: "Exam Grades", icon: ClipboardCheck },
-      { to: "/online-classes", label: "Online Classes", icon: Video },
-      { to: "/academic-sessions", label: "Sessions", icon: Calendar },
-      { to: "/semesters", label: "Semesters", icon: Layers },
-      { to: "/batches", label: "Batches", icon: Users },
-    ],
-  },
-  {
-    label: "Campus",
-    items: [
-      { to: "/library", label: "Library", icon: Library },
-      { to: "/hostel", label: "Hostel", icon: Home },
-      { to: "/transport", label: "Transport", icon: Bus },
-      { to: "/events", label: "Events", icon: Calendar },
-      { to: "/qr", label: "Smart QR", icon: QrCode },
-    ],
-  },
-  {
-    label: "Operations",
-    items: [
-      { to: "/fees", label: "Fees", icon: DollarSign },
-      { to: "/finance", label: "Finance", icon: Wallet },
-      { to: "/hr", label: "Human Resources", icon: Briefcase },
-      { to: "/reports", label: "Reports", icon: BarChart3 },
-      { to: "/settings", label: "Settings", icon: Settings },
-    ],
-  },
-];
+const SIDEBAR_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
+  "/dashboard": LayoutDashboard,
+  "/notifications": Bell,
+  "/ai": Sparkles,
+  "/university": University,
+  "/campuses": School,
+  "/faculties": Building2,
+  "/departments": Layers,
+  "/programs": BookMarked,
+  "/subjects": BookOpen,
+  "/staff": Briefcase,
+  "/workforce": Clock,
+  "/workforce/leaves": CalendarDays,
+  "/workforce/attendance": CalendarCheck,
+  "/workforce/recruitment": Briefcase,
+  "/access": Shield,
+  "/role-assignments": UserCog,
+  "/admissions": UserPlus,
+  "/students": GraduationCap,
+  "/academic-sessions": Calendar,
+  "/batches": Layers,
+  "/offerings": BookOpen,
+  "/semester-registrations": UserCheck,
+  "/attendance": CalendarCheck,
+  "/assignments": ClipboardList,
+  "/exams": ClipboardCheck,
+  "/online-classes": Video,
+  "/library": Library,
+  "/hostel": Home,
+  "/transport": Bus,
+  "/events": Calendar,
+  "/qr": QrCode,
+  "/payroll": DollarSign,
+  "/challans": Receipt,
+  "/finance": Wallet,
+  "/reports": BarChart3,
+  "/settings": Settings,
+  "/settings/profile": UserCog,
+  "/settings/roles": Shield,
+  "/settings/permission-audit": Shield,
+};
+
+const sidebarNav = SIDEBAR_NAV.map((section) => ({
+  ...section,
+  items: section.items.map((item) => ({
+    ...item,
+    icon: SIDEBAR_ICONS[item.to] || Settings,
+  })),
+}));
 
 export function AppSidebar() {
   const location = useLocation();
   const path = location.pathname;
-  
-  const isActive = (to: string, exact?: boolean) => 
-    (exact || to === "/" ? path === to : path === to || path.startsWith(to + "/"));
+  const { user } = useAuth();
+
+  const canAccessModule = (module?: string) => {
+    if (!module) return true;
+    return hasModuleAccess(user?.moduleAccess, module, user?.primaryRole);
+  };
+
+  const visibleNav = useMemo(
+    () =>
+      sidebarNav
+        .map((section) => ({
+          ...section,
+          items: section.items.filter((item) => canAccessModule(item.module)),
+        }))
+        .filter((section) => section.items.length > 0),
+    [user]
+  );
+
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {
+    const initial: Record<string, boolean> = {};
+    for (const section of visibleNav) {
+      const hasActive = section.items.some((it) =>
+        it.exact || it.to === "/" ? path === it.to : path === it.to || path.startsWith(it.to + "/")
+      );
+      initial[section.label] = hasActive;
+    }
+    if (!initial["Overview"]) initial["Overview"] = true;
+    return initial;
+  });
+
+  useEffect(() => {
+    setOpenGroups((prev) => {
+      const next = { ...prev };
+      for (const section of visibleNav) {
+        const hasActive = section.items.some((it) =>
+          it.exact || it.to === "/" ? path === it.to : path === it.to || path.startsWith(it.to + "/")
+        );
+        if (hasActive) next[section.label] = true;
+      }
+      return next;
+    });
+  }, [path, visibleNav]);
+
+  const toggleGroup = (label: string) => {
+    setOpenGroups((prev) => ({ ...prev, [label]: !prev[label] }));
+  };
+
+  const isActive = (to: string, exact?: boolean) =>
+    exact ? path === to : path === to || path.startsWith(to + "/");
 
   return (
     <Sidebar collapsible="icon" className="border-r">
-      <SidebarHeader className="border-b px-3 py-4">
-        <Link to="/" className="flex items-center gap-2.5">
-          <div className="h-9 w-9 rounded-xl gradient-brand flex items-center justify-center shadow-lg shadow-primary/20">
+      <SidebarHeader className="px-3 py-4">
+        <Link to="/dashboard" className="flex items-center gap-2.5 group">
+          <div className="h-9 w-9 rounded-xl gradient-brand flex items-center justify-center shadow-lg shadow-primary/20 transition-shadow group-hover:shadow-primary/30">
             <GraduationCap className="h-5 w-5 text-white" />
           </div>
           <div className="flex flex-col leading-tight group-data-[collapsible=icon]:hidden">
-            <span className="text-sm font-bold gradient-brand-text">
-              Scholar<span className="text-foreground">OS</span>
+            <span className="text-sm font-bold tracking-tight">
+              Scholar<span className="gradient-brand-text">OS</span>
             </span>
-            <span className="text-[10px] text-muted-foreground uppercase tracking-wider">
-              University ERP
+            <span className="text-[10px] text-muted-foreground">
+              University Management
             </span>
           </div>
         </Link>
       </SidebarHeader>
-      
-      <SidebarContent className="scrollbar-thin">
-        {sidebarNav.map((section) => (
-          <SidebarGroup key={section.label}>
-            <SidebarGroupLabel>{section.label}</SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {section.items.map((it) => (
-                  <SidebarMenuItem key={it.to}>
-                    <SidebarMenuButton 
-                      asChild 
-                      isActive={isActive(it.to, it.exact)} 
-                      tooltip={it.label}
-                    >
-                      <Link to={it.to}>
-                        <it.icon className="h-4 w-4" />
-                        <span>{it.label}</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        ))}
+
+      <Separator />
+
+      <SidebarContent className="scrollbar-thin px-2 py-2">
+        {visibleNav.map((section, idx) => {
+          const isOpen = openGroups[section.label] ?? false;
+          return (
+            <div key={section.label}>
+              {idx > 0 && <div className="my-1.5 mx-2 border-t border-border/50" />}
+              <SidebarGroup className="p-0">
+                <button
+                  type="button"
+                  onClick={() => toggleGroup(section.label)}
+                  className="flex w-full items-center gap-1 px-2 py-1.5 rounded-md text-[11px] font-semibold text-muted-foreground uppercase tracking-wider hover:text-foreground hover:bg-muted/50 transition-all group-data-[collapsible=icon]:justify-center"
+                >
+                  <span className="flex-1 text-left group-data-[collapsible=icon]:hidden">{section.label}</span>
+                  <ChevronRight
+                    className={`h-3 w-3 shrink-0 transition-transform duration-200 group-data-[collapsible=icon]:hidden ${isOpen ? "rotate-90" : ""}`}
+                  />
+                </button>
+                {isOpen && (
+                  <SidebarGroupContent>
+                    <SidebarMenu>
+                      {section.items.map((it) => {
+                        const active = isActive(it.to, it.exact);
+                        return (
+                          <SidebarMenuItem key={it.to}>
+                            <SidebarMenuButton
+                              asChild
+                              isActive={active}
+                              className={`h-9 rounded-md transition-all ${active ? "bg-primary/10 text-primary font-medium border-l-2 border-primary" : "hover:bg-muted/70"}`}
+                              tooltip={it.label}
+                            >
+                              <Link to={it.to}>
+                                <it.icon className={`h-4 w-4 ${active ? "text-primary" : "text-muted-foreground"}`} />
+                                <span>{it.label}</span>
+                              </Link>
+                            </SidebarMenuButton>
+                          </SidebarMenuItem>
+                        );
+                      })}
+                    </SidebarMenu>
+                  </SidebarGroupContent>
+                )}
+              </SidebarGroup>
+            </div>
+          );
+        })}
       </SidebarContent>
-      
-      <SidebarFooter className="border-t p-3">
-        <div className="rounded-lg gradient-brand p-3 text-white group-data-[collapsible=icon]:hidden">
-          <p className="text-xs font-semibold">Upgrade to Enterprise</p>
-          <p className="text-[10px] opacity-90 mt-0.5">Unlock multi-campus AI insights</p>
-          <Button size="sm" variant="secondary" className="mt-2 h-7 w-full text-xs">
-            Explore
-          </Button>
+
+      <Separator />
+
+      <SidebarFooter className="p-3">
+        <div className="rounded-lg bg-muted/50 px-3 py-2.5 group-data-[collapsible=icon]:hidden">
+          <p className="text-xs font-semibold tracking-tight">ScholarOS</p>
+          <p className="text-[10px] text-muted-foreground mt-0.5">v1.0 — University ERP</p>
         </div>
       </SidebarFooter>
     </Sidebar>

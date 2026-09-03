@@ -1,5 +1,4 @@
 // src/routes/app.notifications.tsx
-import { AppShell } from "@/layouts";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -425,53 +424,17 @@ export function NotificationsPage() {
 
   if (loading) {
     return (
-      <AppShell title="Notifications" subtitle="Loading notifications...">
-        <div className="flex justify-center items-center h-64">
-          <div className="text-center">
-            <Loader2 className="h-8 w-8 text-primary animate-spin mx-auto mb-4" />
-            <p className="text-muted-foreground">Loading notifications...</p>
-          </div>
+      <div className="flex justify-center items-center h-64">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 text-primary animate-spin mx-auto mb-4" />
+          <p className="text-muted-foreground">Loading notifications...</p>
         </div>
-      </AppShell>
+      </div>
     );
   }
 
   return (
-    <AppShell 
-      title="Notifications" 
-      subtitle={`${stats?.total || 0} total · ${stats?.unread || 0} unread · ${stats?.sent || 0} sent today`}
-      actions={
-        <>
-          <Button 
-            variant="outline" 
-            onClick={handleSendTestEmail}
-            className="border-primary/20 hover:border-primary"
-          >
-            <MailIcon className="h-4 w-4 mr-2" /> Test Email
-          </Button>
-          <Button 
-            variant="outline" 
-            onClick={handleMarkAllAsRead}
-            disabled={notifications.length === 0}
-          >
-            <Check className="h-4 w-4 mr-2" /> Mark All Read
-          </Button>
-          <Button 
-            onClick={() => setIsModalOpen(true)}
-            className="gradient-brand text-white border-0"
-          >
-            <Send className="h-4 w-4 mr-2" /> New Broadcast
-          </Button>
-          <Button 
-            variant="outline" 
-            onClick={fetchNotifications}
-            disabled={loading}
-          >
-            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-          </Button>
-        </>
-      }
-    >
+      <>
       {/* Stats Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
@@ -837,7 +800,7 @@ export function NotificationsPage() {
           </div>
         </div>
       )}
-    </AppShell>
+      </>
   );
 }
 

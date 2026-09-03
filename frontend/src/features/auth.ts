@@ -4,15 +4,24 @@ export interface User {
   _id?: string;
   id?: string;
   userId?: string;
-  name: string;
+  name?: string;
+  firstName?: string;
+  lastName?: string;
   email: string;
   phone?: string;
+  phoneNumber?: string;
   department?: string;
   designation?: string;
   bio?: string;
   location?: string;
   profileImage?: string;
   role?: string;
+  platformRole?: string | null;
+  /** Computed from populated platformRole — not stored on user */
+  primaryRole?: string;
+  moduleAccess?: Record<string, boolean>;
+  staffMemberId?: string | null;
+  universityId?: string | null;
   createdAt?: string;
   updatedAt?: string;
 }

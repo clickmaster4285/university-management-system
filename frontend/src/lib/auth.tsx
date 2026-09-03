@@ -67,6 +67,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         const token = localStorage.getItem('token');
         const storedUser = localStorage.getItem('user');
         
+        if (token) {
+          try {
+            const response = await authAPI.getProfile();
+            if (response.success) {
+              updateUser(response.data);
+              return;
+            }
+          } catch (error) {
+            console.error('Failed to refresh profile:', error);
+          }
+        }
+
         if (token && storedUser) {
           try {
             const parsedUser = JSON.parse(storedUser);

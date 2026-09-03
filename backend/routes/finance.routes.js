@@ -1,4 +1,6 @@
 import express from 'express';
+import { auth, authorize } from '../middleware/auth.js';
+import { requireModule } from '../middleware/requireModule.js';
 import {
   getFinanceData,
   getFinanceSummary,
@@ -8,11 +10,10 @@ import {
   deleteInvoice,
   updateBudgetAllocation
 } from '../controllers/finance.controller.js';
-import auth from '../middleware/auth.js';
 
 const router = express.Router();
 
-router.use(auth);
+router.use(auth, authorize("Admin"), requireModule('finance'));
 
 router.get('/', getFinanceData);
 router.get('/summary', getFinanceSummary);

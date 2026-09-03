@@ -20,19 +20,28 @@ export interface Campus {
   establishedYear?: number;
   description: string;
   status: string;
+  createdBy?: string;
+  updatedBy?: string;
   createdAt: string;
   updatedAt: string;
+  stats?: {
+    totalFaculties: number;
+    totalDepartments: number;
+    totalPrograms: number;
+    totalStudents: number;
+    totalTeachers: number;
+    totalSubjects: number;
+  };
 }
 
 export interface CampusData {
-  universityId: string;
   name: string;
   campusCode: string;
   type?: string;
   isMainCampus?: boolean;
-  street: string;
-  city: string;
-  province: string;
+  street?: string;
+  city?: string;
+  province?: string;
   country?: string;
   postalCode?: string;
   phone?: string;
@@ -61,13 +70,9 @@ export const campusAPI = {
     }
   },
   
-  getAll: async (universityId?: string): Promise<CampusResponse> => {
+  getAll: async (): Promise<CampusResponse> => {
     try {
-      if (!universityId) {
-        throw new Error("universityId is required");
-      }
-      // Remove /api prefix - apiClient already adds it
-      const response = await apiClient.get(`/campuses?universityId=${universityId}`);
+      const response = await apiClient.get(`/campuses`);
       return response.data;
     } catch (error: any) {
       const serverMessage = error?.response?.data?.message || error?.message || "Failed to fetch campuses";
@@ -99,22 +104,10 @@ export const campusAPI = {
   
   delete: async (id: string): Promise<CampusResponse> => {
     try {
-      // Remove /api prefix - apiClient already adds it
       const response = await apiClient.delete(`/campuses/${id}`);
       return response.data;
     } catch (error: any) {
       const serverMessage = error?.response?.data?.message || error?.message || "Failed to delete campus";
-      throw new Error(serverMessage);
-    }
-  },
-  
-  setMain: async (id: string): Promise<CampusResponse> => {
-    try {
-      // Remove /api prefix - apiClient already adds it
-      const response = await apiClient.put(`/campuses/${id}/set-main`, {});
-      return response.data;
-    } catch (error: any) {
-      const serverMessage = error?.response?.data?.message || error?.message || "Failed to set main campus";
       throw new Error(serverMessage);
     }
   },

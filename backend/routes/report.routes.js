@@ -1,8 +1,11 @@
 // backend/src/routes/report.routes.js
 import express from 'express';
-import * as reportController from '../controllers/report.controller.js'; // Keep .js extension for import
+import { auth } from '../middleware/auth.js';
+import * as reportController from '../controllers/report.controller.js';
 
 const router = express.Router();
+
+router.use(auth);
 
 // ==================== REPORT ROUTES ====================
 router.get('/', reportController.getAllReports);

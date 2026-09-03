@@ -7,11 +7,11 @@ export interface Batch {
   year: number;
   code: string;
   department: string;
-  departmentId?: string;
+  departmentId?: string | { _id?: string; name?: string; code?: string };
   program: string;
-  programId?: string;
+  programId?: string | { _id?: string };
   admissionSession: string;
-  admissionSessionId?: string;
+  admissionSessionId?: string | { _id?: string; sessionId?: string; name?: string };
   admissionSemester: string;
   expectedGraduation: number;
   status: 'Active' | 'Inactive' | 'Upcoming' | 'Completed';
@@ -39,11 +39,11 @@ export interface BatchStats {
 class BatchAPI {
   private baseUrl = '/batches';
 
-  async getAll(params?: { department?: string; program?: string; status?: string }) {
+  async getAll(params?: { departmentId?: string; program?: string; status?: string }) {
     try {
       const queryParams = new URLSearchParams();
-      if (params?.department) {
-        queryParams.append('department', params.department);
+      if (params?.departmentId) {
+        queryParams.append('departmentId', params.departmentId);
       }
       if (params?.program) {
         queryParams.append('program', params.program);

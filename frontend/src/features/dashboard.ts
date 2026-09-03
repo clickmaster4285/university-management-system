@@ -7,7 +7,7 @@ export interface DashboardStats {
     activeStudents: number;
     totalTeachers: number;
     totalDepartments: number;
-    totalCourses: number;
+    totalOfferings: number;
     totalAdmissions: number;
     totalEmployees: number;
     pendingAdmissions: number;

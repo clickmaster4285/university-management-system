@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { AppShell } from "@/layouts";
 import { KpiCard } from "@/components/dashboard/kpi-card";
 import { DataTable, type Column } from "@/components/data-table";
 import { Button } from "@/components/ui/button";
@@ -8,7 +7,6 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { eventAPI, Event } from "@/features/event";
-import { useAuth } from "@/lib/auth";
 import { 
   Calendar, 
   Users, 
@@ -40,7 +38,6 @@ import {
 import { toast } from "sonner";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, PieChart as RePieChart, Pie, Cell, Legend, LineChart, Line, AreaChart, Area } from "recharts";
 
-
 // Constants
 const eventTypes = ['Seminar', 'Workshop', 'Conference', 'Sports', 'Cultural', 'Academic', 'Career Fair', 'Hackathon', 'Convocation', 'Other'];
 const eventCategories = ['Academic', 'Sports', 'Cultural', 'Social', 'Career', 'Technical', 'Other'];
@@ -58,7 +55,6 @@ interface CategoryStats {
 }
 
 export function EventsPage() {
-  const { user } = useAuth();
   const [events, setEvents] = useState<Event[]>([]);
   const [filteredEvents, setFilteredEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
@@ -100,8 +96,6 @@ export function EventsPage() {
     dressCode: '',
     parkingInfo: ''
   });
-
-  const isAuthenticated = !!user;
 
   // Fetch events
   const fetchEvents = async () => {
@@ -170,13 +164,9 @@ export function EventsPage() {
   };
 
   useEffect(() => {
-    if (isAuthenticated) {
-      fetchEvents();
-      fetchStats();
-    } else {
-      setLoading(false);
-    }
-  }, [isAuthenticated]);
+    fetchEvents();
+    fetchStats();
+  }, []);
 
   // Prepare chart data - FIXED
   const getCategoryChartData = (): { name: string; value: number }[] => {
@@ -272,8 +262,8 @@ export function EventsPage() {
       venue: '',
       address: '',
       campus: 'Main Campus - Islamabad',
-      organizer: user?.name || '',
-      organizerEmail: user?.email || '',
+      organizer: '',
+      organizerEmail: '',
       organizerPhone: '',
       capacity: 50,
       registrationFee: 0,
@@ -380,7 +370,6 @@ export function EventsPage() {
         dressCode: formData.dressCode.trim(),
         parkingInfo: formData.parkingInfo.trim()
       };
-
 
       let response;
       if (isEditMode && editingId) {
@@ -584,46 +573,8 @@ export function EventsPage() {
     },
   ];
 
-  // Show login prompt if not authenticated
-  if (!isAuthenticated) {
-    return (
-      <AppShell title="Events" subtitle="Please login to manage events">
-        <div className="flex flex-col items-center justify-center h-96 border-2 border-dashed rounded-lg p-8">
-          <Database className="h-16 w-16 text-muted-foreground mb-4" />
-          <h3 className="text-xl font-semibold mb-2">Login Required</h3>
-          <p className="text-sm text-muted-foreground mb-4 text-center max-w-md">
-            Please login to view and manage events.
-          </p>
-          <Button onClick={() => window.location.href = '/login'} className="gradient-brand text-white border-0">
-            Go to Login
-          </Button>
-        </div>
-      </AppShell>
-    );
-  }
-
   return (
-    <AppShell
-      title="Events"
-      subtitle={stats ? `${stats.total || 0} total · ${stats.upcoming || 0} upcoming · ${stats.ongoing || 0} ongoing` : 'Loading...'}
-      actions={
-        <>
-          <Button onClick={openAddModal} className="gradient-brand text-white border-0">
-            <Plus className="h-4 w-4 mr-2" /> New Event
-          </Button>
-          <Button 
-            variant="outline" 
-            onClick={() => {
-              fetchEvents();
-              fetchStats();
-            }}
-            disabled={loading}
-          >
-            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-          </Button>
-        </>
-      }
-    >
+    <>
       {/* KPI Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <KpiCard 
@@ -1246,7 +1197,7 @@ export function EventsPage() {
           </div>
         </div>
       )}
-    </AppShell>
+    </>
   );
 }
 

@@ -23,7 +23,7 @@ export function LoginPage() {
     try {
       await login({ email, password });
       toast.success("Welcome back");
-      navigate("/");
+      navigate("/dashboard");
     } catch (error: any) {
       toast.error(error?.message || 'Login failed');
     } finally {
@@ -109,6 +109,9 @@ export function LoginPage() {
               </Button>
             </form>
             <p className="mt-6 text-center text-xs text-muted-foreground">
+              <Link to="/" className="text-primary hover:underline">Back to university website</Link>
+            </p>
+            <p className="mt-2 text-center text-xs text-muted-foreground">
               New here? <Link to="/login" className="text-primary hover:underline">Request access</Link>
             </p>
           </CardContent>

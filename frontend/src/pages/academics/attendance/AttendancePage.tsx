@@ -1,6 +1,5 @@
 // src/routes/app.attendance.tsx
 import { useState, useEffect } from "react";
-import { AppShell } from "@/layouts";
 import { KpiCard } from "@/components/dashboard/kpi-card";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { attendanceAPI, StudentAttendance, AttendanceSummary } from "@/features/attendance";
-import { departmentAPI } from "@/features/departments";
+import { departmentAPI, type Department } from "@/features/departments";
 import { 
   CalendarCheck, 
   UserCheck, 
@@ -52,7 +51,7 @@ export function AttendancePage() {
   const [summary, setSummary] = useState<AttendanceSummary | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [departments, setDepartments] = useState<string[]>([]);
+  const [departments, setDepartments] = useState<Department[]>([]);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -73,7 +72,7 @@ export function AttendancePage() {
   const [filters, setFilters] = useState({
     program: '',
     semester: '',
-    department: ''
+    departmentId: ''
   });
 
   // Programs list
@@ -85,7 +84,7 @@ export function AttendancePage() {
     try {
       const response = await departmentAPI.getAll();
       if (response && response.data) {
-        setDepartments(response.data.map((d: any) => d.name));
+        setDepartments(Array.isArray(response.data) ? response.data : []);
       }
     } catch (error) {
       console.error('Failed to fetch departments:', error);
@@ -259,14 +258,14 @@ export function AttendancePage() {
   const refreshData = async () => {
     await fetchOverallTodayStats(); // ✅ Refresh overall stats
     await fetchWeeklyStats();
-    if (filters.program && filters.semester && filters.department) {
+    if (filters.program && filters.semester && filters.departmentId) {
       await fetchStudents();
     }
   };
 
   // Fetch students for attendance
   const fetchStudents = async () => {
-    if (!filters.program || !filters.semester || !filters.department) {
+    if (!filters.program || !filters.semester || !filters.departmentId) {
       toast.error('Please select Program, Semester and Department');
       return;
     }
@@ -277,7 +276,7 @@ export function AttendancePage() {
       const response = await attendanceAPI.getStudentsForAttendance({
         program: filters.program,
         semester: parseInt(filters.semester),
-        department: filters.department
+        departmentId: filters.departmentId
       });
 
       if (response && response.data) {
@@ -349,7 +348,7 @@ export function AttendancePage() {
         attendance: attendanceData,
         program: filters.program,
         semester: parseInt(filters.semester),
-        department: filters.department,
+        departmentId: filters.departmentId,
         markedBy: 'Admin'
       });
 
@@ -414,28 +413,7 @@ export function AttendancePage() {
   };
 
   return (
-    <AppShell
-      title="Attendance"
-      subtitle={`${overallTodayStats.total} total · ${overallTodayStats.present} present today`}
-      actions={
-        <>
-          <Button 
-            onClick={() => setIsFormOpen(!isFormOpen)}
-            className="gradient-brand text-white border-0 hover:opacity-90"
-          >
-            <UserPlus className="h-4 w-4 mr-2" /> 
-            {isFormOpen ? 'Close Form' : 'Mark Attendance'}
-          </Button>
-          <Button 
-            variant="outline" 
-            onClick={refreshData}
-            disabled={loading}
-          >
-            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-          </Button>
-        </>
-      }
-    >
+      <>
       {/* KPI Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <KpiCard 
@@ -660,13 +638,13 @@ export function AttendancePage() {
                 <Label htmlFor="department">Department *</Label>
                 <select
                   id="department"
-                  value={filters.department}
-                  onChange={(e) => handleFilterChange('department', e.target.value)}
+                  value={filters.departmentId}
+                  onChange={(e) => handleFilterChange('departmentId', e.target.value)}
                   className="w-full border rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-primary"
                 >
                   <option value="">Select Department</option>
                   {departments.map(d => (
-                    <option key={d} value={d}>{d}</option>
+                    <option key={d._id} value={d._id}>{d.name}</option>
                   ))}
                 </select>
               </div>
@@ -675,7 +653,7 @@ export function AttendancePage() {
             <div className="flex gap-3 mt-4">
               <Button 
                 onClick={fetchStudents}
-                disabled={loading || !filters.program || !filters.semester || !filters.department}
+                disabled={loading || !filters.program || !filters.semester || !filters.departmentId}
                 className="gradient-brand text-white border-0"
               >
                 {loading ? (
@@ -963,7 +941,7 @@ export function AttendancePage() {
           )}
         </CardContent>
       </Card>
-    </AppShell>
+    </>
   );
 }
 

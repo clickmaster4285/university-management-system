@@ -11,6 +11,18 @@ export function errorHandler(err, req, res, next) {
   console.error(`❌ Error: ${err.message}`);
   console.error(err.stack);
 
+  if (err.name === 'MulterError') {
+    const message =
+      err.code === 'LIMIT_FILE_SIZE'
+        ? 'File too large. Maximum size is 10 MB.'
+        : err.message || 'File upload failed';
+    return res.status(400).json({ success: false, message });
+  }
+
+  if (err.message?.includes('Unsupported file type')) {
+    return res.status(400).json({ success: false, message: err.message });
+  }
+
   // Default error
   const statusCode = err.status || 500;
   const message = err.message || 'Internal Server Error';

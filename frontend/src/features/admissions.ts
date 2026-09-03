@@ -54,7 +54,7 @@ export interface AdmissionStats {
 
 class AdmissionAPI {
   // Remove /api from here since it's already in the baseURL
-  private baseUrl = '/admissions';
+  private baseUrl = '/admissions/legacy';
 
   async getAll(params?: {
     status?: string;
