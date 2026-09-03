@@ -134,9 +134,9 @@ export default function StudentsPage() {
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-        <KpiCard title="Total students" value={stats.totalStudents} icon={Users} />
-        <KpiCard title="Active" value={stats.activeStudents} icon={GraduationCap} />
-        <KpiCard title="Graduated" value={stats.graduatedStudents} icon={GraduationCap} />
+        <KpiCard label="Total students" value={stats.totalStudents} icon={Users} />
+        <KpiCard label="Active" value={stats.activeStudents} icon={GraduationCap} />
+        <KpiCard label="Graduated" value={stats.graduatedStudents} icon={GraduationCap} />
       </div>
 
       <div className="flex flex-wrap gap-3">
@@ -161,7 +161,7 @@ export default function StudentsPage() {
       {loading ? (
         <div className="flex justify-center py-16"><Loader2 className="h-8 w-8 animate-spin" /></div>
       ) : (
-        <DataTable columns={columns} data={filteredStudents} emptyMessage="No students found. Complete an admission dossier to enroll students." />
+        <DataTable columns={columns} data={filteredStudents} />
       )}
     </div>
   );

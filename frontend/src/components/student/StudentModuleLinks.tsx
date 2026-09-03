@@ -22,7 +22,7 @@ const modules = [
     to: (student: Student) => {
       const admission = student.admissionId;
       if (admission == null) return "/admissions";
-      const id = typeof admission === "object" ? admission.admissionId || admission._id : admission;
+      const id = typeof admission === "object" ? admission.admissionId : admission;
       return id ? `/admissions/dossier/${id}` : "/admissions";
     },
     icon: GraduationCap,

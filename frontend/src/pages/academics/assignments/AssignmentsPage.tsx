@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { assignmentAPI, Assignment } from "@/features/assignment";
 import { offeringAPI, type CourseOffering } from "@/features/offerings";
+import { type Subject } from "@/features/subjects";
 import { 
   ClipboardList, 
   CheckCircle2, 
@@ -254,7 +255,7 @@ export function AssignmentsPage() {
   };
 
   const getOfferingSubject = (offering: CourseOffering) =>
-    typeof offering.subjectId === 'object' ? offering.subjectId : null;
+    typeof offering.subjectId === 'object' ? (offering.subjectId as Subject) : null;
 
   const getOfferingLabel = (offering: CourseOffering) => {
     const subject = getOfferingSubject(offering);

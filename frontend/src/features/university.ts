@@ -26,6 +26,9 @@ export interface UniversityStats {
   totalAdmins: number;
   totalUsers: number;
   totalCampuses: number;
+  totalFaculties: number;
+  totalDepartments: number;
+  totalPrograms: number;
 }
 
 export interface University {

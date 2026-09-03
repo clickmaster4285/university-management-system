@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Building2, Users, BookOpen, X, Save,
-  Loader2, Pencil, Trash2, Eye } from "lucide-react";
+  Loader2, Pencil, Trash2, Eye, BarChart3 } from "lucide-react";
 import { toast } from "sonner";
 
 type FacultyFormData = {
@@ -62,6 +62,8 @@ export default function FacultiesPage() {
   const [campusFilter, setCampusFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [viewingFaculty, setViewingFaculty] = useState<Faculty | null>(null);
+  const [viewingFacultyDetail, setViewingFacultyDetail] = useState<any>(null);
+  const [loadingDetail, setLoadingDetail] = useState(false);
 
   const fetchData = async () => {
     try {
@@ -119,6 +121,24 @@ export default function FacultiesPage() {
     }
     const found = staffMembers.find((member) => member._id === head);
     return found ? getStaffDisplayName(found) : head;
+  };
+
+  const openViewFaculty = async (f: Faculty) => {
+    const id = getFacultyId(f);
+    if (!id) {
+      setViewingFaculty(f);
+      return;
+    }
+    setViewingFaculty(f);
+    setLoadingDetail(true);
+    try {
+      const res = await facultyAPI.getById(id);
+      setViewingFacultyDetail(res?.data || f);
+    } catch {
+      setViewingFacultyDetail(f);
+    } finally {
+      setLoadingDetail(false);
+    }
   };
 
   const openCreate = () => {
@@ -211,7 +231,7 @@ export default function FacultiesPage() {
             type="button"
             size="sm"
             variant="ghost"
-            onClick={() => setViewingFaculty(f)}
+            onClick={() => openViewFaculty(f)}
             title="View faculty"
           >
             <Eye className="h-4 w-4" />
@@ -339,6 +359,26 @@ export default function FacultiesPage() {
                 <div>
                   <p className="text-muted-foreground">Description</p>
                   <p className="mt-1">{viewingFaculty.description}</p>
+                </div>
+              )}
+              {viewingFacultyDetail?.stats && (
+                <div>
+                  <p className="text-muted-foreground flex items-center gap-1.5 mb-2">
+                    <BarChart3 className="h-3.5 w-3.5" /> Statistics
+                  </p>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    {[
+                      { label: "Departments", value: viewingFacultyDetail.stats.totalDepartments },
+                      { label: "Programs", value: viewingFacultyDetail.stats.totalPrograms },
+                      { label: "Subjects", value: viewingFacultyDetail.stats.totalSubjects },
+                      { label: "Batches", value: viewingFacultyDetail.stats.totalBatches },
+                    ].map((item) => (
+                      <div key={item.label} className="bg-muted/50 rounded-lg p-3 text-center">
+                        <p className="text-2xl font-bold">{item.value ?? 0}</p>
+                        <p className="text-xs text-muted-foreground">{item.label}</p>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
               <div className="flex gap-2 pt-2">

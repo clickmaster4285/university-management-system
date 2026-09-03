@@ -30,6 +30,11 @@ import {
   Building2,
   CheckCircle,
   XCircle,
+  Layers,
+  BookMarked,
+  GraduationCap,
+  Users,
+  BookOpen,
 } from "lucide-react";
 import { toast } from "sonner";
 import { campusAPI, type Campus } from "@/features/campus";
@@ -394,6 +399,43 @@ export function CampusesPage() {
                   <p className="font-medium">{viewingCampus.email || "—"}</p>
                 </div>
               </div>
+              {viewingCampus.stats && (
+                <div className="space-y-2">
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Academic Overview</p>
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="rounded-lg border bg-muted/30 p-3 text-center">
+                      <Building2 className="h-4 w-4 mx-auto mb-1 text-muted-foreground" />
+                      <p className="text-lg font-bold">{viewingCampus.stats.totalFaculties}</p>
+                      <p className="text-xs text-muted-foreground">Faculties</p>
+                    </div>
+                    <div className="rounded-lg border bg-muted/30 p-3 text-center">
+                      <Layers className="h-4 w-4 mx-auto mb-1 text-muted-foreground" />
+                      <p className="text-lg font-bold">{viewingCampus.stats.totalDepartments}</p>
+                      <p className="text-xs text-muted-foreground">Departments</p>
+                    </div>
+                    <div className="rounded-lg border bg-muted/30 p-3 text-center">
+                      <BookMarked className="h-4 w-4 mx-auto mb-1 text-muted-foreground" />
+                      <p className="text-lg font-bold">{viewingCampus.stats.totalPrograms}</p>
+                      <p className="text-xs text-muted-foreground">Programs</p>
+                    </div>
+                    <div className="rounded-lg border bg-muted/30 p-3 text-center">
+                      <BookOpen className="h-4 w-4 mx-auto mb-1 text-muted-foreground" />
+                      <p className="text-lg font-bold">{viewingCampus.stats.totalSubjects}</p>
+                      <p className="text-xs text-muted-foreground">Subjects</p>
+                    </div>
+                    <div className="rounded-lg border bg-muted/30 p-3 text-center">
+                      <Users className="h-4 w-4 mx-auto mb-1 text-muted-foreground" />
+                      <p className="text-lg font-bold">{viewingCampus.stats.totalTeachers}</p>
+                      <p className="text-xs text-muted-foreground">Teachers</p>
+                    </div>
+                    <div className="rounded-lg border bg-muted/30 p-3 text-center">
+                      <GraduationCap className="h-4 w-4 mx-auto mb-1 text-muted-foreground" />
+                      <p className="text-lg font-bold">{viewingCampus.stats.totalStudents}</p>
+                      <p className="text-xs text-muted-foreground">Students</p>
+                    </div>
+                  </div>
+                </div>
+              )}
               <div className="flex gap-2 pt-2">
                 <Button variant="outline" onClick={() => setViewingCampus(null)}>Close</Button>
                 <Button onClick={() => { navigate(`/campuses/edit/${viewingCampus._id}`); setViewingCampus(null); }}>

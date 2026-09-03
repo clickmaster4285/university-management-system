@@ -14,6 +14,13 @@ export interface Department {
   email?: string;
   phone?: string;
   establishedDate?: string;
+  stats?: {
+    totalPrograms: number;
+    totalSubjects: number;
+    totalTeachers: number;
+    totalBatches: number;
+    totalOfferings: number;
+  };
   createdAt?: string;
   updatedAt?: string;
 }

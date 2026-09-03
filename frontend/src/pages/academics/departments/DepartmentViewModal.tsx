@@ -1,8 +1,9 @@
-import { Building2, Mail, Phone, MapPin, User, FileText, Calendar, X, Pencil } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Building2, Mail, Phone, MapPin, User, FileText, Calendar, X, Pencil, BarChart3, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
-import type { Department } from "@/features/departments";
+import { departmentAPI, type Department } from "@/features/departments";
 
 interface DepartmentViewModalProps {
   isOpen: boolean;
@@ -16,6 +17,26 @@ function getDepartmentId(dept: Department) {
 }
 
 export function DepartmentViewModal({ isOpen, department, onClose, onEdit }: DepartmentViewModalProps) {
+  const [detail, setDetail] = useState<Department | null>(null);
+  const [loadingDetail, setLoadingDetail] = useState(false);
+
+  useEffect(() => {
+    if (!isOpen || !department) {
+      setDetail(null);
+      return;
+    }
+    const id = department._id || department.departmentId;
+    if (!id) {
+      setDetail(department);
+      return;
+    }
+    setLoadingDetail(true);
+    departmentAPI.getById(id)
+      .then((res) => setDetail(res?.data || department))
+      .catch(() => setDetail(department))
+      .finally(() => setLoadingDetail(false));
+  }, [isOpen, department]);
+
   if (!isOpen || !department) return null;
 
   return (
@@ -124,6 +145,29 @@ export function DepartmentViewModal({ isOpen, department, onClose, onEdit }: Dep
               </div>
             </div>
           </div>
+
+          {/* Stats */}
+          {detail?.stats && (
+            <div>
+              <h3 className="text-sm font-semibold text-primary flex items-center gap-2 mb-4">
+                <BarChart3 className="h-4 w-4" /> Statistics
+              </h3>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+                {[
+                  { label: "Programs", value: detail.stats.totalPrograms },
+                  { label: "Subjects", value: detail.stats.totalSubjects },
+                  { label: "Teachers", value: detail.stats.totalTeachers },
+                  { label: "Batches", value: detail.stats.totalBatches },
+                  { label: "Offerings", value: detail.stats.totalOfferings },
+                ].map((item) => (
+                  <div key={item.label} className="bg-gray-50 rounded-lg p-3 text-center border">
+                    <p className="text-2xl font-bold">{item.value ?? 0}</p>
+                    <p className="text-xs text-muted-foreground">{item.label}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Department ID */}
           <div className="bg-gray-50 rounded-lg p-3 border">

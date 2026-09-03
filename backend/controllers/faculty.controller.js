@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
 import { handle } from "../utils/asyncHandler.js";
-import { Faculty, Department, StaffMember } from '../models/index.js';
+import { Faculty, Department, StaffMember, Program, Batch, Subject } from '../models/index.js';
 import { generateFacultyId } from "../utils/generateFacultyId.js";
 
 async function findFacultyByIdentifier(identifier) {
@@ -60,7 +60,25 @@ export const getFacultyById = handle(async (req, res) => {
     .populate('campusId', 'name campusCode')
     .populate('headId', 'staffId firstName lastName email');
 
-  res.json({ success: true, data: populated });
+  const fid = faculty._id;
+  const nd = { isDeleted: { $ne: true } };
+
+  const [totalDepartments, totalPrograms, totalSubjects, totalBatches] = await Promise.all([
+    Department.countDocuments({ facultyId: fid, ...nd }),
+    Program.countDocuments({ departmentId: { $in: (await Department.find({ facultyId: fid, ...nd }).select("_id")).map(d => d._id) }, ...nd }),
+    Subject.countDocuments({ departmentId: { $in: (await Department.find({ facultyId: fid, ...nd }).select("_id")).map(d => d._id) }, ...nd }),
+    Batch.countDocuments({ departmentId: { $in: (await Department.find({ facultyId: fid, ...nd }).select("_id")).map(d => d._id) }, ...nd }),
+  ]);
+
+  const data = populated.toObject();
+  data.stats = {
+    totalDepartments,
+    totalPrograms,
+    totalSubjects,
+    totalBatches,
+  };
+
+  res.json({ success: true, data });
 });
 
 export const createFaculty = handle(async (req, res) => {

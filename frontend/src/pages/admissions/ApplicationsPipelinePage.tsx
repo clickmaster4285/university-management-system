@@ -73,7 +73,7 @@ export default function ApplicationsPipelinePage() {
       setApplications(listRes.data || []);
       setStats(statsRes);
       setPrograms(programRes?.data || programRes || []);
-      setCampuses(campusRes?.data || campusRes || []);
+      setCampuses(Array.isArray(campusRes?.data) ? campusRes.data : []);
     } catch {
       toast.error("Failed to load applications");
     } finally {
@@ -167,10 +167,10 @@ export default function ApplicationsPipelinePage() {
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <KpiCard title="Total" value={stats.total} icon={UserPlus} />
-        <KpiCard title="Submitted" value={stats.submitted} icon={UserPlus} />
-        <KpiCard title="Under review" value={stats.underReview} icon={UserPlus} />
-        <KpiCard title="Promoted" value={stats.promoted} icon={UserPlus} />
+        <KpiCard label="Total" value={stats.total} icon={UserPlus} />
+        <KpiCard label="Submitted" value={stats.submitted} icon={UserPlus} />
+        <KpiCard label="Under review" value={stats.underReview} icon={UserPlus} />
+        <KpiCard label="Promoted" value={stats.promoted} icon={UserPlus} />
       </div>
 
       {showForm && (
@@ -212,7 +212,7 @@ export default function ApplicationsPipelinePage() {
       {loading ? (
         <div className="flex justify-center py-16"><Loader2 className="h-8 w-8 animate-spin" /></div>
       ) : (
-        <DataTable columns={columns} data={filtered} emptyMessage="No applications found" />
+        <DataTable columns={columns} data={filtered} />
       )}
 
     </div>

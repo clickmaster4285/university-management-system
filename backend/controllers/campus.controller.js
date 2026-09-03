@@ -1,7 +1,7 @@
 import { generateCampusId } from "../utils/generateCampusId.js";
 import { handle } from "../utils/asyncHandler.js";
 
-import { Campus, Department, University } from "../models/index.js";
+import { Campus, Department, University, Faculty, Program, User, Subject, Batch } from "../models/index.js";
 
 // Resolve the single university (single-university architecture)
 const getSingleUniversity = async () =>
@@ -153,9 +153,32 @@ export const getCampusById = handle(async (req, res) => {
     });
   }
 
+  const cid = campus._id;
+  const nd = { isDeleted: { $ne: true } };
+
+  const [totalFaculties, totalDepartments, totalPrograms, totalStudents, totalTeachers, totalSubjects] =
+    await Promise.all([
+      Faculty.countDocuments({ campusId: cid, ...nd }),
+      Department.countDocuments({ campusId: cid, ...nd }),
+      Program.countDocuments({ departmentId: { $in: (await Department.find({ campusId: cid, ...nd }).select("_id")).map(d => d._id) }, ...nd }),
+      User.countDocuments({ universityId: campus.universityId?._id || campus.universityId, role: "Student", ...nd }),
+      User.countDocuments({ universityId: campus.universityId?._id || campus.universityId, role: "Teacher", ...nd }),
+      Subject.countDocuments({ departmentId: { $in: (await Department.find({ campusId: cid, ...nd }).select("_id")).map(d => d._id) }, ...nd }),
+    ]);
+
+  const data = campus.toObject();
+  data.stats = {
+    totalFaculties,
+    totalDepartments,
+    totalPrograms,
+    totalStudents,
+    totalTeachers,
+    totalSubjects,
+  };
+
   res.json({
     success: true,
-    data: campus,
+    data,
   });
 });
 

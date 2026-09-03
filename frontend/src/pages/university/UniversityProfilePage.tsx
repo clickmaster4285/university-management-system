@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
+import { KpiCard } from "@/components/dashboard/kpi-card";
 import {
   Building2,
   Mail,
@@ -19,7 +20,12 @@ import {
   ArrowLeft,
   ShieldCheck,
   Save,
-  Pencil
+  Pencil,
+  School,
+  Layers,
+  BookMarked,
+  Users,
+  Briefcase,
 } from "lucide-react";
 import {
   getUniversity,
@@ -141,6 +147,18 @@ export function UniversityProfilePage() {
     : `${university?.universityName} · ${university?.universityId}`;
 
   return (
+      <div className="space-y-6">
+      {university?.stats && (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <KpiCard label="Campuses" value={university.stats.totalCampuses} icon={School} />
+          <KpiCard label="Faculties" value={university.stats.totalFaculties} icon={Building2} />
+          <KpiCard label="Departments" value={university.stats.totalDepartments} icon={Layers} />
+          <KpiCard label="Programs" value={university.stats.totalPrograms} icon={BookMarked} />
+          <KpiCard label="Students" value={university.stats.totalStudents} icon={GraduationCap} />
+          <KpiCard label="Teachers" value={university.stats.totalTeachers} icon={Users} />
+          <KpiCard label="Staff" value={university.stats.totalStaff} icon={Briefcase} />
+        </div>
+      )}
       <Card className="border shadow-sm">
         <CardContent className="p-6 md:p-8">
           <form onSubmit={handleSubmit} className="space-y-8">
@@ -481,6 +499,7 @@ export function UniversityProfilePage() {
           </form>
         </CardContent>
       </Card>
+      </div>
   );
 }
 

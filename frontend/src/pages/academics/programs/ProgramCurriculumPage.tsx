@@ -77,7 +77,7 @@ export default function ProgramCurriculumPage() {
               code: item.subjectId.code,
               name: item.subjectId.name,
               credits: item.subjectId.credits,
-              ...(item.subjectId.departmentId ? { departmentId: item.subjectId.departmentId } : {}),
+              departmentId: (item.subjectId.departmentId ?? "") as Subject["departmentId"],
               status: item.subjectId.status as Subject["status"],
             });
           }

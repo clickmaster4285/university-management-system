@@ -2,7 +2,7 @@ import { generateUniversityId } from "../utils/generateUniversityId.js";
 import { handle } from "../utils/asyncHandler.js";
 
 // 1. CREATE UNIVERSITY (public)
-import { Campus, University, User } from "../models/index.js";
+import { Campus, University, User, Faculty, Department, Program } from "../models/index.js";
 export const createUniversity = handle(async (req, res) => {
   const {
     universityName,
@@ -93,14 +93,24 @@ export const getUniversity = handle(async (req, res) => {
     });
   }
 
-  const [campusCount, userCount, totalStudents, totalTeachers, totalStaff, totalAdmins] =
+  const universityId = university._id;
+  const notDeleted = { isDeleted: { $ne: true } };
+
+  const [
+    campusCount, userCount,
+    totalStudents, totalTeachers, totalStaff, totalAdmins,
+    totalFaculties, totalDepartments, totalPrograms,
+  ] =
     await Promise.all([
-      Campus.countDocuments({ universityId: university._id, isDeleted: { $ne: true } }),
-      User.countDocuments({ universityId: university._id, isDeleted: { $ne: true } }),
-      User.countDocuments({ universityId: university._id, role: "Student", isDeleted: { $ne: true } }),
-      User.countDocuments({ universityId: university._id, role: "Teacher", isDeleted: { $ne: true } }),
-      User.countDocuments({ universityId: university._id, role: "Staff", isDeleted: { $ne: true } }),
-      User.countDocuments({ universityId: university._id, role: "Admin", isDeleted: { $ne: true } }),
+      Campus.countDocuments({ universityId, ...notDeleted }),
+      User.countDocuments({ universityId, ...notDeleted }),
+      User.countDocuments({ universityId, role: "Student", ...notDeleted }),
+      User.countDocuments({ universityId, role: "Teacher", ...notDeleted }),
+      User.countDocuments({ universityId, role: "Staff", ...notDeleted }),
+      User.countDocuments({ universityId, role: "Admin", ...notDeleted }),
+      Faculty.countDocuments({ ...notDeleted }),
+      Department.countDocuments({ ...notDeleted }),
+      Program.countDocuments({ ...notDeleted }),
     ]);
 
   const data = university.toObject();
@@ -113,6 +123,9 @@ export const getUniversity = handle(async (req, res) => {
     totalAdmins,
     totalUsers: totalStudents + totalTeachers + totalStaff + totalAdmins,
     totalCampuses: campusCount,
+    totalFaculties,
+    totalDepartments,
+    totalPrograms,
   };
 
   res.json({

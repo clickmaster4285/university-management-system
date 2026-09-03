@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
 import { handle } from "../utils/asyncHandler.js";
-import { Program, Department, CourseOffering, Batch, ProgramCurriculum } from '../models/index.js';
+import { Program, Department, CourseOffering, Batch, ProgramCurriculum, Subject } from '../models/index.js';
 import { generateProgramId } from "../utils/generateProgramId.js";
 
 const DEGREE_LEVELS = ['BS', 'MS', 'PhD', 'BBA', 'MBA', 'LLB', 'Other'];
@@ -81,7 +81,29 @@ export const getProgramById = handle(async (req, res) => {
   const populated = await Program.findById(program._id)
     .populate('departmentId', 'name code');
 
-  res.json({ success: true, data: populated });
+  const pid = program._id;
+
+  const [totalBatches, totalOfferings, totalEnrolledStudents, totalCurriculumEntries, totalSubjects] = await Promise.all([
+    Batch.countDocuments({ programId: pid, isDeleted: notDeleted }),
+    CourseOffering.countDocuments({ programId: pid, isDeleted: notDeleted }),
+    CourseOffering.aggregate([
+      { $match: { programId: pid, isDeleted: { $ne: true } } },
+      { $group: { _id: null, total: { $sum: "$enrolledStudents" } } },
+    ]).then(r => r[0]?.total || 0),
+    ProgramCurriculum.countDocuments({ programId: pid, isDeleted: notDeleted }),
+    Subject.countDocuments({ departmentId: program.departmentId?._id || program.departmentId, isDeleted: notDeleted }),
+  ]);
+
+  const data = populated.toObject();
+  data.stats = {
+    totalBatches,
+    totalOfferings,
+    totalEnrolledStudents,
+    totalCurriculumEntries,
+    totalSubjects,
+  };
+
+  res.json({ success: true, data });
 });
 
 export const createProgram = handle(async (req, res) => {

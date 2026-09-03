@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { DEGREE_LEVELS } from "./ProgramForm";
-import { Layers, BookOpen, Users, Loader2, Pencil, Trash2, ListTree, Receipt } from "lucide-react";
+import { Layers, BookOpen, Users, Loader2, Pencil, Trash2, ListTree, Receipt, Eye, BarChart3 } from "lucide-react";
 import { toast } from "sonner";
 
 const getProgramRecordId = (program: Program) => program._id || program.programId || "";
@@ -28,6 +28,9 @@ export default function ProgramsPage() {
   const [departmentFilter, setDepartmentFilter] = useState("all");
   const [degreeFilter, setDegreeFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [viewingProgram, setViewingProgram] = useState<Program | null>(null);
+  const [viewingProgramDetail, setViewingProgramDetail] = useState<any>(null);
+  const [loadingDetail, setLoadingDetail] = useState(false);
 
   const fetchData = async () => {
     try {
@@ -75,6 +78,24 @@ export default function ProgramsPage() {
     if (typeof dept === "object") return dept.name;
     const found = departments.find((d) => d._id === dept);
     return found?.name || dept;
+  };
+
+  const openViewProgram = async (p: Program) => {
+    const id = getProgramRecordId(p);
+    setViewingProgram(p);
+    if (!id) {
+      setViewingProgramDetail(p);
+      return;
+    }
+    setLoadingDetail(true);
+    try {
+      const res = await programAPI.getById(id);
+      setViewingProgramDetail(res?.data || p);
+    } catch {
+      setViewingProgramDetail(p);
+    } finally {
+      setLoadingDetail(false);
+    }
   };
 
   const goToEdit = (program: Program) => {
@@ -141,6 +162,9 @@ export default function ProgramsPage() {
       header: "Actions",
       cell: (p) => (
         <div className="flex gap-1">
+          <Button type="button" size="sm" variant="ghost" onClick={() => openViewProgram(p)} title="View program">
+            <Eye className="h-4 w-4" />
+          </Button>
           <Button type="button" size="sm" variant="ghost" onClick={() => goToCurriculum(p)} title="Manage curriculum">
             <ListTree className="h-4 w-4" />
           </Button>
@@ -237,6 +261,82 @@ export default function ProgramsPage() {
             </div>
           )}
         />
+      )}
+
+      {viewingProgram && (
+        <div
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+          onClick={(e) => { if (e.target === e.currentTarget) { setViewingProgram(null); setViewingProgramDetail(null); } }}
+        >
+          <div className="bg-background rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto border">
+            <div className="flex items-center justify-between p-5 border-b">
+              <div>
+                <h2 className="text-xl font-bold">{viewingProgram.name}</h2>
+                <p className="text-sm text-muted-foreground font-mono">{viewingProgram.code}</p>
+              </div>
+              <Button variant="ghost" size="sm" onClick={() => { setViewingProgram(null); setViewingProgramDetail(null); }}>Close</Button>
+            </div>
+            <div className="p-5 space-y-4 text-sm">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-muted-foreground">Department</p>
+                  <p className="font-medium">{getDeptName(viewingProgram.departmentId)}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Degree Level</p>
+                  <Badge variant="outline">{viewingProgram.degreeLevel}</Badge>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Duration</p>
+                  <p className="font-medium">{viewingProgram.duration} semesters</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Total Credits</p>
+                  <p className="font-medium">{viewingProgram.totalCredits || 0}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Status</p>
+                  <Badge variant={viewingProgram.status === "Active" ? "default" : "secondary"}>
+                    {viewingProgram.status || "Active"}
+                  </Badge>
+                </div>
+              </div>
+              {viewingProgram.description && (
+                <div>
+                  <p className="text-muted-foreground">Description</p>
+                  <p className="mt-1">{viewingProgram.description}</p>
+                </div>
+              )}
+              {viewingProgramDetail?.stats && (
+                <div>
+                  <p className="text-muted-foreground flex items-center gap-1.5 mb-2">
+                    <BarChart3 className="h-3.5 w-3.5" /> Statistics
+                  </p>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    {[
+                      { label: "Batches", value: viewingProgramDetail.stats.totalBatches },
+                      { label: "Offerings", value: viewingProgramDetail.stats.totalOfferings },
+                      { label: "Enrolled Students", value: viewingProgramDetail.stats.totalEnrolledStudents },
+                      { label: "Curriculum Entries", value: viewingProgramDetail.stats.totalCurriculumEntries },
+                      { label: "Subjects", value: viewingProgramDetail.stats.totalSubjects },
+                    ].map((item) => (
+                      <div key={item.label} className="bg-muted/50 rounded-lg p-3 text-center">
+                        <p className="text-2xl font-bold">{item.value ?? 0}</p>
+                        <p className="text-xs text-muted-foreground">{item.label}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              <div className="flex gap-2 pt-2">
+                <Button variant="outline" onClick={() => { setViewingProgram(null); setViewingProgramDetail(null); }}>Close</Button>
+                <Button onClick={() => { goToEdit(viewingProgram); setViewingProgram(null); setViewingProgramDetail(null); }}>
+                  <Pencil className="h-4 w-4 mr-2" /> Edit Program
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </>
   );

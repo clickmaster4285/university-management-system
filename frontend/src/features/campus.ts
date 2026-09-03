@@ -24,6 +24,14 @@ export interface Campus {
   updatedBy?: string;
   createdAt: string;
   updatedAt: string;
+  stats?: {
+    totalFaculties: number;
+    totalDepartments: number;
+    totalPrograms: number;
+    totalStudents: number;
+    totalTeachers: number;
+    totalSubjects: number;
+  };
 }
 
 export interface CampusData {
