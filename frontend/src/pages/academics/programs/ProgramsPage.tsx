@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { programAPI, type Program } from "@/features/programs";
 import { departmentAPI, type Department } from "@/features/departments";
 import { DataTable, type Column } from "@/components/data-table";
@@ -21,6 +21,7 @@ const resolveRefId = (value: string | { _id: string } | null | undefined) => {
 
 export default function ProgramsPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [programs, setPrograms] = useState<Program[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [loading, setLoading] = useState(true);
@@ -50,6 +51,13 @@ export default function ProgramsPage() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    const state = location.state as { departmentId?: string } | null;
+    if (state?.departmentId) {
+      setDepartmentFilter(state.departmentId);
+    }
+  }, [location.key]);
 
   useEffect(() => {
     fetchData();

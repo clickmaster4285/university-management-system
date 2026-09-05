@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { DataTable, type Column } from "@/components/data-table";
 import { KpiCard } from "@/components/dashboard/kpi-card";
 import { Badge } from "@/components/ui/badge";
@@ -31,6 +31,7 @@ const statusOptions = ["Active", "Upcoming", "Completed", "Inactive"];
 
 export default function BatchesPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [batches, setBatches] = useState<Batch[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [sessions, setSessions] = useState<AcademicSession[]>([]);
@@ -65,6 +66,13 @@ export default function BatchesPage() {
       console.error("Failed to fetch batch stats");
     }
   };
+
+  useEffect(() => {
+    const state = location.state as { departmentId?: string } | null;
+    if (state?.departmentId) {
+      setDepartmentFilter(state.departmentId);
+    }
+  }, [location.key]);
 
   useEffect(() => {
     fetchBatches();

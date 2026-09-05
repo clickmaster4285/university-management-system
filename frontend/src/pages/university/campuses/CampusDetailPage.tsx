@@ -101,12 +101,12 @@ export default function CampusDetailPage() {
 
   const statCards = campus.stats
     ? [
-        { label: "Faculties", value: campus.stats.totalFaculties, icon: Building2 },
-        { label: "Departments", value: campus.stats.totalDepartments, icon: Layers },
-        { label: "Programs", value: campus.stats.totalPrograms, icon: BookMarked },
-        { label: "Subjects", value: campus.stats.totalSubjects, icon: BookOpen },
-        { label: "Teachers", value: campus.stats.totalTeachers, icon: Users },
-        { label: "Students", value: campus.stats.totalStudents, icon: GraduationCap },
+        { label: "Faculties", value: campus.stats.totalFaculties, icon: Building2, to: `/faculties`, filter: { campusId: campus._id } },
+        { label: "Departments", value: campus.stats.totalDepartments, icon: Layers, to: `/departments`, filter: { campusId: campus._id } },
+        { label: "Programs", value: campus.stats.totalPrograms, icon: BookMarked, to: `/programs` },
+        { label: "Subjects", value: campus.stats.totalSubjects, icon: BookOpen, to: `/subjects` },
+        { label: "Teachers", value: campus.stats.totalTeachers, icon: Users, to: `/staff` },
+        { label: "Students", value: campus.stats.totalStudents, icon: GraduationCap, to: `/students` },
       ]
     : [];
 
@@ -242,14 +242,16 @@ export default function CampusDetailPage() {
               <CardContent>
                 <div className="grid grid-cols-2 gap-3">
                   {statCards.map((stat) => (
-                    <div
+                    <button
                       key={stat.label}
-                      className="rounded-lg border bg-muted/30 p-3 text-center"
+                      type="button"
+                      onClick={() => navigate(stat.to, { state: stat.filter })}
+                      className="rounded-lg border bg-muted/30 p-3 text-center hover:bg-muted/60 transition-colors"
                     >
                       <stat.icon className="h-4 w-4 mx-auto mb-1 text-muted-foreground" />
                       <p className="text-lg font-bold">{stat.value}</p>
                       <p className="text-xs text-muted-foreground">{stat.label}</p>
-                    </div>
+                    </button>
                   ))}
                 </div>
               </CardContent>

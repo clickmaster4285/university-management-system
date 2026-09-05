@@ -113,10 +113,10 @@ export default function FacultyDetailPage() {
   };
 
   const statCards = [
-    { label: "Departments", value: stats?.totalDepartments ?? 0, icon: Layers, tone: "brand" as const },
-    { label: "Programs", value: stats?.totalPrograms ?? 0, icon: GraduationCap, tone: "info" as const },
-    { label: "Subjects", value: stats?.totalSubjects ?? 0, icon: BookOpen, tone: "success" as const },
-    { label: "Batches", value: stats?.totalBatches ?? 0, icon: Users, tone: "warning" as const },
+    { label: "Departments", value: stats?.totalDepartments ?? 0, icon: Layers, to: "/departments", filter: { facultyId: faculty._id } },
+    { label: "Programs", value: stats?.totalPrograms ?? 0, icon: GraduationCap, to: "/programs" },
+    { label: "Subjects", value: stats?.totalSubjects ?? 0, icon: BookOpen, to: "/subjects" },
+    { label: "Batches", value: stats?.totalBatches ?? 0, icon: Users, to: "/batches" },
   ];
 
   const infoFields: Array<{ label: string; value: string | null; icon: typeof Hash; className?: string; isBadge?: boolean }> = [
@@ -210,7 +210,12 @@ export default function FacultyDetailPage() {
           <h2 className="text-lg font-semibold mb-4">Statistics</h2>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             {statCards.map((stat) => (
-              <div key={stat.label} className="flex items-center gap-3 p-4 rounded-lg bg-muted/50">
+              <button
+                key={stat.label}
+                type="button"
+                onClick={() => navigate(stat.to, { state: stat.filter })}
+                className="flex items-center gap-3 p-4 rounded-lg bg-muted/50 hover:bg-muted/80 transition-colors text-left"
+              >
                 <div className="h-10 w-10 rounded-lg flex items-center justify-center bg-muted">
                   <stat.icon className="h-5 w-5 text-muted-foreground" />
                 </div>
@@ -218,7 +223,7 @@ export default function FacultyDetailPage() {
                   <p className="text-2xl font-bold">{stat.value}</p>
                   <p className="text-xs text-muted-foreground">{stat.label}</p>
                 </div>
-              </div>
+              </button>
             ))}
           </div>
         </CardContent>

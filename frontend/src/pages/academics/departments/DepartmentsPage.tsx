@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { DataTable, type Column } from "@/components/data-table";
 import { KpiCard } from "@/components/dashboard/kpi-card";
 import { Badge } from "@/components/ui/badge";
@@ -24,6 +24,7 @@ const resolveRefId = (value: string | { _id: string } | null | undefined) => {
 
 export default function DepartmentsPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [departments, setDepartments] = useState<Department[]>([]);
   const [campuses, setCampuses] = useState<Campus[]>([]);
   const [faculties, setFaculties] = useState<Faculty[]>([]);
@@ -53,6 +54,12 @@ export default function DepartmentsPage() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    const state = location.state as { campusId?: string; facultyId?: string } | null;
+    if (state?.campusId) setCampusFilter(state.campusId);
+    if (state?.facultyId) setFacultyFilter(state.facultyId);
+  }, [location.key]);
 
   useEffect(() => {
     fetchData();

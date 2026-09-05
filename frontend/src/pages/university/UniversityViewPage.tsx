@@ -187,16 +187,16 @@ export function UniversityViewPage() {
             Overview
           </h3>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <KpiCard label="Campuses" value={university.stats.totalCampuses} icon={School} />
-            <KpiCard label="Faculties" value={university.stats.totalFaculties} icon={Building2} />
-            <KpiCard label="Departments" value={university.stats.totalDepartments} icon={Layers} />
-            <KpiCard label="Programs" value={university.stats.totalPrograms} icon={BookMarked} />
+            <KpiCard label="Campuses" value={university.stats.totalCampuses} icon={School} onClick={() => navigate("/campuses")} />
+            <KpiCard label="Faculties" value={university.stats.totalFaculties} icon={Building2} onClick={() => navigate("/faculties")} />
+            <KpiCard label="Departments" value={university.stats.totalDepartments} icon={Layers} onClick={() => navigate("/departments")} />
+            <KpiCard label="Programs" value={university.stats.totalPrograms} icon={BookMarked} onClick={() => navigate("/programs")} />
           </div>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <KpiCard label="Students" value={university.stats.totalStudents} icon={GraduationCap} />
-            <KpiCard label="Teachers" value={university.stats.totalTeachers} icon={Users} />
-            <KpiCard label="Staff" value={university.stats.totalStaff} icon={Briefcase} />
-            <KpiCard label="Admins" value={university.stats.totalAdmins} icon={ShieldCheck} />
+            <KpiCard label="Students" value={university.stats.totalStudents} icon={GraduationCap} onClick={() => navigate("/students")} />
+            <KpiCard label="Teachers" value={university.stats.totalTeachers} icon={Users} onClick={() => navigate("/staff")} />
+            <KpiCard label="Staff" value={university.stats.totalStaff} icon={Briefcase} onClick={() => navigate("/staff")} />
+            <KpiCard label="Admins" value={university.stats.totalAdmins} icon={ShieldCheck} onClick={() => navigate("/access")} />
           </div>
         </div>
       )}

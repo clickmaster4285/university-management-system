@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { subjectAPI, type Subject } from "@/features/subjects";
 import { departmentAPI, type Department } from "@/features/departments";
 import { DataTable, type Column } from "@/components/data-table";
@@ -20,6 +20,7 @@ const resolveRefId = (value: string | { _id: string } | null | undefined) => {
 
 export default function SubjectsPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [loading, setLoading] = useState(true);
@@ -45,6 +46,13 @@ export default function SubjectsPage() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    const state = location.state as { departmentId?: string } | null;
+    if (state?.departmentId) {
+      setDepartmentFilter(state.departmentId);
+    }
+  }, [location.key]);
 
   useEffect(() => {
     fetchData();

@@ -4,10 +4,11 @@ import type { LucideIcon } from "lucide-react";
 import { TrendingUp, TrendingDown } from "lucide-react";
 
 export function KpiCard({
-  label, value, icon: Icon, trend, tone = "brand",
+  label, value, icon: Icon, trend, tone = "brand", onClick,
 }: {
   label: string; value: string | number; icon: LucideIcon;
   trend?: number; tone?: "brand" | "success" | "warning" | "info" | "destructive";
+  onClick?: () => void;
 }) {
   const tones: Record<string, string> = {
     brand: "from-primary/20 to-brand-2/20 text-primary",
@@ -17,7 +18,10 @@ export function KpiCard({
     destructive: "from-destructive/20 to-destructive/5 text-destructive",
   };
   return (
-    <Card className="relative overflow-hidden card-hover glass">
+    <Card
+      className={cn("relative overflow-hidden card-hover glass", onClick && "cursor-pointer hover:shadow-md transition-shadow")}
+      onClick={onClick}
+    >
       <div className={cn("absolute inset-0 bg-gradient-to-br opacity-40 pointer-events-none", tones[tone])} />
       <CardContent className="relative p-5">
         <div className="flex items-start justify-between">

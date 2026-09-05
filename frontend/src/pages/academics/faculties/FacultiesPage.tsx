@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { facultyAPI, type Faculty } from "@/features/faculties";
 import { campusAPI, type Campus } from "@/features/campus";
 import { staffMemberAPI, getStaffDisplayName, type StaffMember } from "@/features/staffMembers";
@@ -22,6 +22,7 @@ const resolveRefId = (value: string | { _id: string } | null | undefined) => {
 
 export default function FacultiesPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [faculties, setFaculties] = useState<Faculty[]>([]);
   const [campuses, setCampuses] = useState<Campus[]>([]);
   const [staffMembers, setStaffMembers] = useState<StaffMember[]>([]);
@@ -49,6 +50,13 @@ export default function FacultiesPage() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    const state = location.state as { campusId?: string } | null;
+    if (state?.campusId) {
+      setCampusFilter(state.campusId);
+    }
+  }, [location.key]);
 
   useEffect(() => { fetchData(); }, []);
 
