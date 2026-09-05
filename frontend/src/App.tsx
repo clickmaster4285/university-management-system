@@ -57,6 +57,7 @@ const OfferingsPage = lazy(() => import("./pages/academics/offerings/OfferingsPa
 const AcademicSessionsPage = lazy(() => import("./pages/academics/sessions/AcademicSessionsPage"));
 const SessionCreatePage = lazy(() => import("./pages/academics/sessions/SessionCreatePage"));
 const SessionEditPage = lazy(() => import("./pages/academics/sessions/SessionEditPage"));
+const SessionDetailPage = lazy(() => import("./pages/academics/sessions/SessionDetailPage"));
 const BatchesPage = lazy(() => import("./pages/academics/batches/BatchesPage"));
 const BatchCreatePage = lazy(() => import("./pages/academics/batches/BatchCreatePage"));
 const BatchEditPage = lazy(() => import("./pages/academics/batches/BatchEditPage"));
@@ -174,6 +175,7 @@ export const App = () => (
                 <Route path="/academic-sessions" element={<AcademicSessionsPage />} />
                 <Route path="/academic-sessions/create" element={<SessionCreatePage />} />
                 <Route path="/academic-sessions/edit/:id" element={<SessionEditPage />} />
+                <Route path="/academic-sessions/detail/:id" element={<SessionDetailPage />} />
                 <Route path="/batches" element={<BatchesPage />} />
                 <Route path="/batches/create" element={<BatchCreatePage />} />
                 <Route path="/batches/edit/:id" element={<BatchEditPage />} />

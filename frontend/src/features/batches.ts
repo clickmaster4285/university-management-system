@@ -39,7 +39,7 @@ export interface BatchStats {
 class BatchAPI {
   private baseUrl = '/batches';
 
-  async getAll(params?: { departmentId?: string; program?: string; status?: string }) {
+  async getAll(params?: { departmentId?: string; program?: string; status?: string; admissionSessionId?: string }) {
     try {
       const queryParams = new URLSearchParams();
       if (params?.departmentId) {
@@ -50,6 +50,9 @@ class BatchAPI {
       }
       if (params?.status) {
         queryParams.append('status', params.status);
+      }
+      if (params?.admissionSessionId) {
+        queryParams.append('admissionSessionId', params.admissionSessionId);
       }
       const url = queryParams.toString() ? `${this.baseUrl}?${queryParams}` : this.baseUrl;
       const response = await api.get(url);

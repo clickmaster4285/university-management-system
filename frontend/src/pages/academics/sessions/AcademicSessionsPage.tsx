@@ -177,7 +177,7 @@ export default function AcademicSessionsPage() {
       header: "Actions",
       cell: (r) => (
         <div className="flex gap-1">
-          <Button type="button" size="sm" variant="ghost" onClick={() => setViewingSession(r)} title="View">
+          <Button type="button" size="sm" variant="ghost" onClick={() => navigate(`/academic-sessions/detail/${r._id || r.sessionId}`)} title="View">
             <Eye className="h-4 w-4" />
           </Button>
           <Button

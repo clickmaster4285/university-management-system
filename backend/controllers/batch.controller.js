@@ -5,7 +5,7 @@ import { handle } from "../utils/asyncHandler.js";
 // GET /api/batches - Get all batches
 import { AcademicSession, Batch, Department } from '../models/index.js';
 export const getBatches = handle(async (req, res) => {
-  const { departmentId, program, status } = req.query;
+  const { departmentId, program, status, admissionSessionId } = req.query;
   const filter = { isDeleted: { $ne: true } };
   
   if (departmentId) {
@@ -18,6 +18,10 @@ export const getBatches = handle(async (req, res) => {
   
   if (status) {
     filter.status = status;
+  }
+
+  if (admissionSessionId) {
+    filter.admissionSessionId = admissionSessionId;
   }
   
   const batches = await Batch.find(filter)

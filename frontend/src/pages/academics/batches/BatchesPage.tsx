@@ -39,6 +39,7 @@ export default function BatchesPage() {
   const [error, setError] = useState<string | null>(null);
   const [stats, setStats] = useState<{ total?: number; active?: number; upcoming?: number; completed?: number } | null>(null);
   const [departmentFilter, setDepartmentFilter] = useState("all");
+  const [sessionFilter, setSessionFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [viewingBatch, setViewingBatch] = useState<Batch | null>(null);
 
@@ -46,7 +47,11 @@ export default function BatchesPage() {
     try {
       setLoading(true);
       setError(null);
-      const response = await batchAPI.getAll();
+      const response = await batchAPI.getAll({
+        departmentId: departmentFilter !== "all" ? departmentFilter : undefined,
+        status: statusFilter !== "all" ? statusFilter : undefined,
+        admissionSessionId: sessionFilter !== "all" ? sessionFilter : undefined,
+      });
       setBatches(response?.data || []);
     } catch {
       const errorMsg = "Failed to load batches";
@@ -68,9 +73,12 @@ export default function BatchesPage() {
   };
 
   useEffect(() => {
-    const state = location.state as { departmentId?: string } | null;
+    const state = location.state as { departmentId?: string; admissionSessionId?: string } | null;
     if (state?.departmentId) {
       setDepartmentFilter(state.departmentId);
+    }
+    if (state?.admissionSessionId) {
+      setSessionFilter(state.admissionSessionId);
     }
   }, [location.key]);
 
@@ -85,9 +93,19 @@ export default function BatchesPage() {
     return batches.filter((b) => {
       if (statusFilter !== "all" && (b.status || "Upcoming") !== statusFilter) return false;
       if (departmentFilter !== "all" && b.departmentId !== departmentFilter) return false;
+      if (sessionFilter !== "all") {
+        const sessionId = typeof b.admissionSessionId === "object" ? b.admissionSessionId?._id : b.admissionSessionId;
+        if (sessionId !== sessionFilter) return false;
+      }
       return true;
     });
-  }, [batches, departmentFilter, statusFilter]);
+  }, [batches, departmentFilter, sessionFilter, statusFilter]);
+
+  const clearFilters = () => {
+    setDepartmentFilter("all");
+    setSessionFilter("all");
+    setStatusFilter("all");
+  };
 
   const handleDelete = async (id: string, code: string) => {
     if (!confirm(`Are you sure you want to delete batch "${code}"?`)) return;
@@ -295,7 +313,7 @@ export default function BatchesPage() {
           addLabel="Add batch"
           onAdd={() => navigate("/batches/create")}
           filterPanel={
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="batch-dept-filter">Department</Label>
                 <select
@@ -308,6 +326,22 @@ export default function BatchesPage() {
                   {departments.map((dept) => (
                     <option key={dept._id} value={dept._id}>
                       {dept.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="batch-session-filter">Admission Session</Label>
+                <select
+                  id="batch-session-filter"
+                  className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm"
+                  value={sessionFilter}
+                  onChange={(e) => setSessionFilter(e.target.value)}
+                >
+                  <option value="all">All sessions</option>
+                  {sessions.map((s) => (
+                    <option key={s._id} value={s._id}>
+                      {s.name}
                     </option>
                   ))}
                 </select>
@@ -335,9 +369,10 @@ export default function BatchesPage() {
                   className="w-full sm:w-auto"
                   onClick={() => {
                     setDepartmentFilter("all");
+                    setSessionFilter("all");
                     setStatusFilter("all");
                   }}
-                  disabled={departmentFilter === "all" && statusFilter === "all"}
+                  disabled={departmentFilter === "all" && sessionFilter === "all" && statusFilter === "all"}
                 >
                   Clear filters
                 </Button>
