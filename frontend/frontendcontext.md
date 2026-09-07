@@ -1,6 +1,6 @@
 # Frontend Context
 
-> **Last updated:** 2026-09-05 — interconnected KPI navigation, session detail page, batch session filter
+> **Last updated:** 2026-09-07 — multi-campus department/faculty, campus admin, staff primary campus/faculty
 
 ## Tech Stack
 
@@ -64,6 +64,15 @@ pages/academics/departments/
 **List page action pattern (Aug 2026):** KPI row → DataTable → filters → **View** (eye) + Edit (pencil) + Delete. View opens detail modal or navigates to profile page. Examples: `StudentsPage`, `StaffPage`, `FacultiesPage`, `CampusesPage`, `WorkforceLeavePage`.
 
 **Interconnected navigation (Sep 2026):** University overview KPI cards navigate to list pages. Detail page stat cards navigate to related list pages with pre-applied filters using `useLocation().state`. List pages read location state on mount and set filters accordingly.
+
+**Multi-campus/multi-faculty UI (Sep 2026):**
+- **DepartmentForm** uses tabbed per-campus assignment UI (head, email, phone, location, status, establishedDate per campus)
+- **DepartmentsPage** shows campus names and faculty names from arrays (no legacy scalar columns)
+- **DepartmentDetailPage** shows per-campus assignment cards and faculty list
+- **DepartmentViewModal** shows per-campus assignment cards
+- **CampusForm** has staff selector for campus administrator (campusAdminId)
+- **CampusDetailPage** shows campus administrator card
+- **StaffMember interface** includes `primaryCampusId`, `primaryFacultyId`
 
 **Refactored examples:**
 - `DepartmentsPage.tsx` — list with `DepartmentViewModal`
@@ -150,7 +159,7 @@ Key barrel export: `features/index.ts` re-exports everything.
 ### Updated Files (reflecting backend ref changes)
 
 - **`features/teachers.ts`** — `Teacher` interface: `userId` (ref User), `departmentId` (ref Department). Removed `coursesTeaching`. `getAll` accepts `{ departmentId?, designation?, status?, search?, page?, limit? }`. No `bulkCreate` — teacher creation auto-creates User on backend.
-- **`features/departments.ts`** — `Department` interface: `campusId`, `headId`, `facultyId` refs. `getAll` accepts `{ campusId?, facultyId?, status?, search?, page?, limit? }`. Stats use `status` (not `isActive`).
+- **`features/departments.ts`** — `Department` interface: `campusIds[]`, `facultyIds[]`, `campusAssignments[]` (per-campus head, email, phone, location, establishedDate, status). Removed legacy scalar fields (`campusId`, `headId`, `facultyId`, `email`, `phone`, `location`, `establishedDate`, `status`). `getAll` accepts `{ campusId?, facultyId?, status?, search?, page?, limit? }`. Stats use `campusAssignments.status` (not `isActive`).
 - **`features/courses.ts`** — `Course` interface: `departmentId` (ref Department), `programId` (ref Program), `instructorId` (ref Teacher). All filter methods use `departmentId`. `CourseFilters` uses `departmentId`/`programId`.
 - **`features/attendance.ts`** — `AttendanceRecord` has `departmentId` alongside legacy `department`. API methods use `departmentId` in query params and payloads.
 - **`features/batches.ts`** — `getAll` accepts `departmentId` instead of `department`.
@@ -162,7 +171,7 @@ Key barrel export: `features/index.ts` re-exports everything.
 - **`SubjectEditPage`** — tabs: Details (`SubjectForm`) + Fee History (`SubjectFeePanel`, grouped by program scope)
 - **`features/programs.ts`** — Program CRUD + stats + `getCurriculum` / `updateCurriculum`
 - **`features/faculties.ts`** — `Faculty` interface + `FacultyAPI` class with `getAll`, `getById`, `getStats`, `create`, `update`, `delete`.
-- **`features/campus.ts`** — `campusAPI.getAll()` (no params needed), `.getById(id)`, `.create(data)`, `.update(id, data)`, `.delete(id)`. No separate `setMain` — uses `update(id, { isMainCampus: true })`.
+- **`features/campus.ts`** — `Campus` interface includes `campusAdminId` (ref StaffMember). `campusAPI.getAll()` (no params needed), `.getById(id)`, `.create(data)`, `.update(id, data)`, `.delete(id)`. No separate `setMain` — uses `update(id, { isMainCampus: true })`.
 - **`features/university.ts`** — Single-university pattern: `getUniversity()`, `createUniversity(data)`, `updateUniversity(data)`, `deleteUniversity()`.
 
 ### Still using legacy patterns
@@ -222,7 +231,7 @@ Sidebar groups: Overview · Governance · Academic Catalog · HR & Staff · Stud
 
 Route guards: `lib/routeModules.ts` + `components/ModuleRoute.tsx` + sidebar `hasModuleAccess`.
 
-API: `features/staffMembers.ts`, `features/workforce.ts`, `features/platformRoles.ts`
+API: `features/staffMembers.ts` (StaffMember includes `primaryCampusId`, `primaryFacultyId`), `features/workforce.ts`, `features/platformRoles.ts`
 
 Staff documents: `StaffDocumentsPanel` — uploads to `uploads/hr/{staffId}/{documentType}/`
 

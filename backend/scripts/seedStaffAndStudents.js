@@ -8,6 +8,7 @@ import {
   University,
   Campus,
   Department,
+  Faculty,
   Program,
   Batch,
   AcademicSession,
@@ -62,8 +63,8 @@ const TEACHERS = [
     gender: 'Male',
     phone: '+92-300-1234567',
     designation: 'Professor',
-    departmentName: 'Computer Science',
     departmentCode: 'CS',
+    campusCode: 'MAIN',
     isAcademic: true,
   },
   {
@@ -74,8 +75,8 @@ const TEACHERS = [
     gender: 'Female',
     phone: '+92-301-2345678',
     designation: 'Associate Professor',
-    departmentName: 'Software Engineering',
     departmentCode: 'SE',
+    campusCode: 'MAIN',
     isAcademic: true,
   },
   {
@@ -86,8 +87,32 @@ const TEACHERS = [
     gender: 'Male',
     phone: '+92-302-3456789',
     designation: 'Lecturer',
-    departmentName: 'Mathematics',
-    departmentCode: 'MATH',
+    departmentCode: 'IT',
+    campusCode: 'CITY',
+    isAcademic: true,
+  },
+  {
+    firstName: 'Saima',
+    lastName: 'Butt',
+    email: 'saima.butt@university.edu',
+    cnic: '35201-3456790-4',
+    gender: 'Female',
+    phone: '+92-303-3456790',
+    designation: 'Assistant Professor',
+    departmentCode: 'BA',
+    campusCode: 'CITY',
+    isAcademic: true,
+  },
+  {
+    firstName: 'Tariq',
+    lastName: 'Malik',
+    email: 'tariq.malik@university.edu',
+    cnic: '35201-3456791-5',
+    gender: 'Male',
+    phone: '+92-304-3456791',
+    designation: 'Professor',
+    departmentCode: 'EE',
+    campusCode: 'MAIN',
     isAcademic: true,
   },
 ];
@@ -154,8 +179,8 @@ const STAFF = [
     gender: 'Male',
     phone: '+92-340-4567890',
     designation: 'HR Manager',
-    departmentName: 'Human Resources',
     departmentCode: 'HR',
+    campusCode: 'MAIN',
   },
   {
     firstName: 'Zainab',
@@ -165,8 +190,8 @@ const STAFF = [
     gender: 'Female',
     phone: '+92-341-5678901',
     designation: 'HR Officer',
-    departmentName: 'Human Resources',
     departmentCode: 'HR',
+    campusCode: 'CITY',
   },
   {
     firstName: 'Imran',
@@ -176,8 +201,8 @@ const STAFF = [
     gender: 'Male',
     phone: '+92-342-6789012',
     designation: 'Accounts Officer',
-    departmentName: 'Finance',
     departmentCode: 'FIN',
+    campusCode: 'CITY',
   },
   {
     firstName: 'Fatima',
@@ -187,8 +212,8 @@ const STAFF = [
     gender: 'Female',
     phone: '+92-343-7890123',
     designation: 'Librarian',
-    departmentName: 'Library',
     departmentCode: 'LIB',
+    campusCode: 'MAIN',
   },
   {
     firstName: 'Ali',
@@ -198,8 +223,8 @@ const STAFF = [
     gender: 'Male',
     phone: '+92-344-8901234',
     designation: 'Transport Incharge',
-    departmentName: 'Transport',
     departmentCode: 'TRN',
+    campusCode: 'CITY',
   },
 ];
 
@@ -252,43 +277,73 @@ export const seedStaffAndStudents = async () => {
       },
     );
 
-    const satelliteCampus = await findOrCreateModel(
+    const cityCampus = await findOrCreateModel(
       Campus,
-      { universityId: university._id, campusCode: 'SAT' },
+      { universityId: university._id, campusCode: 'CITY' },
       {
         campusId: 'CMP-0002',
-        name: 'Satellite Campus',
+        name: 'City Campus',
         type: 'Branch',
         isMainCampus: false,
         address: { street: 'Sector E-9', city: 'Islamabad', province: 'Islamabad', country: 'Pakistan' },
         phone: '+92-51-2222222',
-        email: 'satellite@nust.edu.pk',
+        email: 'city@nust.edu.pk',
         establishedYear: 2010,
         status: 'Active',
       },
     );
 
+    const campusByCode = { MAIN: mainCampus, CITY: cityCampus };
+
     // ── 4. Departments ────────────────────────────────────────────────────
     console.log('\n🏛️  Seeding Departments...\n');
 
     const departmentDefs = [
-      { name: 'Computer Science', code: 'CS', campusId: mainCampus._id },
-      { name: 'Software Engineering', code: 'SE', campusId: mainCampus._id },
-      { name: 'Mathematics', code: 'MATH', campusId: mainCampus._id },
-      { name: 'Human Resources', code: 'HR', campusId: mainCampus._id },
-      { name: 'Finance', code: 'FIN', campusId: mainCampus._id },
-      { name: 'Library', code: 'LIB', campusId: mainCampus._id },
-      { name: 'Transport', code: 'TRN', campusId: satelliteCampus._id },
+      { name: 'Computer Science', code: 'CS', campusCode: 'MAIN' },
+      { name: 'Software Engineering', code: 'SE', campusCode: 'MAIN' },
+      { name: 'Information Technology', code: 'IT', campusCode: 'CITY' },
+      { name: 'Business Administration', code: 'BA', campusCode: 'CITY' },
+      { name: 'Electrical Engineering', code: 'EE', campusCode: 'MAIN' },
+      { name: 'Human Resources', code: 'HR', campusCode: 'MAIN' },
+      { name: 'Finance', code: 'FIN', campusCode: 'CITY' },
+      { name: 'Library', code: 'LIB', campusCode: 'MAIN' },
+      { name: 'Transport', code: 'TRN', campusCode: 'CITY' },
     ];
 
     const departments = {};
     for (const def of departmentDefs) {
-      const dept = await findOrCreateModel(
-        Department,
-        { campusId: def.campusId, code: def.code },
-        { departmentId: `DEPT-${def.code}`, name: def.name, status: 'Active' },
-      );
+      const campus = campusByCode[def.campusCode];
+      let dept = await Department.findOne({ code: def.code, isDeleted: { $ne: true } });
+      if (!dept) {
+        dept = await Department.create({
+          departmentId: `DEPT-${def.code}`,
+          name: def.name,
+          code: def.code,
+          campusIds: [campus._id],
+          campusAssignments: [{ campus: campus._id, status: 'Active' }],
+        });
+        console.log(`  ✓ Created Department: ${dept.name} (${dept.code}) @ ${def.campusCode}`);
+      } else {
+        if (!dept.campusIds.map(id => id.toString()).includes(campus._id.toString())) {
+          dept.campusIds.push(campus._id);
+          dept.campusAssignments.push({ campus: campus._id, status: 'Active' });
+          await dept.save();
+        }
+        console.log(`  • Found Department: ${dept.name} (${dept.code})`);
+      }
       departments[def.code] = dept;
+    }
+
+    for (const def of departmentDefs) {
+      const dept = departments[def.code];
+      if (!dept) continue;
+      for (const facultyCode of (def.facultyCodes || [])) {
+        const faculty = await Faculty.findOne({ code: facultyCode, isDeleted: { $ne: true } });
+        if (faculty && !dept.facultyIds.includes(faculty._id)) {
+          dept.facultyIds.push(faculty._id);
+          await dept.save();
+        }
+      }
     }
 
     // ── 5. Academic Session ───────────────────────────────────────────────
@@ -439,6 +494,7 @@ export const seedStaffAndStudents = async () => {
         status: 'Active',
       });
 
+      const campus = campusByCode[t.campusCode];
       const staffId = await generateStaffId();
       const staffMember = await StaffMember.create({
         staffId,
@@ -450,11 +506,12 @@ export const seedStaffAndStudents = async () => {
         cnic: t.cnic,
         gender: t.gender,
         isAcademic: true,
+        primaryCampusId: campus._id,
         status: 'Active',
         employments: [
           {
             departmentId: departments[t.departmentCode]._id,
-            campusId: mainCampus._id,
+            campusId: campus._id,
             designation: t.designation,
             employmentType: 'Full-time',
             isPrimary: true,
@@ -468,7 +525,7 @@ export const seedStaffAndStudents = async () => {
 
       createdUsers.push(user);
       createdStaffMembers.push(staffMember);
-      console.log(`  ✓ Created Teacher: ${t.firstName} ${t.lastName} (${staffId})`);
+      console.log(`  ✓ Created Teacher: ${t.firstName} ${t.lastName} (${staffId}) @ ${t.campusCode}`);
     }
 
     // --- Staff (HR, Finance, Library, Transport) ---
@@ -491,6 +548,7 @@ export const seedStaffAndStudents = async () => {
         status: 'Active',
       });
 
+      const campus = campusByCode[s.campusCode];
       const staffId = await generateStaffId();
       const staffMember = await StaffMember.create({
         staffId,
@@ -502,11 +560,12 @@ export const seedStaffAndStudents = async () => {
         cnic: s.cnic,
         gender: s.gender,
         isAcademic: false,
+        primaryCampusId: campus._id,
         status: 'Active',
         employments: [
           {
             departmentId: departments[s.departmentCode]._id,
-            campusId: mainCampus._id,
+            campusId: campus._id,
             designation: s.designation,
             employmentType: 'Full-time',
             isPrimary: true,
@@ -520,7 +579,7 @@ export const seedStaffAndStudents = async () => {
 
       createdUsers.push(user);
       createdStaffMembers.push(staffMember);
-      console.log(`  ✓ Created Staff: ${s.firstName} ${s.lastName} (${staffId}) — ${s.designation}`);
+      console.log(`  ✓ Created Staff: ${s.firstName} ${s.lastName} (${staffId}) — ${s.designation} @ ${s.campusCode}`);
     }
 
     // ── 9. Users + Students ───────────────────────────────────────────────
@@ -592,7 +651,7 @@ export const seedStaffAndStudents = async () => {
     console.log('📊 SEED SUMMARY');
     console.log('═'.repeat(60));
     console.log(`  University     : ${university.universityName}`);
-    console.log(`  Campuses       : 2 (Main, Satellite)`);
+    console.log(`  Campuses       : 2 (Main, City)`);
     console.log(`  Departments    : ${Object.keys(departments).length}`);
     console.log(`  Programs       : ${Object.keys(programs).length}`);
     console.log(`  Batches        : ${Object.keys(batches).length}`);
@@ -609,7 +668,7 @@ export const seedStaffAndStudents = async () => {
     return {
       university,
       mainCampus,
-      satelliteCampus,
+      cityCampus,
       departments,
       programs,
       batches,

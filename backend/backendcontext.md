@@ -1,6 +1,6 @@
 # Backend Context
 
-> **Last updated:** 2026-09-05 — batch session filter, session detail linked batches support
+> **Last updated:** 2026-09-07 — multi-campus department/faculty, campus admin, staff primary campus/faculty
 
 ## API & data principles
 
@@ -100,9 +100,9 @@ Status legend:
 | Model | Status | API / usage | Notes |
 |-------|--------|-------------|-------|
 | `University` | Active | `GET/POST/PUT/DELETE /api/universities` | Single-university system |
-| `Campus` | Active | `/api/campuses` | Scoped under university |
-| `Faculty` | Active | `/api/faculties` | Academic org unit (not a person) |
-| `Department` | Active | `/api/departments` | `campusId`, optional `facultyId` |
+| `Campus` | Active | `/api/campuses` | Scoped under university; has `campusAdminId` (ref StaffMember) |
+| `Faculty` | Active | `/api/faculties` | Global (no scalar campusId); spans campuses via `campusIds[]` + `campusAssignments[]` |
+| `Department` | Active | `/api/departments` | Spans campuses via `campusIds[]` + `campusAssignments[]`; multi-faculty via `facultyIds[]`; code globally unique |
 | `User` | Active | `/api/auth/*` | `role` = legacy JWT bucket; **`platformRole`** = single ref to `PlatformRole` |
 | `PlatformRole` | Active **NEW** | `/api/platform-roles` | Role templates + `moduleAccess` |
 | `PermissionAuditLog` | Active **NEW** | `/api/platform-roles/audit-logs` | Role/access change audit |
@@ -139,7 +139,7 @@ Status legend:
 
 | Model | Status | API / usage | Notes |
 |-------|--------|-------------|-------|
-| `StaffMember` | Active **NEW** | `/api/staff`, workforce | **Primary** employee record |
+| `StaffMember` | Active **NEW** | `/api/staff`, workforce | **Primary** employee record; has `primaryCampusId`, `primaryFacultyId` |
 | `StaffLeave` | Active **NEW** | `/api/workforce/leaves` | Replaces `Leave` |
 | `StaffLeaveBalance` | Active **NEW** | `/api/workforce/leaves/balance/:id` | Quotas per year |
 | `StaffAttendance` | Active **NEW** | `/api/workforce/attendance` | |

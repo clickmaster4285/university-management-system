@@ -1,7 +1,7 @@
 # UniversityMS — Master Project Context
 
 > **Purpose of this file:** Single source of truth for anyone (or any AI session) working on this codebase. Read this first. It tracks vision, what is built, what is deferred, what to do, what not to do, and the roadmap.  
-> **Last updated:** 2026-09-05 — interconnected navigation, session detail page, batch session filter  
+> **Last updated:** 2026-09-07 — multi-campus faculty, cross-faculty department, campus admin, staff primary campus/faculty  
 > **Detailed academic spec:** `academic-architecture-plan.md`  
 > **Fees, sessions, batches & offerings flow:** `fee-plan.md`  
 > **Implementation details:** `backend/backendcontext.md`, `frontend/frontendcontext.md`
@@ -30,19 +30,25 @@
 ```
 University
   └── Campus
-        └── Faculty
-              └── Department
-                    ├── Subject          ← catalog (what can be taught)
-                    ├── Program            ← degree (BSCS, BSSE, …)
-                    │     ├── ProgramCurriculum   ← which subjects, which semester
-                    │     └── ProgramSemesterFeeSchedule  ← semester fee package (F2)
-                    ├── SubjectFeeHistory         ← versioned fee rates
-                    ├── SemesterRegistration      ← student semester package (F4)
-                    └── CourseOffering            ← one running class
-                          └── Enrollment          ← student registered + fee locked
+        ├── Faculty              ← can span multiple campuses via campusIds[]
+        │     └── campusAssignments[]  ← per-campus head, email, phone, status
+        └── Department           ← can span multiple campuses AND multiple faculties
+              ├── campusIds[]           ← which campuses
+              ├── campusAssignments[]   ← per-campus head, email, phone, location, status
+              ├── facultyIds[]          ← which faculties (interdisciplinary)
+              ├── Subject          ← catalog (what can be taught)
+              ├── Program            ← degree (BSCS, BSSE, …)
+              │     ├── ProgramCurriculum   ← which subjects, which semester
+              │     └── ProgramSemesterFeeSchedule  ← semester fee package (F2)
+              ├── SubjectFeeHistory         ← versioned fee rates
+              ├── SemesterRegistration      ← student semester package (F4)
+              └── CourseOffering            ← one running class
+                    └── Enrollment          ← student registered + fee locked
 
 Teacher  → assigned to CourseOffering (instructor)
 Student  → belongs to Program + Batch → enrolls in offerings
+StaffMember → primaryCampusId, primaryFacultyId for quick filtering
+Campus   → campusAdminId (ref StaffMember) for campus administrator
 ```
 
 **Plain language:**
@@ -222,8 +228,42 @@ When a student enrolls (`POST /api/offerings/:id/enroll`):
 
 - **Route:** `/academic-sessions/detail/:id`
 - **Page:** `SessionDetailPage` — shows session info + linked batches
-- **Batch link:** batches filtered by `admissionSessionId`; “View all batches” navigates to `/batches` with session pre-filter
+- **Batch link:** batches filtered by `admissionSessionId`; "View all batches" navigates to `/batches` with session pre-filter
 - **View button:** added to `AcademicSessionsPage` table rows
+
+### Structural improvements — multi-campus/faculty (Sep 2026 — ✅)
+
+**Issue 1: Faculty multi-campus**
+- Faculty model: `campusIds[]` array, `campusAssignments[]` per-campus (headId, email, phone, establishedDate, status)
+- Faculty is **global** (no scalar `campusId`). Global name+code uniqueness.
+- Frontend `CampusesPage`: Faculty column shows campus names (multi-campus UI)
+- Fixed `generateFacultyId` counter for global uniqueness + retry logic
+
+**Issue 2: Department multi-faculty**
+- Department model: `facultyIds[]` array (interdisciplinary departments)
+- Controller validates refs; frontend has multi-select
+- Department detail page shows faculties
+
+**Issue 2b: Department multi-campus**
+- Department model: `campusIds[]` + `campusAssignments[]` (per-campus head, email, phone, location, establishedDate, status)
+- **Legacy scalar fields removed** from model, controller, and frontend types
+- `syncCampusAssignments` auto-syncs when campusIds changes
+- Department code globally unique; name uniqueness checked across overlapping campus sets
+
+**Issue 3: Campus admin**
+- Campus model: `campusAdminId` ref to StaffMember
+- Controller populates `campusAdminId` in CRUD
+- CampusForm has staff selector for campus administrator
+- CampusDetailPage shows campus administrator card
+
+**Issue 4: Staff primary campus/faculty**
+- StaffMember model: `primaryCampusId`, `primaryFacultyId`
+- Controller `populateStaff` populates both
+- Frontend StaffMember interface updated with these fields
+
+**Issue 5: Batch/session navigation (already done)**
+- Session detail lists batches
+- Batch list has session filter
 
 ### Seeding
 

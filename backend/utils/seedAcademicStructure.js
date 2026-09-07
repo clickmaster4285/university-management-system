@@ -47,7 +47,7 @@ async function nextUniqueDepartmentCode(baseCode) {
 function createStats() {
   return {
     university: { created: 0, reused: 0 },
-    campus: { created: 0, reused: 0 },
+    campuses: { created: 0, reused: 0 },
     faculties: { created: 0, reused: 0 },
     departments: { created: 0, reused: 0 },
     programs: { created: 0, reused: 0 },
@@ -116,12 +116,12 @@ async function ensureCampus(universityId, config, stats, dryRun) {
   });
 
   if (existing) {
-    stats.campus.reused += 1;
+    stats.campuses.reused += 1;
     return existing;
   }
 
   if (dryRun) {
-    stats.campus.created += 1;
+    stats.campuses.created += 1;
     return { _id: dryId('campus'), universityId };
   }
 
@@ -138,20 +138,18 @@ async function ensureCampus(universityId, config, stats, dryRun) {
     status: 'Active',
   });
 
-  stats.campus.created += 1;
+  stats.campuses.created += 1;
   return campus;
 }
 
-async function ensureFaculty(campusId, facultyConfig, stats, dryRun) {
+async function ensureFaculty(campusIds, facultyConfig, stats, dryRun) {
   const existing = await Faculty.findOne({
-    campusId,
     code: facultyConfig.code.toUpperCase(),
     isDeleted: notDeleted,
   });
 
   if (!existing) {
     const byName = await Faculty.findOne({
-      campusId,
       name: facultyConfig.name,
       isDeleted: notDeleted,
     });
@@ -167,21 +165,19 @@ async function ensureFaculty(campusId, facultyConfig, stats, dryRun) {
   }
 
   if (dryRun) {
-    const existing = await Faculty.findOne({
-      code: facultyConfig.code.toUpperCase(),
-      isDeleted: notDeleted,
-    });
-    if (existing) {
-      stats.faculties.reused += 1;
-      return existing;
-    }
     stats.faculties.created += 1;
-    return { _id: dryId('faculty'), campusId };
+    return { _id: dryId('faculty'), campusIds };
   }
 
+  const campusAssignments = campusIds.map(cId => ({
+    campusId: cId,
+    status: 'Active',
+  }));
+
   const faculty = await Faculty.create({
-    facultyId: await nextUniqueFacultyId(campusId),
-    campusId,
+    facultyId: await nextUniqueFacultyId(campusIds[0]),
+    campusIds,
+    campusAssignments,
     name: facultyConfig.name,
     code: facultyConfig.code.toUpperCase(),
     status: 'Active',
@@ -191,7 +187,7 @@ async function ensureFaculty(campusId, facultyConfig, stats, dryRun) {
   return faculty;
 }
 
-async function ensureDepartment(campusId, facultyId, deptConfig, stats, dryRun) {
+async function ensureDepartment(campusIds, facultyId, deptConfig, stats, dryRun) {
   let existing = await Department.findOne({
     name: deptConfig.name,
     isDeleted: notDeleted,
@@ -199,7 +195,6 @@ async function ensureDepartment(campusId, facultyId, deptConfig, stats, dryRun) 
 
   if (!existing) {
     existing = await Department.findOne({
-      campusId,
       code: deptConfig.code.toUpperCase(),
       isDeleted: notDeleted,
     });
@@ -214,34 +209,40 @@ async function ensureDepartment(campusId, facultyId, deptConfig, stats, dryRun) 
   }
 
   if (existing) {
-    if (!existing.facultyId && facultyId && !dryRun) {
-      existing.facultyId = facultyId;
-      await existing.save();
+    let changed = false;
+    if (facultyId && !existing.facultyIds.includes(facultyId) && !dryRun) {
+      existing.facultyIds.push(facultyId);
+      changed = true;
     }
+    for (const cId of campusIds) {
+      if (!existing.campusIds.includes(cId) && !dryRun) {
+        existing.campusIds.push(cId);
+        existing.campusAssignments.push({ campus: cId, status: 'Active' });
+        changed = true;
+      }
+    }
+    if (changed) await existing.save();
     stats.departments.reused += 1;
     return existing;
   }
 
   if (dryRun) {
-    const existing = await Department.findOne({
-      name: deptConfig.name,
-      isDeleted: notDeleted,
-    });
-    if (existing) {
-      stats.departments.reused += 1;
-      return existing;
-    }
     stats.departments.created += 1;
-    return { _id: dryId('department'), campusId };
+    return { _id: dryId('department'), campusIds, facultyIds: facultyId ? [facultyId] : [] };
   }
+
+  const campusAssignments = campusIds.map(cId => ({
+    campus: cId,
+    status: 'Active',
+  }));
 
   const department = await Department.create({
     departmentId: await generateDepartmentId(),
-    campusId,
-    facultyId: facultyId || null,
+    campusIds,
+    campusAssignments,
+    facultyIds: facultyId ? [facultyId] : [],
     name: deptConfig.name,
     code: await nextUniqueDepartmentCode(deptConfig.code),
-    status: 'Active',
   });
 
   stats.departments.created += 1;
@@ -416,17 +417,43 @@ export async function seedAcademicStructure({
   const stats = createStats();
 
   const university = await ensureUniversity(structure.university, stats, dryRun);
-  const campus = await ensureCampus(university._id, structure.campus, stats, dryRun);
+
+  const campusByCode = new Map();
+  const campusConfigs = structure.campuses || [structure.campus];
+  for (const campusConfig of campusConfigs) {
+    const campus = await ensureCampus(university._id, campusConfig, stats, dryRun);
+    campusByCode.set(campusConfig.campusCode.toUpperCase(), campus);
+  }
 
   const departmentByName = new Map();
   const programByCode = new Map();
 
   for (const facultyConfig of structure.faculties) {
-    const faculty = await ensureFaculty(campus._id, facultyConfig, stats, dryRun);
+    const facultyCampusIds = (facultyConfig.campusCodes || [])
+      .map(code => campusByCode.get(code.toUpperCase())?._id)
+      .filter(Boolean);
+
+    if (facultyCampusIds.length === 0) {
+      warn(stats, `Faculty "${facultyConfig.name}" has no valid campus codes — using first campus`);
+      const firstCampus = campusByCode.values().next().value;
+      if (firstCampus) facultyCampusIds.push(firstCampus._id);
+    }
+
+    const faculty = await ensureFaculty(facultyCampusIds, facultyConfig, stats, dryRun);
 
     for (const deptConfig of facultyConfig.departments) {
+      const deptCampusIds = (deptConfig.campusCodes || [])
+        .map(code => campusByCode.get(code.toUpperCase())?._id)
+        .filter(Boolean);
+
+      if (deptCampusIds.length === 0) {
+        warn(stats, `Department "${deptConfig.name}" has no valid campus codes — using first campus`);
+        const firstCampus = campusByCode.values().next().value;
+        if (firstCampus) deptCampusIds.push(firstCampus._id);
+      }
+
       const department = await ensureDepartment(
-        campus._id,
+        deptCampusIds,
         faculty._id,
         deptConfig,
         stats,
@@ -487,7 +514,7 @@ export function printAcademicSeedReport(stats, { dryRun = false } = {}) {
     console.log(`${label.padEnd(22)} created ${bucket.created}, reused ${bucket.reused}${bucket.updated !== undefined ? `, updated ${bucket.updated}` : ''}`);
 
   line('University', stats.university);
-  line('Campus', stats.campus);
+  line('Campuses', stats.campuses);
   line('Faculties', stats.faculties);
   line('Departments', stats.departments);
   line('Programs', stats.programs);
