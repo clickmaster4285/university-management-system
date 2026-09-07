@@ -116,6 +116,8 @@ export interface StaffMember {
   status: StaffStatus;
   isAcademic?: boolean;
   employments: StaffEmployment[];
+  primaryCampusId?: string | { _id: string; name: string; campusCode: string } | null;
+  primaryFacultyId?: string | { _id: string; name: string; code: string } | null;
   teacherProfile?: TeacherProfile | null;
   notes?: string;
   fullName?: string;

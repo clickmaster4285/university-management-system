@@ -43,7 +43,9 @@ function populateStaff(query) {
       populate: PLATFORM_ROLE_POPULATE,
     })
     .populate('employments.departmentId', 'name code')
-    .populate('employments.campusId', 'name campusCode');
+    .populate('employments.campusId', 'name campusCode')
+    .populate('primaryCampusId', 'name campusCode')
+    .populate('primaryFacultyId', 'name code');
 }
 
 function normalizeEmployments(employments = []) {
@@ -231,6 +233,8 @@ export const createStaffMember = handle(async (req, res) => {
     employments,
     teacherProfile,
     notes,
+    primaryCampusId,
+    primaryFacultyId,
   } = req.body;
 
   if (!firstName || !lastName || !email) {
@@ -284,6 +288,8 @@ export const createStaffMember = handle(async (req, res) => {
     employments: employmentResult.data,
     teacherProfile: buildTeacherProfile(Boolean(isAcademic), teacherProfile),
     notes: notes || '',
+    primaryCampusId: primaryCampusId || null,
+    primaryFacultyId: primaryFacultyId || null,
   });
 
   const populated = await populateStaff(StaffMember.findById(staff._id));

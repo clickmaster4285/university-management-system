@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Pencil, Loader2, Star } from "lucide-react";
+import { ArrowLeft, Pencil, Loader2, Star, User } from "lucide-react";
 import {
   Building2,
   Layers,
@@ -227,6 +227,35 @@ export default function CampusDetailPage() {
                 <p className="text-sm text-muted-foreground whitespace-pre-line">
                   {campus.description}
                 </p>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Campus Administrator */}
+          {campus.campusAdminId && typeof campus.campusAdminId === "object" && (
+            <Card className="glass">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <User className="h-4 w-4" /> Campus Administrator
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Name</p>
+                    <p className="text-sm font-medium">
+                      {campus.campusAdminId.firstName} {campus.campusAdminId.lastName}
+                    </p>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Staff ID</p>
+                    <p className="text-sm font-medium font-mono">{campus.campusAdminId.staffId}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Email</p>
+                    <p className="text-sm font-medium">{campus.campusAdminId.email}</p>
+                  </div>
+                </div>
               </CardContent>
             </Card>
           )}

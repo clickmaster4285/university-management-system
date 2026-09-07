@@ -38,6 +38,7 @@ export const createCampus = handle(async (req, res) => {
     establishedYear,
     description,
     status,
+    campusAdminId,
   } = req.body;
 
   // Validate required fields
@@ -106,6 +107,7 @@ export const createCampus = handle(async (req, res) => {
     establishedYear: establishedYear || null,
     description: description || "",
     status: status || "Active",
+    campusAdminId: campusAdminId || null,
     createdBy: req.user._id,
     updatedBy: req.user._id,
   });
@@ -130,6 +132,7 @@ export const getCampuses = handle(async (req, res) => {
     isDeleted: { $ne: true },
   })
     .populate("universityId", "universityName universityCode")
+    .populate("campusAdminId", "staffId firstName lastName email")
     .select("-__v")
     .sort({ isMainCampus: -1, createdAt: 1 });
 
@@ -144,7 +147,9 @@ export const getCampusById = handle(async (req, res) => {
   const campus = await Campus.findOne({
     _id: req.params.id,
     isDeleted: { $ne: true },
-  }).populate("universityId", "universityName universityCode");
+  })
+    .populate("universityId", "universityName universityCode")
+    .populate("campusAdminId", "staffId firstName lastName email");
 
   if (!campus) {
     return res.status(404).json({
@@ -197,6 +202,7 @@ export const updateCampus = handle(async (req, res) => {
   if (body.establishedYear !== undefined) updates.establishedYear = body.establishedYear || null;
   if (body.description !== undefined) updates.description = body.description;
   if (body.status !== undefined) updates.status = body.status;
+  if (body.campusAdminId !== undefined) updates.campusAdminId = body.campusAdminId || null;
 
   // Block setting isMainCampus=true if another campus is already main
   if (updates.isMainCampus === true) {
@@ -250,7 +256,9 @@ export const updateCampus = handle(async (req, res) => {
     { _id: id, isDeleted: { $ne: true } },
     { $set: updates },
     { new: true, runValidators: true }
-  ).populate("universityId", "universityName universityCode");
+  )
+    .populate("universityId", "universityName universityCode")
+    .populate("campusAdminId", "staffId firstName lastName email");
 
   if (!campus) {
     return res.status(404).json({

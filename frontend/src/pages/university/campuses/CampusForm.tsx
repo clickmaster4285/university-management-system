@@ -19,8 +19,10 @@ import {
   ArrowLeft,
   Save,
   Star,
+  User,
 } from "lucide-react";
 import { campusAPI, type CampusData, type Campus } from "@/features/campus";
+import { staffMemberAPI, getStaffDisplayName, type StaffMember } from "@/features/staffMembers";
 
 const CAMPUS_TYPES = ["Main Campus", "Branch", "City Campus", "Regional Campus"];
 const PROVINCES = ["Punjab", "Sindh", "KPK", "Balochistan", "Islamabad"];
@@ -34,6 +36,7 @@ interface CampusFormProps {
 export function CampusForm({ mode, campus, hasMainCampus = false }: CampusFormProps) {
   const navigate = useNavigate();
   const [saving, setSaving] = useState(false);
+  const [staffMembers, setStaffMembers] = useState<StaffMember[]>([]);
   const [formData, setFormData] = useState<CampusData>({
     name: "",
     campusCode: "",
@@ -49,7 +52,12 @@ export function CampusForm({ mode, campus, hasMainCampus = false }: CampusFormPr
     establishedYear: undefined,
     description: "",
     status: "Active",
+    campusAdminId: null,
   });
+
+  useEffect(() => {
+    staffMemberAPI.listAcademic().then(setStaffMembers).catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (mode === "edit" && campus) {
@@ -68,6 +76,11 @@ export function CampusForm({ mode, campus, hasMainCampus = false }: CampusFormPr
         establishedYear: campus.establishedYear || undefined,
         description: campus.description || "",
         status: campus.status || "Active",
+        campusAdminId: campus.campusAdminId
+          ? typeof campus.campusAdminId === "object"
+            ? campus.campusAdminId._id
+            : campus.campusAdminId
+          : null,
       });
     }
   }, [mode, campus]);
@@ -303,6 +316,21 @@ export function CampusForm({ mode, campus, hasMainCampus = false }: CampusFormPr
                     max={new Date().getFullYear()}
                     className="mt-1.5"
                   />
+                </div>
+                <div>
+                  <Label>Campus Administrator</Label>
+                  <select
+                    value={formData.campusAdminId || ""}
+                    onChange={(e) => handleChange("campusAdminId", e.target.value || null)}
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm mt-1.5"
+                  >
+                    <option value="">None</option>
+                    {staffMembers.map((member) => (
+                      <option key={member._id} value={member._id}>
+                        {getStaffDisplayName(member)}
+                      </option>
+                    ))}
+                  </select>
                 </div>
                 <div className="md:col-span-3">
                   <Label>Description</Label>

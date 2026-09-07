@@ -60,6 +60,13 @@ const campusSchema = new mongoose.Schema({
     trim: true,
   },
 
+  // Campus Administrator
+  campusAdminId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'StaffMember',
+    default: null,
+  },
+
   // Status
   status: {
     type: String,

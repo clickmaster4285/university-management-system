@@ -20,6 +20,7 @@ export interface Campus {
   establishedYear?: number;
   description: string;
   status: string;
+  campusAdminId?: string | { _id: string; staffId: string; firstName: string; lastName: string; email: string };
   createdBy?: string;
   updatedBy?: string;
   createdAt: string;
@@ -49,6 +50,7 @@ export interface CampusData {
   establishedYear?: number;
   description?: string;
   status?: string;
+  campusAdminId?: string | null;
 }
 
 export interface CampusResponse {

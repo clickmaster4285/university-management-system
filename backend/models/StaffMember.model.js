@@ -219,6 +219,16 @@ const staffMemberSchema = new mongoose.Schema(
       type: [employmentSchema],
       default: [],
     },
+    primaryCampusId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Campus',
+      default: null,
+    },
+    primaryFacultyId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Faculty',
+      default: null,
+    },
     teacherProfile: {
       type: teacherProfileSchema,
       default: null,
