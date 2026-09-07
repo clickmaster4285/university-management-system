@@ -67,18 +67,21 @@ export default function DepartmentsPage() {
 
   const filteredDepartments = useMemo(() => {
     return departments.filter((d) => {
-      if (statusFilter !== "all" && (d.status || "Active") !== statusFilter) return false;
       if (campusFilter !== "all") {
-        const campusId = resolveRefId(d.campusId as string | { _id: string } | null | undefined);
-        if (campusId !== campusFilter) return false;
+        const allCampusIds = (d.campusIds || [])
+          .map((c) => resolveRefId(c as string | { _id: string } | null | undefined))
+          .filter(Boolean);
+        if (!allCampusIds.includes(campusFilter)) return false;
       }
       if (facultyFilter !== "all") {
-        const facultyId = resolveRefId(d.facultyId as string | { _id: string } | null | undefined);
-        if (facultyId !== facultyFilter) return false;
+        const allFacultyIds = (d.facultyIds || [])
+          .map((f) => resolveRefId(f as string | { _id: string } | null | undefined))
+          .filter(Boolean);
+        if (!allFacultyIds.includes(facultyFilter)) return false;
       }
       return true;
     });
-  }, [departments, campusFilter, facultyFilter, statusFilter]);
+  }, [departments, campusFilter, facultyFilter]);
 
   const campusFaculties = useMemo(() => {
     if (campusFilter === "all") return faculties;
@@ -95,18 +98,34 @@ export default function DepartmentsPage() {
     setStatusFilter("all");
   };
 
-  const getCampusName = (campus: Department["campusId"]) => {
-    if (!campus) return "—";
-    if (typeof campus === "object") return campus.name;
-    const found = campuses.find((c) => c._id === campus);
-    return found?.name || campus;
+  const getCampusName = (campusId: string) => {
+    const found = campuses.find((c) => c._id === campusId);
+    return found?.name || "";
   };
 
-  const getFacultyName = (faculty: Department["facultyId"]) => {
-    if (!faculty) return "—";
-    if (typeof faculty === "object") return faculty.name;
-    const found = faculties.find((f) => f._id === faculty);
-    return found?.name || faculty;
+  const getCampusNames = (dept: Department): string => {
+    const names = (dept.campusIds || [])
+      .map((c) => {
+        const id = resolveRefId(c as string | { _id: string } | null | undefined);
+        return id ? getCampusName(id) : "";
+      })
+      .filter(Boolean);
+    return names.length > 0 ? names.join(", ") : "—";
+  };
+
+  const getFacultyName = (facultyId: string) => {
+    const found = faculties.find((f) => f._id === facultyId);
+    return found?.name || "";
+  };
+
+  const getFacultyNames = (dept: Department): string => {
+    const names = (dept.facultyIds || [])
+      .map((f) => {
+        const id = resolveRefId(f as string | { _id: string } | null | undefined);
+        return id ? getFacultyName(id) : "";
+      })
+      .filter(Boolean);
+    return names.length > 0 ? names.join(", ") : "—";
   };
 
   const goToDetail = (dept: Department) => {
@@ -146,25 +165,8 @@ export default function DepartmentsPage() {
   const columns: Column<Department>[] = [
     { key: "code", header: "Code", cell: (d) => <span className="font-mono font-semibold">{d.code}</span> },
     { key: "name", header: "Name" },
-    { key: "campusId", header: "Campus", cell: (d) => getCampusName(d.campusId) },
-    { key: "facultyId", header: "Faculty", cell: (d) => getFacultyName(d.facultyId) },
-    {
-      key: "headId",
-      header: "Head",
-      cell: (d) => (
-        <span>{typeof d.headId === "object" && d.headId ? d.headId.name : "—"}</span>
-      ),
-    },
-    { key: "email", header: "Email", cell: (d) => d.email || "—" },
-    {
-      key: "status",
-      header: "Status",
-      cell: (d) => (
-        <Badge variant={d.status === "Active" ? "default" : "secondary"}>
-          {d.status || "Active"}
-        </Badge>
-      ),
-    },
+    { key: "campusId", header: "Campuses", cell: (d) => getCampusNames(d) },
+    { key: "facultyId", header: "Faculties", cell: (d) => getFacultyNames(d) },
     {
       key: "_id",
       header: "Actions",

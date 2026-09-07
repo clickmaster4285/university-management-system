@@ -39,6 +39,8 @@ export function DepartmentViewModal({ isOpen, department, onClose, onEdit }: Dep
 
   if (!isOpen || !department) return null;
 
+  const d = detail || department;
+
   return (
     <div
       className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
@@ -66,85 +68,113 @@ export function DepartmentViewModal({ isOpen, department, onClose, onEdit }: Dep
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <Label className="text-muted-foreground">Department Name</Label>
-                <p className="font-medium">{department.name}</p>
+                <p className="font-medium">{d.name}</p>
               </div>
               <div>
                 <Label className="text-muted-foreground">Department Code</Label>
-                <Badge variant="secondary" className="mt-1">{department.code}</Badge>
+                <Badge variant="secondary" className="mt-1">{d.code}</Badge>
               </div>
               <div>
-                <Label className="text-muted-foreground">Faculty / School</Label>
-                <p>{typeof department.facultyId === "object" ? department.facultyId?.name : "—"}</p>
+                <Label className="text-muted-foreground">Faculties</Label>
+                <p>{(() => {
+                  const names: string[] = [];
+                  for (const f of d.facultyIds || []) {
+                    if (typeof f === "object" && !names.includes(f.name)) names.push(f.name);
+                  }
+                  return names.length > 0 ? names.join(", ") : "—";
+                })()}</p>
               </div>
               <div>
-                <Label className="text-muted-foreground">Head of Department</Label>
-                <div className="flex items-center gap-2 mt-1">
-                  <User className="h-4 w-4 text-muted-foreground" />
-                  <p className="font-medium">{typeof department.headId === "object" ? department.headId?.name || "—" : "—"}</p>
-                </div>
+                <Label className="text-muted-foreground">Campuses</Label>
+                <p>{(() => {
+                  const names: string[] = [];
+                  for (const c of d.campusIds || []) {
+                    if (typeof c === "object" && !names.includes(c.name)) names.push(c.name);
+                  }
+                  return names.length > 0 ? names.join(", ") : "—";
+                })()}</p>
               </div>
             </div>
           </div>
 
-          {/* Contact Information */}
-          <div>
-            <h3 className="text-sm font-semibold text-primary flex items-center gap-2 mb-4">
-              <Mail className="h-4 w-4" /> Contact Information
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label className="text-muted-foreground">Email</Label>
-                <div className="flex items-center gap-2 mt-1">
-                  <Mail className="h-4 w-4 text-muted-foreground" />
-                  <p>{department.email || "—"}</p>
-                </div>
-              </div>
-              <div>
-                <Label className="text-muted-foreground">Phone</Label>
-                <div className="flex items-center gap-2 mt-1">
-                  <Phone className="h-4 w-4 text-muted-foreground" />
-                  <p>{department.phone || "—"}</p>
-                </div>
-              </div>
-              <div className="md:col-span-2">
-                <Label className="text-muted-foreground">Office Location</Label>
-                <div className="flex items-center gap-2 mt-1">
-                  <MapPin className="h-4 w-4 text-muted-foreground" />
-                  <p>{department.location || "—"}</p>
-                </div>
-              </div>
-            </div>
-          </div>
+          {/* Per-Campus Details */}
+          {(d.campusAssignments || []).length > 0 && (
+            <div>
+              <h3 className="text-sm font-semibold text-primary flex items-center gap-2 mb-4">
+                <Building2 className="h-4 w-4" /> Campus Details
+              </h3>
+              <div className="space-y-4">
+                {(d.campusAssignments || []).map((assignment, idx) => {
+                  const campusName = typeof assignment.campus === "object" ? assignment.campus.name : "";
+                  const campusCode = typeof assignment.campus === "object" ? assignment.campus.campusCode : "";
+                  const headName = assignment.headId && typeof assignment.headId === "object"
+                    ? `${(assignment.headId as any).firstName || ""} ${(assignment.headId as any).lastName || ""}`.trim() || (assignment.headId as any).name || null
+                    : null;
 
-          {/* Additional Information */}
-          <div>
-            <h3 className="text-sm font-semibold text-primary flex items-center gap-2 mb-4">
-              <FileText className="h-4 w-4" /> Additional Information
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label className="text-muted-foreground">Established Date</Label>
-                <div className="flex items-center gap-2 mt-1">
-                  <Calendar className="h-4 w-4 text-muted-foreground" />
-                  <p>{department.establishedDate ? new Date(department.establishedDate).toLocaleDateString() : "—"}</p>
-                </div>
-              </div>
-              <div>
-                <Label className="text-muted-foreground">Status</Label>
-                <div className="mt-1">
-                  <Badge variant={department.status === "Active" ? "default" : "outline"}>
-                    {department.status || "Active"}
-                  </Badge>
-                </div>
-              </div>
-              <div className="md:col-span-2">
-                <Label className="text-muted-foreground">Description</Label>
-                <p className="mt-1 text-sm bg-gray-50 p-3 rounded-lg border">
-                  {department.description || "No description provided."}
-                </p>
+                  return (
+                    <div key={idx} className="border rounded-lg p-4 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Building2 className="h-4 w-4 text-primary" />
+                          <span className="font-semibold">{campusName}</span>
+                          <span className="text-xs text-muted-foreground font-mono">{campusCode}</span>
+                        </div>
+                        <Badge variant={assignment.status === "Active" ? "default" : "outline"}>
+                          {assignment.status || "Active"}
+                        </Badge>
+                      </div>
+
+                      {headName && (
+                        <div className="flex items-center gap-2 text-sm">
+                          <User className="h-3.5 w-3.5 text-muted-foreground" />
+                          <span className="font-medium">HOD: {headName}</span>
+                        </div>
+                      )}
+
+                      <div className="grid grid-cols-2 gap-3 text-sm">
+                        {assignment.email && (
+                          <div className="flex items-center gap-2">
+                            <Mail className="h-3.5 w-3.5 text-muted-foreground" />
+                            <span>{assignment.email}</span>
+                          </div>
+                        )}
+                        {assignment.phone && (
+                          <div className="flex items-center gap-2">
+                            <Phone className="h-3.5 w-3.5 text-muted-foreground" />
+                            <span>{assignment.phone}</span>
+                          </div>
+                        )}
+                        {assignment.location && (
+                          <div className="flex items-center gap-2">
+                            <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
+                            <span>{assignment.location}</span>
+                          </div>
+                        )}
+                        {assignment.establishedDate && (
+                          <div className="flex items-center gap-2">
+                            <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+                            <span>{new Date(assignment.establishedDate).toLocaleDateString()}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
-          </div>
+          )}
+
+          {/* Description */}
+          {d.description && (
+            <div>
+              <h3 className="text-sm font-semibold text-primary flex items-center gap-2 mb-4">
+                <FileText className="h-4 w-4" /> Description
+              </h3>
+              <p className="text-sm bg-gray-50 p-3 rounded-lg border">
+                {d.description}
+              </p>
+            </div>
+          )}
 
           {/* Stats */}
           {detail?.stats && (
@@ -172,13 +202,13 @@ export function DepartmentViewModal({ isOpen, department, onClose, onEdit }: Dep
           {/* Department ID */}
           <div className="bg-gray-50 rounded-lg p-3 border">
             <Label className="text-muted-foreground">Department ID</Label>
-            <p className="font-mono text-sm">{getDepartmentId(department)}</p>
+            <p className="font-mono text-sm">{getDepartmentId(d)}</p>
           </div>
 
           {/* Footer */}
           <div className="flex justify-end gap-3 pt-4 border-t">
             <Button variant="outline" onClick={onClose}>Close</Button>
-            <Button variant="outline" onClick={() => { onClose(); onEdit(department); }}>
+            <Button variant="outline" onClick={() => { onClose(); onEdit(d); }}>
               <Pencil className="h-4 w-4 mr-2" /> Edit Department
             </Button>
           </div>

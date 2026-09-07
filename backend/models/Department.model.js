@@ -1,16 +1,27 @@
 // backend/src/models/Department.js
 import mongoose from 'mongoose';
 
-const departmentSchema = new mongoose.Schema({ 
-   departmentId: {
+const departmentSchema = new mongoose.Schema({
+  departmentId: {
     type: String,
     unique: true
   },
-  campusId: {
-    type: mongoose.Schema.Types.ObjectId,
+  campusIds: {
+    type: [mongoose.Schema.Types.ObjectId],
     ref: 'Campus',
-    required: [true, 'Campus ID is required']
+    default: [],
   },
+  campusAssignments: [
+    {
+      campus: { type: mongoose.Schema.Types.ObjectId, ref: 'Campus', required: true },
+      headId: { type: mongoose.Schema.Types.ObjectId, ref: 'StaffMember', default: null },
+      email: { type: String, trim: true, lowercase: true },
+      phone: { type: String, trim: true },
+      location: { type: String, trim: true },
+      establishedDate: { type: Date },
+      status: { type: String, enum: ['Active', 'Inactive'], default: 'Active' },
+    }
+  ],
   name: {
     type: String,
     required: [true, 'Department name is required'],
@@ -26,37 +37,10 @@ const departmentSchema = new mongoose.Schema({
     type: String,
     trim: true
   },
-  headId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'StaffMember',
-    default: null
-  },
-  facultyId: {
-    type: mongoose.Schema.Types.ObjectId,
+  facultyIds: {
+    type: [mongoose.Schema.Types.ObjectId],
     ref: 'Faculty',
-    default: null
-  },
-  email: {
-    type: String,
-    trim: true,
-    lowercase: true,
-    match: [/^\S+@\S+\.\S+$/, 'Please enter a valid email address']
-  },
-  phone: {
-    type: String,
-    trim: true
-  },
-  establishedDate: {
-    type: Date
-  },
-  status: {
-    type: String,
-    enum: ['Active', 'Inactive'],
-    default: 'Active'
-  },
-  location: {
-    type: String,
-    trim: true
+    default: [],
   },
   isDeleted: {
     type: Boolean,
@@ -76,7 +60,13 @@ const departmentSchema = new mongoose.Schema({
   timestamps: true
 });
 
-departmentSchema.index({ campusId: 1, name: 1 }, { unique: true });
+// Code is globally unique (not per-campus) since a department can span campuses.
+departmentSchema.index(
+  { code: 1 },
+  { unique: true, partialFilterExpression: { isDeleted: false } }
+);
+departmentSchema.index({ campusIds: 1 });
+departmentSchema.index({ facultyIds: 1 });
 departmentSchema.index({ name: 'text', code: 'text' });
 
 const Department = mongoose.model('Department', departmentSchema);

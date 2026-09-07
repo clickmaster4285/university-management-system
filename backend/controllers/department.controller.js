@@ -20,38 +20,103 @@ async function validateStaffHeadRef(headId) {
   return null;
 }
 
-async function validateFacultyForCampus(facultyId, campusId) {
-  if (!facultyId) return null;
-  const faculty = await Faculty.findOne({ _id: facultyId, isDeleted: { $ne: true } });
-  if (!faculty) {
-    return { message: `Faculty ${facultyId} not found` };
-  }
-  if (faculty.campusId.toString() !== campusId.toString()) {
-    return { message: 'Faculty must belong to the same campus as the department' };
+async function validateCampusAssignments(assignments) {
+  if (!assignments || assignments.length === 0) return null;
+  for (const a of assignments) {
+    if (a.headId) {
+      const err = await validateStaffHeadRef(a.headId);
+      if (err) return { message: `Head not found for campus ${a.campus}: ${err.message}` };
+    }
   }
   return null;
 }
 
-function findDuplicateDepartment({ campusId, name, code, excludeId }) {
-  const filter = {
-    campusId,
-    $or: [{ name: name.trim() }, { code: code.toUpperCase().trim() }],
-  };
-  if (excludeId) filter._id = { $ne: excludeId };
-  return Department.findOne(filter);
+function syncCampusAssignments(existing, campusIds) {
+  const existingMap = new Map();
+  for (const a of existing) {
+    const cid = a.campus?.toString?.();
+    if (cid) existingMap.set(cid, a);
+  }
+  return campusIds.map((cid) => {
+    const prev = existingMap.get(cid.toString());
+    if (prev) {
+      return {
+        campus: prev.campus,
+        headId: prev.headId || null,
+        email: prev.email || '',
+        phone: prev.phone || '',
+        location: prev.location || '',
+        establishedDate: prev.establishedDate || null,
+        status: prev.status || 'Active',
+      };
+    }
+    return { campus: cid, headId: null, email: '', phone: '', location: '', establishedDate: null, status: 'Active' };
+  });
+}
+
+async function validateFacultiesExist(facultyIds) {
+  if (!facultyIds || facultyIds.length === 0) return null;
+  const valid = await Faculty.countDocuments({ _id: { $in: facultyIds }, isDeleted: { $ne: true } });
+  if (valid !== facultyIds.length) {
+    return { message: 'One or more selected faculties were not found' };
+  }
+  return null;
+}
+
+async function validateCampusesExist(campusIds) {
+  if (!campusIds || campusIds.length === 0) return null;
+  const valid = await mongoose.model('Campus').countDocuments({ _id: { $in: campusIds }, isDeleted: { $ne: true } });
+  if (valid !== campusIds.length) {
+    return { message: 'One or more selected campuses were not found' };
+  }
+  return null;
+}
+
+async function findDuplicateDepartment({ campusIds, name, code, excludeId }) {
+  const codeCheck = await Department.findOne({
+    code: code.toUpperCase().trim(),
+    isDeleted: { $ne: true },
+    ...(excludeId ? { _id: { $ne: excludeId } } : {}),
+  });
+  if (codeCheck) return codeCheck;
+
+  if (campusIds.length > 0) {
+    const nameCheck = await Department.findOne({
+      name: name.trim(),
+      campusIds: { $in: campusIds },
+      isDeleted: { $ne: true },
+      ...(excludeId ? { _id: { $ne: excludeId } } : {}),
+    });
+    if (nameCheck) return nameCheck;
+  }
+
+  return null;
+}
+
+const POPULATE_OPTS = [
+  { path: 'campusIds', select: 'name campusCode' },
+  { path: 'facultyIds', select: 'name code' },
+  { path: 'campusAssignments.campus', select: 'name campusCode' },
+  { path: 'campusAssignments.headId', select: 'staffId firstName lastName email' },
+];
+
+function populateDepartment(q) {
+  let result = q;
+  for (const opt of POPULATE_OPTS) {
+    result = result.populate(opt);
+  }
+  return result;
 }
 
 export const getDepartments = handle(async (req, res) => {
-  const { campusId, facultyId, status, search, page = 1, limit = 100 } = req.query;
+  const { campusId, facultyId, search, page = 1, limit = 100 } = req.query;
   const filter = { isDeleted: { $ne: true } };
 
-  if (campusId) filter.campusId = campusId;
-  if (facultyId) filter.facultyId = facultyId;
-  if (status) filter.status = status;
-
-  // Backward compatibility for older clients
-  if (req.query.isActive !== undefined && !status) {
-    filter.status = req.query.isActive === 'true' ? 'Active' : 'Inactive';
+  if (campusId) {
+    filter.$or = [{ campusIds: campusId }, { 'campusAssignments.campus': campusId }];
+  }
+  if (facultyId) {
+    filter.facultyIds = facultyId;
   }
 
   if (search) {
@@ -64,14 +129,13 @@ export const getDepartments = handle(async (req, res) => {
 
   const skip = (parseInt(page, 10) - 1) * parseInt(limit, 10);
 
-  const departments = await Department.find(filter)
+  let query = Department.find(filter)
     .skip(skip)
     .limit(parseInt(limit, 10))
     .sort({ name: 1 })
-    .populate('campusId', 'name campusCode')
-    .populate('facultyId', 'name code')
-    .populate('headId', 'staffId firstName lastName email')
     .select('-__v');
+  query = populateDepartment(query);
+  const departments = await query;
 
   const totalCount = await Department.countDocuments(filter);
 
@@ -95,10 +159,8 @@ export const getDepartmentById = handle(async (req, res) => {
     });
   }
 
-  const populated = await Department.findById(department._id)
-    .populate('campusId', 'name campusCode')
-    .populate('facultyId', 'name code')
-    .populate('headId', 'staffId firstName lastName email');
+  let q = Department.findById(department._id);
+  const populated = await populateDepartment(q);
 
   const did = department._id;
   const nd = { isDeleted: { $ne: true } };
@@ -125,75 +187,90 @@ export const getDepartmentById = handle(async (req, res) => {
 
 export const createDepartment = handle(async (req, res) => {
   const {
-    campusId,
+    campusIds: rawCampusIds,
+    campusAssignments: rawAssignments,
     name,
     code,
     description,
-    headId,
-    facultyId,
-    email,
-    phone,
-    establishedDate,
-    status,
-    location,
+    facultyIds: rawFacultyIds,
   } = req.body;
 
-  if (!campusId || !name || !code) {
+  const campusIds = Array.isArray(rawCampusIds) && rawCampusIds.length > 0
+    ? [...new Set(rawCampusIds.filter(Boolean))]
+    : [];
+
+  if (campusIds.length === 0 || !name || !code) {
     return res.status(400).json({
       success: false,
-      message: 'campusId, name and code are required',
+      message: 'At least one campus, name and code are required',
     });
   }
 
-  const campus = await mongoose.model('Campus').findOne({ _id: campusId, isDeleted: { $ne: true } });
-  if (!campus) {
-    return res.status(400).json({
-      success: false,
-      message: `Campus ${campusId} not found`,
-    });
+  const campError = await validateCampusesExist(campusIds);
+  if (campError) {
+    return res.status(400).json({ success: false, message: campError.message });
   }
 
-  const duplicate = await findDuplicateDepartment({ campusId, name, code });
+  const duplicate = await findDuplicateDepartment({ campusIds, name, code });
   if (duplicate) {
     const message = duplicate.isDeleted
       ? 'A department with this name or code was previously deleted. Use a different name or code.'
-      : 'Department with this name or code already exists in this campus';
+      : 'A department with this name already exists at one of the selected campuses, or this code is already taken';
     return res.status(duplicate.isDeleted ? 409 : 400).json({ success: false, message });
   }
 
-  const headError = await validateStaffHeadRef(headId);
-  if (headError) {
-    return res.status(400).json({ success: false, message: headError.message });
+  const facultyIds = Array.isArray(rawFacultyIds) && rawFacultyIds.length > 0
+    ? [...new Set(rawFacultyIds.filter(Boolean))]
+    : [];
+
+  if (facultyIds.length > 0) {
+    const facError = await validateFacultiesExist(facultyIds);
+    if (facError) {
+      return res.status(400).json({ success: false, message: facError.message });
+    }
   }
 
-  const facultyError = await validateFacultyForCampus(facultyId, campusId);
-  if (facultyError) {
-    return res.status(400).json({ success: false, message: facultyError.message });
+  let campusAssignments;
+  if (Array.isArray(rawAssignments) && rawAssignments.length > 0) {
+    const asgErr = await validateCampusAssignments(rawAssignments);
+    if (asgErr) return res.status(400).json({ success: false, message: asgErr.message });
+    campusAssignments = rawAssignments.map((a) => ({
+      campus: a.campus,
+      headId: a.headId || null,
+      email: a.email || '',
+      phone: a.phone || '',
+      location: a.location || '',
+      establishedDate: a.establishedDate ? new Date(a.establishedDate) : null,
+      status: a.status || 'Active',
+    }));
+  } else {
+    campusAssignments = campusIds.map((cid) => ({
+      campus: cid,
+      headId: null,
+      email: '',
+      phone: '',
+      location: '',
+      establishedDate: null,
+      status: 'Active',
+    }));
   }
 
   const departmentId = await generateDepartmentId();
 
   const department = new Department({
     departmentId,
-    campusId,
+    campusIds,
+    campusAssignments,
     name: name.trim(),
     code: code.toUpperCase().trim(),
     description: description || '',
-    headId: headId || null,
-    facultyId: facultyId || null,
-    email: email || '',
-    phone: phone || '',
-    establishedDate: establishedDate ? new Date(establishedDate) : null,
-    status: status || 'Active',
-    location: location || '',
+    facultyIds,
   });
 
   await department.save();
 
-  const populated = await Department.findById(department._id)
-    .populate('campusId', 'name campusCode')
-    .populate('facultyId', 'name code')
-    .populate('headId', 'staffId firstName lastName email');
+  let q = Department.findById(department._id);
+  const populated = await populateDepartment(q);
 
   res.status(201).json({
     success: true,
@@ -205,16 +282,12 @@ export const createDepartment = handle(async (req, res) => {
 export const updateDepartment = handle(async (req, res) => {
   const { id } = req.params;
   const {
+    campusIds: rawCampusIds,
+    campusAssignments: rawAssignments,
     name,
     code,
     description,
-    status,
-    headId,
-    facultyId,
-    email,
-    phone,
-    establishedDate,
-    location,
+    facultyIds: rawFacultyIds,
   } = req.body;
 
   const department = await findDepartmentByIdentifier(id);
@@ -225,71 +298,107 @@ export const updateDepartment = handle(async (req, res) => {
     });
   }
 
-  if (name !== undefined && name !== '') {
-    const trimmedName = name.trim();
-    const existing = await Department.findOne({
-      campusId: department.campusId,
-      name: trimmedName,
-      _id: { $ne: department._id },
-      isDeleted: { $ne: true },
-    });
-    if (existing) {
+  if (rawCampusIds !== undefined) {
+    let campusIds;
+    if (Array.isArray(rawCampusIds)) {
+      campusIds = [...new Set(rawCampusIds.filter(Boolean))];
+    } else {
+      campusIds = department.campusIds || [];
+    }
+
+    if (campusIds.length === 0) {
       return res.status(400).json({
         success: false,
-        message: 'Department name already exists in this campus',
+        message: 'At least one campus is required',
       });
     }
-    department.name = trimmedName;
+
+    const campError = await validateCampusesExist(campusIds);
+    if (campError) {
+      return res.status(400).json({ success: false, message: campError.message });
+    }
+
+    department.campusIds = campusIds;
+
+    if (Array.isArray(rawAssignments)) {
+      const asgErr = await validateCampusAssignments(rawAssignments);
+      if (asgErr) return res.status(400).json({ success: false, message: asgErr.message });
+      department.campusAssignments = rawAssignments.map((a) => ({
+        campus: a.campus,
+        headId: a.headId || null,
+        email: a.email || '',
+        phone: a.phone || '',
+        location: a.location || '',
+        establishedDate: a.establishedDate ? new Date(a.establishedDate) : null,
+        status: a.status || 'Active',
+      }));
+    } else {
+      department.campusAssignments = syncCampusAssignments(
+        department.campusAssignments || [],
+        campusIds
+      );
+    }
+  } else if (Array.isArray(rawAssignments)) {
+    const asgErr = await validateCampusAssignments(rawAssignments);
+    if (asgErr) return res.status(400).json({ success: false, message: asgErr.message });
+    department.campusAssignments = rawAssignments.map((a) => ({
+      campus: a.campus,
+      headId: a.headId || null,
+      email: a.email || '',
+      phone: a.phone || '',
+      location: a.location || '',
+      establishedDate: a.establishedDate ? new Date(a.establishedDate) : null,
+      status: a.status || 'Active',
+    }));
+  }
+
+  if (name !== undefined && name !== '') {
+    department.name = name.trim();
   }
 
   if (code !== undefined && code !== '') {
-    const trimmedCode = code.toUpperCase().trim();
-    const existing = await Department.findOne({
-      campusId: department.campusId,
-      code: trimmedCode,
-      _id: { $ne: department._id },
-      isDeleted: { $ne: true },
+    department.code = code.toUpperCase().trim();
+  }
+
+  if (department.name && department.code && department.campusIds?.length > 0) {
+    const duplicate = await findDuplicateDepartment({
+      campusIds: department.campusIds,
+      name: department.name,
+      code: department.code,
+      excludeId: department._id,
     });
-    if (existing) {
-      return res.status(400).json({
-        success: false,
-        message: 'Department code already exists in this campus',
-      });
+    if (duplicate) {
+      const message = duplicate.isDeleted
+        ? 'A department with this name or code was previously deleted. Use a different name or code.'
+        : 'A department with this name already exists at one of the selected campuses, or this code is already taken';
+      return res.status(duplicate.isDeleted ? 409 : 400).json({ success: false, message });
     }
-    department.code = trimmedCode;
   }
 
-  if (headId !== undefined) {
-    const headError = await validateStaffHeadRef(headId);
-    if (headError) {
-      return res.status(400).json({ success: false, message: headError.message });
+  if (rawFacultyIds !== undefined) {
+    let facultyIds;
+    if (Array.isArray(rawFacultyIds)) {
+      facultyIds = [...new Set(rawFacultyIds.filter(Boolean))];
+    } else {
+      facultyIds = department.facultyIds || [];
     }
-    department.headId = headId || null;
-  }
 
-  if (facultyId !== undefined) {
-    const facultyError = await validateFacultyForCampus(facultyId, department.campusId);
-    if (facultyError) {
-      return res.status(400).json({ success: false, message: facultyError.message });
+    if (facultyIds.length > 0) {
+      const facError = await validateFacultiesExist(facultyIds);
+      if (facError) {
+        return res.status(400).json({ success: false, message: facError.message });
+      }
     }
-    department.facultyId = facultyId || null;
+
+    department.facultyIds = facultyIds;
   }
 
   if (description !== undefined) department.description = description;
-  if (status !== undefined && status !== '') department.status = status;
-  if (email !== undefined) department.email = email;
-  if (phone !== undefined) department.phone = phone;
-  if (establishedDate !== undefined) {
-    department.establishedDate = establishedDate ? new Date(establishedDate) : null;
-  }
-  if (location !== undefined) department.location = location;
 
   await department.save();
 
-  const populated = await Department.findById(department._id)
-    .populate('campusId', 'name campusCode')
-    .populate('facultyId', 'name code')
-    .populate('headId', 'staffId firstName lastName email');
+  let q = Department.findById(department._id);
+  const populated = await populateDepartment(q);
 
   res.json({
     success: true,
@@ -383,8 +492,8 @@ export const getDepartmentStats = handle(async (req, res) => {
       $project: {
         name: 1,
         code: 1,
-        campusId: 1,
-        status: 1,
+        campusIds: 1,
+        campusAssignments: 1,
         subjectCount: { $size: '$subjects' },
         programCount: { $size: '$programs' },
         teacherCount: { $size: '$teachers' },
@@ -395,7 +504,7 @@ export const getDepartmentStats = handle(async (req, res) => {
   ]);
 
   const totalDepartments = await Department.countDocuments({ isDeleted: notDeleted });
-  const activeDepartments = await Department.countDocuments({ status: 'Active', isDeleted: notDeleted });
+  const activeDepartments = await Department.countDocuments({ isDeleted: notDeleted, 'campusAssignments.status': 'Active' });
 
   res.json({
     success: true,

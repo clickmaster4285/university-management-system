@@ -1,19 +1,24 @@
 import api from './axios';
 
+export type DepartmentCampusAssignment = {
+  campus: string | { _id: string; name: string; campusCode: string };
+  headId?: string | { _id: string; name: string; email: string; designation: string } | null;
+  email?: string;
+  phone?: string;
+  location?: string;
+  establishedDate?: string;
+  status?: 'Active' | 'Inactive';
+};
+
 export interface Department {
   _id?: string;
   departmentId?: string;
-  campusId?: string | { _id: string; name: string; campusCode: string };
+  campusIds?: Array<string | { _id: string; name: string; campusCode: string }>;
+  campusAssignments?: DepartmentCampusAssignment[];
   name: string;
   code: string;
   description?: string;
-  headId?: string | { _id: string; name: string; email: string; designation: string };
-  facultyId?: string | { _id: string; name: string; code: string };
-  status?: 'Active' | 'Inactive';
-  location?: string;
-  email?: string;
-  phone?: string;
-  establishedDate?: string;
+  facultyIds?: Array<string | { _id: string; name: string; code: string }>;
   stats?: {
     totalPrograms: number;
     totalSubjects: number;
