@@ -99,7 +99,11 @@ export function DepartmentForm({ mode, department }: DepartmentFormProps) {
 
   const campusFaculties = useMemo(() => {
     if (!formData.campusId) return faculties;
-    return faculties.filter((f) => resolveRefId(f.campusId as string | { _id: string } | null | undefined) === formData.campusId);
+    return faculties.filter((f) =>
+      (f.campusIds || [])
+        .map((c) => resolveRefId(c as string | { _id: string } | null | undefined))
+        .includes(formData.campusId)
+    );
   }, [faculties, formData.campusId]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
@@ -108,7 +112,11 @@ export function DepartmentForm({ mode, department }: DepartmentFormProps) {
       const next = { ...prev, [name]: value };
       if (name === "campusId" && prev.facultyId) {
         const facultyStillValid = faculties.some(
-          (f) => f._id === prev.facultyId && resolveRefId(f.campusId as string | { _id: string } | null | undefined) === value
+          (f) =>
+            f._id === prev.facultyId &&
+            (f.campusIds || [])
+              .map((c) => resolveRefId(c as string | { _id: string } | null | undefined))
+              .includes(value)
         );
         if (!facultyStillValid) next.facultyId = "";
       }

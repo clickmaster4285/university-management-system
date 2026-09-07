@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { facultyAPI, type Faculty } from "@/features/faculties";
+import { facultyAPI, type Faculty, type CampusAssignment } from "@/features/faculties";
 import { campusAPI, type Campus } from "@/features/campus";
 import { staffMemberAPI, getStaffDisplayName, type StaffMember } from "@/features/staffMembers";
 import { Card, CardContent } from "@/components/ui/card";
@@ -11,15 +11,22 @@ import { Textarea } from "@/components/ui/textarea";
 import { ArrowLeft, Save, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
+type AssignmentDraft = {
+  campusId: string;
+  headId: string;
+  email: string;
+  phone: string;
+  establishedDate: string;
+  status: "Active" | "Inactive";
+};
+
 type FacultyFormData = {
   name: string;
   code: string;
-  campusId: string;
-  headId: string;
+  campusIds: string[];
   description: string;
-  email: string;
-  phone: string;
   status: "Active" | "Inactive";
+  campusAssignments: AssignmentDraft[];
 };
 
 const resolveRefId = (value: string | { _id: string } | null | undefined): string => {
@@ -28,13 +35,39 @@ const resolveRefId = (value: string | { _id: string } | null | undefined): strin
   return value;
 };
 
+const blankAssignment = (campusId: string): AssignmentDraft => ({
+  campusId,
+  headId: "",
+  email: "",
+  phone: "",
+  establishedDate: "",
+  status: "Active",
+});
+
+const assignmentFromBackend = (a: CampusAssignment): AssignmentDraft => {
+  const campusId = resolveRefId(a.campusId as string | { _id: string } | null | undefined);
+  const headId = resolveRefId(a.headId as string | { _id: string } | null | undefined);
+  return {
+    campusId,
+    headId,
+    email: a.email || "",
+    phone: a.phone || "",
+    establishedDate: a.establishedDate ? new Date(a.establishedDate).toISOString().slice(0, 10) : "",
+    status: (a.status as "Active" | "Inactive") || "Active",
+  };
+};
+
 export default function FacultyEditPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [faculty, setFaculty] = useState<Faculty | null>(null);
   const [form, setForm] = useState<FacultyFormData>({
-    name: "", code: "", campusId: "", headId: "",
-    description: "", email: "", phone: "", status: "Active"
+    name: "",
+    code: "",
+    campusIds: [],
+    description: "",
+    status: "Active",
+    campusAssignments: [],
   });
   const [campuses, setCampuses] = useState<Campus[]>([]);
   const [staffMembers, setStaffMembers] = useState<StaffMember[]>([]);
@@ -57,17 +90,23 @@ export default function FacultyEditPage() {
           staffMemberAPI.listAcademic(),
         ]);
         if (res?.data) {
-          const f = res.data;
+          const f: Faculty = res.data;
           setFaculty(f);
+          const campusIds = (f.campusIds || [])
+            .map((c) => resolveRefId(c as string | { _id: string } | null | undefined))
+            .filter(Boolean);
+          const incomingAssignments = (f.campusAssignments || []).map(assignmentFromBackend);
+          const byCampus = new Map(incomingAssignments.map((a) => [a.campusId, a]));
+          const campusAssignments = campusIds.map((campusId) =>
+            byCampus.get(campusId) || blankAssignment(campusId)
+          );
           setForm({
-            name: f.name,
-            code: f.code,
-            campusId: resolveRefId(f.campusId as string | { _id: string } | null | undefined),
-            headId: resolveRefId(f.headId as string | { _id: string } | null | undefined),
+            name: f.name || "",
+            code: f.code || "",
+            campusIds,
             description: f.description || "",
-            email: f.email || "",
-            phone: f.phone || "",
-            status: f.status || "Active"
+            status: (f.status as "Active" | "Inactive") || "Active",
+            campusAssignments,
           });
         } else {
           setNotFound(true);
@@ -83,21 +122,58 @@ export default function FacultyEditPage() {
     fetchData();
   }, [id]);
 
+  const toggleCampus = (campusId: string, checked: boolean) => {
+    setForm((prev) => {
+      const nextCampusIds = checked
+        ? [...prev.campusIds, campusId]
+        : prev.campusIds.filter((id) => id !== campusId);
+      const nextAssignments = checked
+        ? [...prev.campusAssignments, blankAssignment(campusId)]
+        : prev.campusAssignments.filter((a) => a.campusId !== campusId);
+      return { ...prev, campusIds: nextCampusIds, campusAssignments: nextAssignments };
+    });
+  };
+
+  const updateAssignment = (campusId: string, patch: Partial<AssignmentDraft>) => {
+    setForm((prev) => ({
+      ...prev,
+      campusAssignments: prev.campusAssignments.map((a) =>
+        a.campusId === campusId ? { ...a, ...patch } : a
+      ),
+    }));
+  };
+
+  const sortedAssignments = useMemo(() => {
+    const order = new Map(campuses.map((c, idx) => [c._id, idx]));
+    return [...form.campusAssignments].sort((a, b) => {
+      return (order.get(a.campusId) ?? 0) - (order.get(b.campusId) ?? 0);
+    });
+  }, [form.campusAssignments, campuses]);
+
   const handleSave = async () => {
-    if (!id || !form.name || !form.code || !form.campusId) {
-      toast.error("Name, code and campus are required");
+    if (!id || !form.name || !form.code || form.campusIds.length === 0) {
+      toast.error("Name, code and at least one campus are required");
       return;
     }
     try {
       setSaving(true);
+      const campusAssignments = form.campusIds.map((campusId) => {
+        const draft = form.campusAssignments.find((a) => a.campusId === campusId);
+        return {
+          campusId,
+          headId: draft?.headId || undefined,
+          email: draft?.email?.trim() || undefined,
+          phone: draft?.phone?.trim() || undefined,
+          establishedDate: draft?.establishedDate || undefined,
+          status: draft?.status || "Active",
+        };
+      });
       await facultyAPI.update(id, {
         name: form.name.trim(),
-        code: form.code.trim(),
-        campusId: form.campusId,
-        headId: form.headId || undefined,
+        code: form.code.trim().toUpperCase(),
+        campusIds: form.campusIds,
+        campusAssignments,
         description: form.description.trim(),
-        email: form.email.trim(),
-        phone: form.phone.trim(),
         status: form.status,
       });
       toast.success("Faculty updated");
@@ -158,57 +234,102 @@ export default function FacultyEditPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Campus *</Label>
-              <select
-                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm"
-                value={form.campusId}
-                onChange={(e) => setForm({ ...form, campusId: e.target.value })}
-              >
-                <option value="">Select campus</option>
-                {campuses.map((c) => (
-                  <option key={c._id} value={c._id}>{c.name}</option>
-                ))}
-              </select>
-            </div>
-            <div className="space-y-2">
-              <Label>Head of Faculty</Label>
-              <select
-                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm"
-                value={form.headId}
-                onChange={(e) => setForm({ ...form, headId: e.target.value })}
-              >
-                <option value="">Select staff head</option>
-                {staffMembers.map((m) => (
-                  <option key={m._id} value={m._id}>{getStaffDisplayName(m)}</option>
-                ))}
-              </select>
+          <div className="space-y-4">
+            <Label>Campuses *</Label>
+            <p className="text-xs text-muted-foreground">
+              Add or remove the campuses this faculty operates on. Each campus has its own head, phone, email, and status.
+            </p>
+            <div className="border rounded-md p-2 max-h-40 overflow-y-auto space-y-1">
+              {campuses.length === 0 && (
+                <p className="text-xs text-muted-foreground px-2 py-1">No campuses available</p>
+              )}
+              {campuses.map((c) => (
+                <label
+                  key={c._id}
+                  className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted/50 cursor-pointer"
+                >
+                  <input
+                    type="checkbox"
+                    checked={form.campusIds.includes(c._id)}
+                    onChange={(e) => toggleCampus(c._id, e.target.checked)}
+                  />
+                  <span className="text-sm">{c.name}</span>
+                  <span className="text-xs text-muted-foreground font-mono">{c.campusCode}</span>
+                </label>
+              ))}
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Email</Label>
-              <Input
-                type="email"
-                value={form.email}
-                onChange={(e) => setForm({ ...form, email: e.target.value })}
-                placeholder="faculty@university.edu.pk"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Phone</Label>
-              <Input
-                value={form.phone}
-                onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                placeholder="+92-42-35608000"
-              />
-            </div>
-          </div>
+          {sortedAssignments.map((assignment) => {
+            const campus = campuses.find((c) => c._id === assignment.campusId);
+            if (!campus) return null;
+            return (
+              <div key={assignment.campusId} className="space-y-4 rounded-lg border p-4">
+                <div>
+                  <p className="font-medium">{campus.name}</p>
+                  <p className="text-xs text-muted-foreground font-mono">{campus.campusCode}</p>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Head of Faculty (at this campus)</Label>
+                    <select
+                      className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm"
+                      value={assignment.headId}
+                      onChange={(e) => updateAssignment(assignment.campusId, { headId: e.target.value })}
+                    >
+                      <option value="">Select staff head</option>
+                      {staffMembers.map((m) => (
+                        <option key={m._id} value={m._id}>{getStaffDisplayName(m)}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Email</Label>
+                    <Input
+                      type="email"
+                      value={assignment.email}
+                      onChange={(e) => updateAssignment(assignment.campusId, { email: e.target.value })}
+                      placeholder={`${campus.name.toLowerCase().replace(/\s+/g, ".")}@university.edu.pk`}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Phone</Label>
+                    <Input
+                      value={assignment.phone}
+                      onChange={(e) => updateAssignment(assignment.campusId, { phone: e.target.value })}
+                      placeholder="+92-42-35608000"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Established Date</Label>
+                    <Input
+                      type="date"
+                      value={assignment.establishedDate}
+                      onChange={(e) => updateAssignment(assignment.campusId, { establishedDate: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Status (at this campus)</Label>
+                    <select
+                      className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm"
+                      value={assignment.status}
+                      onChange={(e) =>
+                        updateAssignment(assignment.campusId, {
+                          status: e.target.value as "Active" | "Inactive",
+                        })
+                      }
+                    >
+                      <option value="Active">Active</option>
+                      <option value="Inactive">Inactive</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
 
           <div className="space-y-2">
-            <Label>Status</Label>
+            <Label>Status (faculty-level)</Label>
             <select
               className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm"
               value={form.status}

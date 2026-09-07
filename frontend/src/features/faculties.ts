@@ -1,21 +1,34 @@
 import api from './axios';
 
-export interface Faculty {
-  _id?: string;
-  facultyId?: string;
-  campusId?: string | { _id: string; name: string; campusCode: string };
-  name: string;
-  code: string;
-  description?: string;
-  headId?: string | { _id: string; name: string; email: string; designation: string };
+export interface CampusAssignment {
+  campusId: string | { _id: string; name: string; campusCode: string };
+  headId?: string | { _id: string; staffId?: string; firstName?: string; lastName?: string; email?: string } | null;
   email?: string;
   phone?: string;
   establishedDate?: string;
+  status?: 'Active' | 'Inactive';
+}
+
+export interface Faculty {
+  _id?: string;
+  facultyId?: string;
+  campusIds?: Array<string | { _id: string; name: string; campusCode: string }>;
+  campusAssignments?: CampusAssignment[];
+  name: string;
+  code: string;
+  description?: string;
   status?: 'Active' | 'Inactive';
   createdBy?: string;
   updatedBy?: string;
   createdAt?: string;
   updatedAt?: string;
+  stats?: {
+    totalDepartments?: number;
+    totalPrograms?: number;
+    totalSubjects?: number;
+    totalBatches?: number;
+  };
+  departmentCount?: number;
 }
 
 export interface FacultyStats {

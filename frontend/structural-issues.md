@@ -1,28 +1,45 @@
 # UniversityMS — Structural / Data Model Issues
 
 > **Created:** 2026-09-07 — multi-campus faculty, cross-faculty department, campus admin, staff campus/faculty assignment gaps
+> **Last updated:** 2026-09-07 — chosen fix approach documented
 
 ---
 
-## Issue 1 — Faculty cannot belong to multiple campuses
+## Issue 1 — Faculty cannot belong to multiple campuses with per-campus settings
 
-**Area:** Faculty model / Faculty form
+**Area:** Faculty model / Faculty form / Faculty detail
 
 **Current behavior:**
 - `Faculty.campusId` is a single `ObjectId` ref to `Campus`.
 - Faculty name/code unique index is scoped to one campus: `{ campusId: 1, name: 1 }`.
 - Frontend faculty form has a single **Campus** dropdown.
+- Contact/head fields are single-valued, so one campus’s head/email/phone overwrites another’s.
 
 **Problem:**
-In multi-campus universities, the same faculty often exists across campuses. Example: “Faculty of Computing” may have departments on both Main Campus and Satellite Campus. Today you must create duplicate faculty records per campus.
+In multi-campus universities, the same faculty often exists across campuses. Example: “Faculty of Computing” may have departments on both Main Campus and Satellite Campus, each with its own head, email, and phone. Today you must create duplicate faculty records per campus.
 
-**Impact:** Data duplication, confusing faculty listings, hard to aggregate across campuses.
+**Impact:** Data duplication, confusing faculty listings, hard to aggregate across campuses, per-campus settings lost.
+
+### Chosen fix
+
+- Make `Faculty.name` and `Faculty.code` globally unique.
+- Add `campusIds[]` array on `Faculty` for quick membership/filtering.
+- Add `campusAssignments[]` embedded sub-documents for per-campus fields:
+  - `campusId`
+  - `headId`
+  - `email`
+  - `phone`
+  - `establishedDate`
+  - `status`
+- Keep `campusId` as a legacy alias pointing to the first assigned campus for backward compatibility with existing queries.
+- Update backend controller to validate `campusAssignments[].campusId` refs and reject invalid campuses.
+- Update frontend faculty create/edit/detail pages to manage multiple campuses and show assignment-specific fields per campus.
 
 ---
 
 ## Issue 2 — Department cannot belong to multiple faculties
 
-**Area:** Department model / Department form
+**Area:** Department model / Department form / Department detail
 
 **Current behavior:**
 - `Department.facultyId` is a single `ObjectId` ref to `Faculty`.
@@ -33,6 +50,14 @@ In multi-campus universities, the same faculty often exists across campuses. Exa
 Some departments are interdisciplinary and sit under more than one faculty. Example: “Department of Data Science” may be jointly under Faculty of Computing AND Faculty of Business.
 
 **Impact:** Forces artificial faculty assignment, limits organizational accuracy.
+
+### Chosen fix
+
+- Add `facultyIds[]` array on `Department`.
+- Keep `facultyId` as legacy alias to the first faculty for backward compatibility.
+- Relax `validateFacultyForCampus` check or remove the same-campus enforcement for department-faculty links.
+- Update frontend department form to allow multi-select faculties.
+- Update department detail to show all linked faculties.
 
 ---
 
@@ -50,11 +75,17 @@ There is no way to designate which staff member is the campus administrator. All
 
 **Impact:** Cannot model “Campus Admin” as a distinct operational role tied to a specific campus.
 
+### Chosen fix
+
+- Add `campusAdminId` ref to `StaffMember` on `Campus`.
+- Expose in campus form + detail page as a staff selector.
+- Optionally add secondary admin fields if needed later.
+
 ---
 
 ## Issue 4 — StaffMember has no explicit campus/faculty assignment at top level
 
-**Area:** StaffMember model / Staff form
+**Area:** StaffMember model / Staff form / Staff detail
 
 **Current behavior:**
 - `StaffMember.employments[]` has `campusId` and `departmentId`, so a staff member CAN be linked to a campus through employment records.
@@ -66,11 +97,17 @@ Quick staff-to-campus or staff-to-faculty association is not visible in the UI. 
 
 **Impact:** Harder to filter staff by campus/faculty, assign campus-specific roles, or display “campus staff” in campus detail.
 
+### Chosen fix
+
+- Add optional top-level `campusId` / `facultyId` on `StaffMember`, derived from primary employment if blank.
+- Surface in staff form/list as read-only derived fields or editable primary assignment.
+- Use for quick filtering in campus admin views.
+
 ---
 
 ## Issue 5 — Batch / Session linkage is one-directional and weak
 
-**Area:** Batch model / Session detail
+**Area:** Batch model / Session detail / Batch list
 
 **Current behavior:**
 - `Batch.admissionSessionId` links a batch to the session when students were admitted.
@@ -81,6 +118,12 @@ Quick staff-to-campus or staff-to-faculty association is not visible in the UI. 
 Users may want to see all batches for a given session from both directions. The relationship is clear in data but not surfaced symmetrically in the UI.
 
 **Impact:** Extra clicks to move between session and its batches.
+
+### Chosen fix
+
+- Add dedicated session-filtered batch view or section in session detail; keep existing batch filters.
+- Add batch list filter by `admissionSessionId` (backend + frontend already partially done).
+- Ensure batch detail shows linked session prominently.
 
 ---
 
@@ -98,23 +141,17 @@ Operational roles like “Campus Admin” or “Faculty Coordinator” cannot be
 
 **Impact:** Admin must manually configure module access per user instead of assigning a campus-scoped role template.
 
----
+### Status
 
-## Recommended fix approach
-
-| Issue | Suggested direction |
-|-------|---------------------|
-| Faculty multi-campus | Add `campusIds[]` array on Faculty; deprecate single `campusId`; update unique index to `{ name: 1 }` globally or per-university. |
-| Department multi-faculty | Add `facultyIds[]` array on Department; relax `validateFacultyForCampus` cross-campus check or make it optional. |
-| Campus admin | Add `campusAdminId` ref to `StaffMember` on `Campus`; expose in campus form + detail page. |
-| Staff campus/faculty | Add optional top-level `campusId` / `facultyId` on `StaffMember`, derived from primary employment if blank; surface in staff form/list. |
-| Batch/session navigation | Add dedicated session-filtered batch view or section in session detail; keep existing batch filters. |
-| Campus-scoped roles | Extend `PlatformRole` templates with optional `scopeType`/`scopeId` or add a `CampusRoleAssignment` sub-document. |
+Deferred to a later phase. Not blocking issues 1–5.
 
 ---
 
-## Notes
+## Implementation order
 
-- These are **data model / feature gap** issues, not runtime bugs.
-- Fixes require coordinated backend model changes + frontend form/UI updates.
-- Consider whether multi-campus faculty and multi-faculty department are truly required, or if the simpler fix is “allow duplicate faculty/department names across campuses.”
+1. Faculty multi-campus with `campusAssignments[]`
+2. Department multi-faculty with `facultyIds[]`
+3. Campus admin field
+4. Staff top-level campus/faculty assignment
+5. Batch/session navigation improvements
+6. Campus-scoped roles (later)

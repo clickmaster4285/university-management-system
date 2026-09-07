@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { facultyAPI, type Faculty } from "@/features/faculties";
+import { facultyAPI, type Faculty, type CampusAssignment } from "@/features/faculties";
 import { campusAPI, type Campus } from "@/features/campus";
 import { staffMemberAPI, getStaffDisplayName, type StaffMember } from "@/features/staffMembers";
 import { Card, CardContent } from "@/components/ui/card";
@@ -66,6 +66,38 @@ export default function FacultyDetailPage() {
     fetchFaculty();
   }, [id]);
 
+  const getCampusName = (campusId: string | { _id: string } | null | undefined): string => {
+    if (!campusId) return "—";
+    const id = resolveRefId(campusId);
+    const found = campuses.find((c) => c._id === id);
+    return found?.name || id || "—";
+  };
+
+  const campusAssignments: CampusAssignment[] = useMemo(() => {
+    if (!faculty) return [];
+    return faculty.campusAssignments || [];
+  }, [faculty]);
+
+  const resolveHeadName = (headId: string | { _id: string } | null | undefined) => {
+    if (!headId) return "—";
+    if (typeof headId === "object") {
+      return getStaffDisplayName({
+        firstName: (headId as { firstName?: string }).firstName || "",
+        lastName: (headId as { lastName?: string }).lastName || "",
+        fullName: (headId as { name?: string }).name,
+      });
+    }
+    const found = staffMembers.find((m) => m._id === headId);
+    return found ? getStaffDisplayName(found) : headId;
+  };
+
+  const resolveHeadEmail = (headId: string | { _id: string } | null | undefined) => {
+    if (!headId) return "—";
+    if (typeof headId === "object") return (headId as { email?: string }).email || "—";
+    const found = staffMembers.find((m) => m._id === headId);
+    return found?.email || "—";
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center py-20">
@@ -85,33 +117,6 @@ export default function FacultyDetailPage() {
     );
   }
 
-  const getCampusName = (campus: Faculty["campusId"]) => {
-    if (!campus) return "—";
-    if (typeof campus === "object") return campus.name;
-    const found = campuses.find(c => c._id === campus);
-    return found?.name || campus;
-  };
-
-  const getHeadName = (head: Faculty["headId"]) => {
-    if (!head) return "—";
-    if (typeof head === "object") {
-      return getStaffDisplayName({
-        firstName: (head as { firstName?: string }).firstName || "",
-        lastName: (head as { lastName?: string }).lastName || "",
-        fullName: (head as { name?: string }).name,
-      });
-    }
-    const found = staffMembers.find(m => m._id === head);
-    return found ? getStaffDisplayName(found) : head;
-  };
-
-  const getHeadEmail = (head: Faculty["headId"]) => {
-    if (!head) return "—";
-    if (typeof head === "object") return (head as { email?: string }).email || "—";
-    const found = staffMembers.find(m => m._id === head);
-    return found?.email || "—";
-  };
-
   const statCards = [
     { label: "Departments", value: stats?.totalDepartments ?? 0, icon: Layers, to: "/departments", filter: { facultyId: faculty._id } },
     { label: "Programs", value: stats?.totalPrograms ?? 0, icon: GraduationCap, to: "/programs" },
@@ -119,15 +124,11 @@ export default function FacultyDetailPage() {
     { label: "Batches", value: stats?.totalBatches ?? 0, icon: Users, to: "/batches" },
   ];
 
-  const infoFields: Array<{ label: string; value: string | null; icon: typeof Hash; className?: string; isBadge?: boolean }> = [
-    { label: "Faculty ID", value: faculty.facultyId || faculty._id || "—", icon: Hash },
-    { label: "Name", value: faculty.name, icon: Building2 },
-    { label: "Code", value: faculty.code, icon: Hash, className: "font-mono font-semibold" },
-    { label: "Status", value: null, icon: Building2, isBadge: true },
-    { label: "Email", value: faculty.email || "—", icon: Mail },
-    { label: "Phone", value: faculty.phone || "—", icon: Phone },
-    { label: "Established Date", value: faculty.establishedDate ? new Date(faculty.establishedDate).toLocaleDateString() : "—", icon: CalendarDays },
-  ];
+  const formatDate = (value?: string) => {
+    if (!value) return "—";
+    const d = new Date(value);
+    return isNaN(d.getTime()) ? "—" : d.toLocaleDateString();
+  };
 
   return (
     <div className="space-y-6">
@@ -155,51 +156,90 @@ export default function FacultyDetailPage() {
         <CardContent className="p-6">
           <h2 className="text-lg font-semibold mb-4">Information</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {infoFields.map((field) => (
-              <div key={field.label} className="flex items-start gap-3">
-                <field.icon className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />
-                <div>
-                  <p className="text-xs text-muted-foreground">{field.label}</p>
-                  {field.isBadge ? (
-                    <Badge variant={faculty.status === "Active" ? "default" : "secondary"} className="mt-1">
-                      {faculty.status || "Active"}
-                    </Badge>
-                  ) : (
-                    <p className={`font-medium ${field.className || ""}`}>{field.value}</p>
-                  )}
-                </div>
+            <div className="flex items-start gap-3">
+              <Hash className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />
+              <div>
+                <p className="text-xs text-muted-foreground">Faculty ID</p>
+                <p className="font-medium font-mono">{faculty.facultyId || faculty._id || "—"}</p>
               </div>
-            ))}
-          </div>
-
-          {(faculty.headId || faculty.campusId) && (
-            <div className="mt-6 pt-4 border-t grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {faculty.headId && (
-                <div className="flex items-start gap-3">
-                  <Users className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />
-                  <div>
-                    <p className="text-xs text-muted-foreground">Head of Faculty</p>
-                    <p className="font-medium">{getHeadName(faculty.headId)}</p>
-                    <p className="text-xs text-muted-foreground">{getHeadEmail(faculty.headId)}</p>
-                  </div>
-                </div>
-              )}
-              {faculty.campusId && (
-                <div className="flex items-start gap-3">
-                  <Building2 className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />
-                  <div>
-                    <p className="text-xs text-muted-foreground">Campus</p>
-                    <p className="font-medium">{getCampusName(faculty.campusId)}</p>
-                  </div>
-                </div>
-              )}
             </div>
-          )}
+            <div className="flex items-start gap-3">
+              <Building2 className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />
+              <div>
+                <p className="text-xs text-muted-foreground">Campuses</p>
+                <p className="font-medium">
+                  {campusAssignments.length > 0
+                    ? campusAssignments.map((a) => getCampusName(a.campusId)).join(", ")
+                    : "—"}
+                </p>
+              </div>
+            </div>
+          </div>
 
           {faculty.description && (
             <div className="mt-6 pt-4 border-t">
               <p className="text-xs text-muted-foreground mb-1">Description</p>
               <p className="text-sm">{faculty.description}</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent className="p-6">
+          <h2 className="text-lg font-semibold mb-4">Campus assignments</h2>
+          {campusAssignments.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No campuses assigned.</p>
+          ) : (
+            <div className="space-y-4">
+              {campusAssignments.map((assignment) => (
+                <div key={resolveRefId(assignment.campusId)} className="rounded-lg border p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <div>
+                      <p className="font-medium">{getCampusName(assignment.campusId)}</p>
+                      <p className="text-xs text-muted-foreground font-mono">
+                        {campuses.find((c) => c._id === resolveRefId(assignment.campusId))?.campusCode || ""}
+                      </p>
+                    </div>
+                    {assignment.status && (
+                      <Badge variant={assignment.status === "Active" ? "default" : "secondary"}>
+                        {assignment.status}
+                      </Badge>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="flex items-start gap-3">
+                      <Users className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />
+                      <div>
+                        <p className="text-xs text-muted-foreground">Head of Faculty</p>
+                        <p className="font-medium">{resolveHeadName(assignment.headId)}</p>
+                        <p className="text-xs text-muted-foreground">{resolveHeadEmail(assignment.headId)}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <Mail className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />
+                      <div>
+                        <p className="text-xs text-muted-foreground">Email</p>
+                        <p className="font-medium">{assignment.email || "—"}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <Phone className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />
+                      <div>
+                        <p className="text-xs text-muted-foreground">Phone</p>
+                        <p className="font-medium">{assignment.phone || "—"}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <CalendarDays className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />
+                      <div>
+                        <p className="text-xs text-muted-foreground">Established Date</p>
+                        <p className="font-medium">{formatDate(assignment.establishedDate)}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </CardContent>

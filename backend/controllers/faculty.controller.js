@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
 import { handle } from "../utils/asyncHandler.js";
-import { Faculty, Department, StaffMember, Program, Batch, Subject } from '../models/index.js';
+import { Faculty, Department, StaffMember, Program, Batch, Subject, Campus } from '../models/index.js';
 import { generateFacultyId } from "../utils/generateFacultyId.js";
 
 async function findFacultyByIdentifier(identifier) {
@@ -14,7 +14,7 @@ async function findFacultyByIdentifier(identifier) {
 export const getFaculties = handle(async (req, res) => {
   const { campusId, status, search, page = 1, limit = 100 } = req.query;
   const filter = { isDeleted: { $ne: true } };
-  if (campusId) filter.campusId = campusId;
+  if (campusId) filter.campusIds = campusId;
   if (status) filter.status = status;
 
   if (search) {
@@ -30,19 +30,33 @@ export const getFaculties = handle(async (req, res) => {
     .skip(skip)
     .limit(parseInt(limit))
     .sort({ name: 1 })
-    .populate('campusId', 'name campusCode')
-    .populate('headId', 'staffId firstName lastName email')
+    .populate('campusIds', 'name campusCode')
+    .populate('campusAssignments.campusId', 'name campusCode')
+    .populate('campusAssignments.headId', 'staffId firstName lastName')
     .select('-__v');
 
   const totalCount = await Faculty.countDocuments(filter);
 
+  const facultyIds = faculties.map((f) => f._id);
+  const deptCounts = await Department.aggregate([
+    { $match: { facultyId: { $in: facultyIds }, isDeleted: { $ne: true } } },
+    { $group: { _id: "$facultyId", count: { $sum: 1 } } },
+  ]);
+  const deptCountMap = new Map(deptCounts.map((d) => [String(d._id), d.count]));
+
+  const data = faculties.map((f) => {
+    const obj = f.toObject();
+    obj.departmentCount = deptCountMap.get(String(f._id)) || 0;
+    return obj;
+  });
+
   res.json({
     success: true,
-    count: faculties.length,
+    count: data.length,
     total: totalCount,
     page: parseInt(page),
     totalPages: Math.ceil(totalCount / parseInt(limit)),
-    data: faculties,
+    data,
   });
 });
 
@@ -57,8 +71,9 @@ export const getFacultyById = handle(async (req, res) => {
   }
 
   const populated = await Faculty.findById(faculty._id)
-    .populate('campusId', 'name campusCode')
-    .populate('headId', 'staffId firstName lastName email');
+    .populate('campusIds', 'name campusCode')
+    .populate('campusAssignments.campusId', 'name campusCode')
+    .populate('campusAssignments.headId', 'staffId firstName lastName email');
 
   const fid = faculty._id;
   const nd = { isDeleted: { $ne: true } };
@@ -82,60 +97,77 @@ export const getFacultyById = handle(async (req, res) => {
 });
 
 export const createFaculty = handle(async (req, res) => {
-  const { campusId, name, code, description, headId, email, phone, establishedDate, status } = req.body;
+  const { campusIds, campusAssignments, name, code, description, status } = req.body;
 
-  if (!campusId || !name || !code) {
+  if (!name || !code) {
     return res.status(400).json({
       success: false,
-      message: 'campusId, name and code are required',
+      message: 'name and code are required',
     });
   }
 
-  // Verify campus exists
-  const campus = await mongoose.model('Campus').findOne({ _id: campusId, isDeleted: { $ne: true } });
-  if (!campus) {
-    return res.status(400).json({
-      success: false,
-      message: `Campus ${campusId} not found`,
-    });
-  }
+  const normalizedName = name.trim();
+  const normalizedCode = code.toUpperCase().trim();
 
-  // Check for duplicate name/code within the same campus
   const existing = await Faculty.findOne({
-    campusId,
-    $or: [{ name: name.trim() }, { code: code.toUpperCase().trim() }],
-    isDeleted: { $ne: true },
+    $or: [{ name: normalizedName }, { code: normalizedCode }],
+    isDeleted: false,
   });
   if (existing) {
     return res.status(400).json({
       success: false,
-      message: 'Faculty with this name or code already exists in this campus',
+      message: 'Faculty with this name or code already exists',
     });
   }
 
-  // Verify headId if provided
-  if (headId) {
-    const head = await StaffMember.findOne({ _id: headId, isDeleted: { $ne: true } });
-    if (!head) {
+  const facultyId = await generateFacultyId();
+
+  const resolvedCampusIds = Array.isArray(campusIds)
+    ? [...new Set(campusIds.map((id) => (typeof id === 'object' && id?._id ? id._id : id)).filter(Boolean))]
+    : [];
+
+  const assignments = Array.isArray(campusAssignments) && campusAssignments.length > 0
+    ? campusAssignments
+    : resolvedCampusIds.map((campusId) => ({ campusId }));
+
+  if (assignments.length > 0) {
+    const allCampusIds = assignments.map((a) => (typeof a.campusId === 'object' && a.campusId?._id ? a.campusId._id : a.campusId)).filter(Boolean);
+    const uniqueCampusIds = [...new Set(allCampusIds)];
+    if (uniqueCampusIds.length !== allCampusIds.length) {
       return res.status(400).json({
         success: false,
-        message: `Staff member ${headId} not found`,
+        message: 'Duplicate campus rows in campusAssignments are not allowed',
       });
+    }
+    const validCampuses = await Campus.find({ _id: { $in: allCampusIds }, isDeleted: { $ne: true } });
+    if (validCampuses.length !== allCampusIds.length) {
+      return res.status(400).json({
+        success: false,
+        message: 'One or more selected campuses were not found',
+      });
+    }
+
+    const headIdsInAssignments = assignments
+      .map((a) => (typeof a.headId === 'object' && a.headId?._id ? a.headId._id : a.headId))
+      .filter(Boolean);
+    if (headIdsInAssignments.length > 0) {
+      const validHeads = await StaffMember.countDocuments({ _id: { $in: headIdsInAssignments }, isDeleted: { $ne: true } });
+      if (validHeads !== headIdsInAssignments.length) {
+        return res.status(400).json({
+          success: false,
+          message: 'One or more campus assignment heads were not found',
+        });
+      }
     }
   }
 
-  const facultyId = await generateFacultyId(campusId);
-
   const faculty = new Faculty({
     facultyId,
-    campusId,
-    name: name.trim(),
-    code: code.toUpperCase().trim(),
+    campusIds: resolvedCampusIds,
+    campusAssignments: assignments,
+    name: normalizedName,
+    code: normalizedCode,
     description: description || '',
-    headId: headId || null,
-    email: email || '',
-    phone: phone || '',
-    establishedDate: establishedDate ? new Date(establishedDate) : null,
     status: status || 'Active',
     createdBy: req.user?._id || null,
     updatedBy: req.user?._id || null,
@@ -144,8 +176,9 @@ export const createFaculty = handle(async (req, res) => {
   await faculty.save();
 
   const populated = await Faculty.findById(faculty._id)
-    .populate('campusId', 'name campusCode')
-    .populate('headId', 'staffId firstName lastName email');
+    .populate('campusIds', 'name campusCode')
+    .populate('campusAssignments.campusId', 'name campusCode')
+    .populate('campusAssignments.headId', 'staffId firstName lastName email');
 
   res.status(201).json({
     success: true,
@@ -156,7 +189,7 @@ export const createFaculty = handle(async (req, res) => {
 
 export const updateFaculty = handle(async (req, res) => {
   const { id } = req.params;
-  const { campusId, name, code, description, headId, email, phone, establishedDate, status } = req.body;
+  const { campusIds, campusAssignments, name, code, description, status } = req.body;
 
   const faculty = await findFacultyByIdentifier(id);
   if (!faculty) {
@@ -169,15 +202,14 @@ export const updateFaculty = handle(async (req, res) => {
   if (name !== undefined && name !== '') {
     const trimmedName = name.trim();
     const existing = await Faculty.findOne({
-      campusId: faculty.campusId,
       name: trimmedName,
       _id: { $ne: faculty._id },
-      isDeleted: { $ne: true },
+      isDeleted: false,
     });
     if (existing) {
       return res.status(400).json({
         success: false,
-        message: 'Faculty name already exists in this campus',
+        message: 'Faculty name already exists',
       });
     }
     faculty.name = trimmedName;
@@ -186,33 +218,106 @@ export const updateFaculty = handle(async (req, res) => {
   if (code !== undefined && code !== '') {
     const trimmedCode = code.toUpperCase().trim();
     const existing = await Faculty.findOne({
-      campusId: faculty.campusId,
       code: trimmedCode,
       _id: { $ne: faculty._id },
-      isDeleted: { $ne: true },
+      isDeleted: false,
     });
     if (existing) {
       return res.status(400).json({
         success: false,
-        message: 'Faculty code already exists in this campus',
+        message: 'Faculty code already exists',
       });
     }
     faculty.code = trimmedCode;
   }
 
+  if (campusIds !== undefined || campusAssignments !== undefined) {
+    const incomingAssignments = Array.isArray(campusAssignments) && campusAssignments.length > 0
+      ? campusAssignments
+      : null;
+    const incomingCampusIds = Array.isArray(campusIds)
+      ? [...new Set(campusIds.map((c) => (typeof c === 'object' && c?._id ? c._id : c)).filter(Boolean))]
+      : null;
+
+    let resolvedCampusIds;
+    let assignments;
+    if (incomingAssignments && incomingCampusIds) {
+      // Both provided — assignments are authoritative; campusIds must be a subset.
+      const assignmentCampusIds = [...new Set(
+        incomingAssignments
+          .map((a) => (typeof a.campusId === 'object' && a.campusId?._id ? a.campusId._id : a.campusId))
+          .filter(Boolean)
+      )];
+      const onlyInIds = incomingCampusIds.filter((id) => !assignmentCampusIds.includes(id));
+      if (onlyInIds.length > 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'campusIds contains campuses not present in campusAssignments',
+        });
+      }
+      resolvedCampusIds = assignmentCampusIds;
+      assignments = incomingAssignments;
+    } else if (incomingAssignments) {
+      const assignmentCampusIds = [...new Set(
+        incomingAssignments
+          .map((a) => (typeof a.campusId === 'object' && a.campusId?._id ? a.campusId._id : a.campusId))
+          .filter(Boolean)
+      )];
+      resolvedCampusIds = assignmentCampusIds;
+      assignments = incomingAssignments;
+    } else if (incomingCampusIds) {
+      resolvedCampusIds = incomingCampusIds;
+      assignments = incomingCampusIds.map((campusId) => ({ campusId }));
+    } else {
+      resolvedCampusIds = faculty.campusIds || [];
+      assignments = faculty.campusAssignments || [];
+    }
+
+    if (assignments.length > 0) {
+      const allCampusIds = assignments.map((a) => (typeof a.campusId === 'object' && a.campusId?._id ? a.campusId._id : a.campusId)).filter(Boolean);
+      const uniqueCampusIds = [...new Set(allCampusIds)];
+      if (uniqueCampusIds.length !== allCampusIds.length) {
+        return res.status(400).json({
+          success: false,
+          message: 'Duplicate campus rows in campusAssignments are not allowed',
+        });
+      }
+      const validCampuses = await Campus.find({ _id: { $in: allCampusIds }, isDeleted: { $ne: true } });
+      if (validCampuses.length !== allCampusIds.length) {
+        return res.status(400).json({
+          success: false,
+          message: 'One or more selected campuses were not found',
+        });
+      }
+
+      const headIdsInAssignments = assignments
+        .map((a) => (typeof a.headId === 'object' && a.headId?._id ? a.headId._id : a.headId))
+        .filter(Boolean);
+      if (headIdsInAssignments.length > 0) {
+        const validHeads = await StaffMember.countDocuments({ _id: { $in: headIdsInAssignments }, isDeleted: { $ne: true } });
+        if (validHeads !== headIdsInAssignments.length) {
+          return res.status(400).json({
+            success: false,
+            message: 'One or more campus assignment heads were not found',
+          });
+        }
+      }
+    }
+
+    faculty.campusIds = resolvedCampusIds;
+    faculty.campusAssignments = assignments;
+  }
+
   if (description !== undefined) faculty.description = description;
   if (status !== undefined && status !== '') faculty.status = status;
-  if (headId !== undefined) faculty.headId = headId || null;
-  if (email !== undefined) faculty.email = email;
-  if (phone !== undefined) faculty.phone = phone;
-  if (establishedDate !== undefined) faculty.establishedDate = establishedDate ? new Date(establishedDate) : null;
 
   faculty.updatedBy = req.user?._id || null;
   await faculty.save();
 
   const populated = await Faculty.findById(faculty._id)
-    .populate('campusId', 'name campusCode')
-    .populate('headId', 'staffId firstName lastName email');
+    .populate('campusIds', 'name campusCode')
+    .populate('campusAssignments.campusId', 'name campusCode')
+    .populate('campusAssignments.headId', 'staffId firstName lastName email');
 
   res.json({
     success: true,
@@ -269,12 +374,21 @@ export const getFacultyStats = handle(async (req, res) => {
       },
     },
     {
+      $lookup: {
+        from: 'campuses',
+        localField: 'campusIds',
+        foreignField: '_id',
+        as: 'campuses',
+      },
+    },
+    {
       $project: {
         name: 1,
         code: 1,
-        campusId: 1,
+        campusIds: 1,
         status: 1,
         departmentCount: { $size: '$departments' },
+        campusCount: { $size: '$campuses' },
       },
     },
     { $sort: { departmentCount: -1 } },

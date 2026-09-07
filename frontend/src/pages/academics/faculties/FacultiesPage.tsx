@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { facultyAPI, type Faculty } from "@/features/faculties";
+import { facultyAPI, type Faculty, type CampusAssignment } from "@/features/faculties";
 import { campusAPI, type Campus } from "@/features/campus";
 import { staffMemberAPI, getStaffDisplayName, type StaffMember } from "@/features/staffMembers";
 import { DataTable, type Column } from "@/components/data-table";
@@ -8,17 +8,44 @@ import { KpiCard } from "@/components/dashboard/kpi-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Building2, Users, BookOpen, Loader2, Pencil, Trash2, Eye } from "lucide-react";
+import { Building2, Users, BookOpen, Layers, Loader2, Pencil, Trash2, Eye } from "lucide-react";
 import { toast } from "sonner";
 
 const getFacultyId = (faculty: Faculty) => faculty._id || faculty.facultyId || "";
 
-const resolveRefId = (value: string | { _id: string } | null | undefined) => {
+const resolveRefId = (value: string | { _id: string } | null | undefined): string => {
   if (!value) return "";
   if (typeof value === "object") return value._id || "";
   return value;
 };
 
+const resolveCampusName = (campusId: string | { _id: string; name?: string; campusCode?: string } | null | undefined, campuses: Campus[]): string => {
+  if (!campusId) return "";
+  if (typeof campusId === "object") return campusId.name || campusId._id;
+  return campuses.find((c) => c._id === campusId)?.name || campusId;
+};
+
+const resolveCampusCode = (campusId: string | { _id: string; name?: string; campusCode?: string } | null | undefined, campuses: Campus[]): string => {
+  if (!campusId) return "";
+  if (typeof campusId === "object") return campusId.campusCode || "";
+  return campuses.find((c) => c._id === campusId)?.campusCode || "";
+};
+
+const resolveHeadName = (
+  headId: string | { _id: string; firstName?: string; lastName?: string; name?: string } | null | undefined,
+  staffMembers: StaffMember[]
+): string => {
+  if (!headId) return "";
+  if (typeof headId === "object") {
+    return getStaffDisplayName({
+      firstName: headId.firstName || "",
+      lastName: headId.lastName || "",
+      fullName: headId.name,
+    });
+  }
+  const found = staffMembers.find((m) => m._id === headId);
+  return found ? getStaffDisplayName(found) : "";
+};
 
 export default function FacultiesPage() {
   const navigate = useNavigate();
@@ -64,36 +91,34 @@ export default function FacultiesPage() {
     return faculties.filter((f) => {
       if (statusFilter !== "all" && (f.status || "Active") !== statusFilter) return false;
       if (campusFilter !== "all") {
-        const campusId = resolveRefId(f.campusId as string | { _id: string } | null | undefined);
-        if (campusId !== campusFilter) return false;
+        const ids = (f.campusIds || [])
+          .map((c) => resolveRefId(c as string | { _id: string } | null | undefined))
+          .filter(Boolean);
+        if (!ids.includes(campusFilter)) return false;
       }
       return true;
     });
   }, [faculties, campusFilter, statusFilter]);
 
+  const totalDepartments = useMemo(
+    () => filteredFaculties.reduce((sum, f) => sum + (f.departmentCount || 0), 0),
+    [filteredFaculties]
+  );
+
+  const uniqueCampuses = useMemo(() => {
+    const ids = new Set<string>();
+    for (const f of filteredFaculties) {
+      for (const c of f.campusIds || []) {
+        const id = resolveRefId(c as string | { _id: string } | null | undefined);
+        if (id) ids.add(id);
+      }
+    }
+    return ids.size;
+  }, [filteredFaculties]);
+
   const clearFilters = () => {
     setCampusFilter("all");
     setStatusFilter("all");
-  };
-
-  const getCampusName = (campus: Faculty["campusId"]) => {
-    if (!campus) return "—";
-    if (typeof campus === "object") return campus.name;
-    const found = campuses.find(c => c._id === campus);
-    return found?.name || campus;
-  };
-
-  const getHeadName = (head: Faculty["headId"]) => {
-    if (!head) return "—";
-    if (typeof head === "object") {
-      return getStaffDisplayName({
-        firstName: (head as { firstName?: string }).firstName || "",
-        lastName: (head as { lastName?: string }).lastName || "",
-        fullName: (head as { name?: string }).name,
-      });
-    }
-    const found = staffMembers.find((member) => member._id === head);
-    return found ? getStaffDisplayName(found) : head;
   };
 
   const handleDelete = async (faculty: Faculty) => {
@@ -113,19 +138,109 @@ export default function FacultiesPage() {
   };
 
   const columns: Column<Faculty>[] = [
-    { key: "code", header: "Code", cell: (f) => <span className="font-mono font-semibold">{f.code}</span> },
-    { key: "name", header: "Name" },
-    { key: "campusId", header: "Campus", cell: (f) => getCampusName(f.campusId) },
-    { key: "headId", header: "Head", cell: (f) => getHeadName(f.headId) },
-    { key: "email", header: "Email", cell: (f) => f.email || "—" },
     {
-      key: "status", header: "Status",
-      cell: (f) => <Badge variant={f.status === "Active" ? "default" : "secondary"}>{f.status || "Active"}</Badge>
+      key: "code",
+      header: "Code",
+      cell: (f) => <span className="font-mono font-semibold text-sm">{f.code}</span>,
     },
     {
-      key: "_id", header: "Actions",
+      key: "name",
+      header: "Name",
       cell: (f) => (
-        <div className="flex gap-1">
+        <div>
+          <span className="font-medium">{f.name}</span>
+          {f.description && (
+            <p className="text-xs text-muted-foreground truncate max-w-[200px]">{f.description}</p>
+          )}
+        </div>
+      ),
+    },
+    {
+      key: "campusIds",
+      header: "Campuses",
+      cell: (f) => {
+        const assignments = f.campusAssignments || [];
+        if (assignments.length === 0) {
+          const ids = (f.campusIds || [])
+            .map((c) => resolveRefId(c as string | { _id: string } | null | undefined))
+            .filter(Boolean);
+          if (ids.length === 0) return <span className="text-muted-foreground">—</span>;
+          return (
+            <div className="flex flex-wrap gap-1">
+              {ids.map((id) => (
+                <Badge key={id} variant="outline" className="text-xs">
+                  {resolveCampusName(id, campuses)}
+                </Badge>
+              ))}
+            </div>
+          );
+        }
+        return (
+          <div className="flex flex-wrap gap-1">
+            {assignments.map((a) => {
+              const campusId = resolveRefId(a.campusId as string | { _id: string } | null | undefined);
+              const name = resolveCampusName(a.campusId, campuses);
+              const code = resolveCampusCode(a.campusId, campuses);
+              return (
+                <Badge
+                  key={campusId}
+                  variant={a.status === "Inactive" ? "secondary" : "outline"}
+                  className="text-xs"
+                >
+                  {name}
+                  {code && <span className="ml-1 text-muted-foreground font-mono">{code}</span>}
+                </Badge>
+              );
+            })}
+          </div>
+        );
+      },
+    },
+    {
+      key: "heads",
+      header: "Heads",
+      cell: (f) => {
+        const assignments = (f.campusAssignments || []).filter((a) => a.headId);
+        if (assignments.length === 0) return <span className="text-muted-foreground">—</span>;
+        return (
+          <div className="space-y-1">
+            {assignments.map((a: CampusAssignment) => {
+              const campusName = resolveCampusName(a.campusId, campuses);
+              const headName = resolveHeadName(a.headId, staffMembers);
+              return (
+                <div key={resolveRefId(a.campusId as string | { _id: string } | null | undefined)} className="text-sm">
+                  <span className="font-medium">{headName}</span>
+                  {assignments.length > 1 && (
+                    <span className="text-xs text-muted-foreground ml-1">({campusName})</span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        );
+      },
+    },
+    {
+      key: "departmentCount",
+      header: "Depts",
+      cell: (f) => (
+        <span className="font-mono text-sm">{f.departmentCount ?? 0}</span>
+      ),
+    },
+    {
+      key: "status",
+      header: "Status",
+      cell: (f) => (
+        <Badge variant={f.status === "Active" ? "default" : "secondary"}>
+          {f.status || "Active"}
+        </Badge>
+      ),
+    },
+    {
+      key: "_id",
+      header: "",
+      cell: (f) => (
+        <div className="flex gap-1 justify-end">
           <Button
             type="button"
             size="sm"
@@ -148,16 +263,17 @@ export default function FacultiesPage() {
             <Trash2 className="h-4 w-4 text-destructive" />
           </Button>
         </div>
-      )
-    }
+      ),
+    },
   ];
 
   return (
     <>
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-4">
         <KpiCard label="Total Faculties" value={stats.total} icon={Building2} />
         <KpiCard label="Active" value={stats.active} icon={BookOpen} />
-        <KpiCard label="Inactive" value={stats.inactive} icon={Users} />
+        <KpiCard label="Departments" value={totalDepartments} icon={Layers} />
+        <KpiCard label="Campuses Covered" value={uniqueCampuses} icon={Users} />
       </div>
 
       {loading ? (

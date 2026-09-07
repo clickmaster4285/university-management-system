@@ -82,8 +82,10 @@ export default function DepartmentsPage() {
 
   const campusFaculties = useMemo(() => {
     if (campusFilter === "all") return faculties;
-    return faculties.filter(
-      (f) => resolveRefId(f.campusId as string | { _id: string } | null | undefined) === campusFilter
+    return faculties.filter((f) =>
+      (f.campusIds || [])
+        .map((c) => resolveRefId(c as string | { _id: string } | null | undefined))
+        .includes(campusFilter)
     );
   }, [faculties, campusFilter]);
 
