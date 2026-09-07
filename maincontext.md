@@ -1,7 +1,7 @@
 # UniversityMS — Master Project Context
 
 > **Purpose of this file:** Single source of truth for anyone (or any AI session) working on this codebase. Read this first. It tracks vision, what is built, what is deferred, what to do, what not to do, and the roadmap.  
-> **Last updated:** 2026-08-31 (evening — public site, view buttons, theme refresh)  
+> **Last updated:** 2026-09-05 — interconnected navigation, session detail page, batch session filter  
 > **Detailed academic spec:** `academic-architecture-plan.md`  
 > **Fees, sessions, batches & offerings flow:** `fee-plan.md`  
 > **Implementation details:** `backend/backendcontext.md`, `frontend/frontendcontext.md`
@@ -200,6 +200,30 @@ When a student enrolls (`POST /api/offerings/:id/enroll`):
 | **6** | Wire Assignments / Exams / Attendance to `offeringId` | ⏸ **Paused** — not needed right now |
 | **7** | BatchFeePolicy, FeeAdjustment (optional) | 📋 Future |
 | **8** | Deprecate legacy `Course` | ✅ Done (Aug 2026) |
+
+### Interconnectivity & navigation (Sep 2026 — ✅)
+
+- **`KpiCard`** is now clickable: accepts optional `onClick`, shows pointer cursor when active.
+- **`/university`** overview KPI cards navigate to their list pages:
+  - Campuses → `/campuses`
+  - Faculties → `/faculties`
+  - Departments → `/departments`
+  - Programs → `/programs`
+  - Students → `/students`
+  - Teachers/Staff → `/staff`
+  - Admins → `/access`
+- **Detail page stat cards** navigate with pre-filters via `useLocation` state:
+  - Campus detail → Faculties/Departments pre-filtered by campus
+  - Faculty detail → Departments pre-filtered by faculty
+  - Department detail → Programs/Subjects/Batches pre-filtered by department
+- **List pages** (`FacultiesPage`, `DepartmentsPage`, `ProgramsPage`, `SubjectsPage`, `BatchesPage`) read `location.state` and auto-apply filters on navigation.
+
+### Session detail page (Sep 2026 — ✅)
+
+- **Route:** `/academic-sessions/detail/:id`
+- **Page:** `SessionDetailPage` — shows session info + linked batches
+- **Batch link:** batches filtered by `admissionSessionId`; “View all batches” navigates to `/batches` with session pre-filter
+- **View button:** added to `AcademicSessionsPage` table rows
 
 ### Seeding
 

@@ -1,6 +1,6 @@
 # Frontend Context
 
-> **Last updated:** 2026-08-31 — public site at `/`, dashboard at `/dashboard`, view buttons, theme refresh
+> **Last updated:** 2026-09-05 — interconnected KPI navigation, session detail page, batch session filter
 
 ## Tech Stack
 
@@ -63,6 +63,8 @@ pages/academics/departments/
 
 **List page action pattern (Aug 2026):** KPI row → DataTable → filters → **View** (eye) + Edit (pencil) + Delete. View opens detail modal or navigates to profile page. Examples: `StudentsPage`, `StaffPage`, `FacultiesPage`, `CampusesPage`, `WorkforceLeavePage`.
 
+**Interconnected navigation (Sep 2026):** University overview KPI cards navigate to list pages. Detail page stat cards navigate to related list pages with pre-applied filters using `useLocation().state`. List pages read location state on mount and set filters accordingly.
+
 **Refactored examples:**
 - `DepartmentsPage.tsx` — list with `DepartmentViewModal`
 - `CampusesPage.tsx` — card grid + view modal + `CampusForm` on create/edit routes
@@ -101,7 +103,7 @@ Dashboard moved from `/` to `/dashboard`. Post-login redirect: `/dashboard`.
 /programs, /programs/:id/curriculum, /programs/:id/semester-fees
 /subjects, /subjects/create, /subjects/edit/:id
 /offerings, /semester-registrations, /challans
-/academic-sessions, /academic-sessions/create, /academic-sessions/edit/:id
+/academic-sessions, /academic-sessions/create, /academic-sessions/edit/:id, /academic-sessions/detail/:id
 /batches, /batches/create, /batches/edit/:id
 /admissions, /admissions/:id, /admissions/dossier/:id
 /students, /students/:id, /students/:id/documents
@@ -341,6 +343,9 @@ Frontend:
 | View buttons on key list pages | ✅ |
 | Global theme refresh (forest green, not blue) | ✅ |
 | Document upload slots (student + admission) | ✅ |
+| Interconnected KPI navigation (Sep 2026) | ✅ |
+| Session detail page with linked batches (Sep 2026) | ✅ |
+| Batch list session filter + pre-filter from session detail | ✅ |
 
 ### ⏳ Not done / remains (frontend)
 

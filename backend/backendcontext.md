@@ -1,6 +1,6 @@
 # Backend Context
 
-> **Last updated:** 2026-08-31 — model registry, `User.platformRole` single ref, student intake, workforce complete
+> **Last updated:** 2026-09-05 — batch session filter, session detail linked batches support
 
 ## API & data principles
 
@@ -506,7 +506,7 @@ Legacy `Admission.model.js` kept for old data only. **No migration scripts** in 
 ## Attendance / Batch / Student
 
 - **Attendance**: has `departmentId` ref (nullable) + `department` string denormalized from Student.
-- **Batch**: has `departmentId` ref + `department`/`program` strings denormalized.
+- **Batch**: has `departmentId` ref + `department`/`program` strings denormalized. `GET /api/batches` supports `admissionSessionId` filter for session-linked batch listing.
 - **Student**: refs to `programId`, `departmentId`, `campusId`, `batchId`, `admissionId`; legacy string fields kept as denormalized snapshots. Created via admission dossier completion, not direct POST.
 
 ## Department API (updated)
