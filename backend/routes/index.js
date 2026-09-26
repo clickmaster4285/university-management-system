@@ -31,6 +31,7 @@ import roleAssignmentRoutes from "./roleAssignment.routes.js";
 import settingsRoutes from "./settings.routes.js";
 import staffMemberRoutes from "./staffMember.routes.js";
 import studentRoutes from "./student.routes.js";
+import studentPortalRoutes from "./studentPortal.routes.js";
 import transportRoutes from "./transport.routes.js";
 import universityRoutes from "./university.routes.js";
 import workforceRoutes from "./workforce.routes.js";
@@ -48,6 +49,7 @@ const mount = (path, routeHandler) => {
 };
 
 router.use("/public", publicRoutes);
+router.use("/student-portal", studentPortalRoutes);
 mount("/students", studentRoutes);
 mount("/departments", departmentRoutes);
 mount("/offerings", courseOfferingRoutes);

@@ -7,7 +7,8 @@ import {
   updateStudent,
   deleteStudent,
   bulkCreateStudents,
-  getStudentStats
+  getStudentStats,
+  enableStudentPortalLogin,
 } from "../controllers/student.controller.js";
 import { listStudentSemesterRegistrations } from "../controllers/semesterRegistration.controller.js";
 import {
@@ -26,6 +27,7 @@ router.use(auth);
 router.get("/", getStudents);
 router.get("/stats", getStudentStats);
 router.get("/:id/semester-registrations", listStudentSemesterRegistrations);
+router.post("/:id/portal-login", enableStudentPortalLogin);
 router.get("/:id/documents", listStudentDocuments);
 router.post(
   "/:id/documents",

@@ -147,10 +147,12 @@ async function syncPackageEnrollments({
   createEnrollments = true,
 }) {
   const enrollmentIds = [];
+  const createdEnrollmentIds = [];
+  const capacityBumpOfferingIds = [];
   const warnings = [];
 
   if (!schedule?.subjectLines?.length) {
-    return { enrollmentIds, warnings };
+    return { enrollmentIds, createdEnrollmentIds, capacityBumpOfferingIds, warnings };
   }
 
   const subjectIds = schedule.subjectLines.map((line) => line.subjectId);
@@ -225,6 +227,8 @@ async function syncPackageEnrollments({
 
       offering.enrolledStudents += 1;
       await offering.save();
+      createdEnrollmentIds.push(enrollment._id);
+      capacityBumpOfferingIds.push(offering._id);
     }
 
     if (enrollment) {
@@ -232,7 +236,32 @@ async function syncPackageEnrollments({
     }
   }
 
-  return { enrollmentIds, warnings };
+  return { enrollmentIds, createdEnrollmentIds, capacityBumpOfferingIds, warnings };
+}
+
+async function compensateFailedRegistrationEnrollments(createdEnrollmentIds, capacityBumpOfferingIds) {
+  if (createdEnrollmentIds?.length) {
+    await Enrollment.updateMany(
+      { _id: { $in: createdEnrollmentIds } },
+      {
+        $set: {
+          isDeleted: true,
+          deletedAt: new Date(),
+          status: 'Dropped',
+        },
+      }
+    );
+  }
+
+  if (capacityBumpOfferingIds?.length) {
+    const uniqueOfferingIds = [...new Set(capacityBumpOfferingIds.map((id) => id.toString()))];
+    for (const offeringId of uniqueOfferingIds) {
+      const bumps = capacityBumpOfferingIds.filter((id) => id.toString() === offeringId).length;
+      await CourseOffering.findByIdAndUpdate(offeringId, {
+        $inc: { enrolledStudents: -bumps },
+      });
+    }
+  }
 }
 
 export const listSemesterRegistrations = handle(async (req, res) => {
@@ -408,32 +437,45 @@ export const createSemesterRegistration = handle(async (req, res) => {
   }
 
   const semesterFeeSnapshot = buildSemesterFeeSnapshotFromSchedule(schedule);
-  const { enrollmentIds, warnings } = await syncPackageEnrollments({
-    studentId: student._id,
-    batchId: batch._id,
-    academicSessionId: session._id,
-    programSemester: semesterNum,
-    schedule,
-    createEnrollments: true,
-  });
+  const { enrollmentIds, createdEnrollmentIds, capacityBumpOfferingIds, warnings } =
+    await syncPackageEnrollments({
+      studentId: student._id,
+      batchId: batch._id,
+      academicSessionId: session._id,
+      programSemester: semesterNum,
+      schedule,
+      createEnrollments: true,
+    });
 
-  const registrationId = await generateRegistrationId();
-  const registration = await SemesterRegistration.create({
-    registrationId,
-    studentId: student._id,
-    programId: program._id,
-    batchId: batch._id,
-    academicSessionId: session._id,
-    programSemester: semesterNum,
-    registrationMode,
-    studentCategory,
-    semesterFeeSnapshot,
-    enrollmentIds,
-    status: 'Registered',
-    registeredBy: req.user?._id || null,
-    warnings,
-    notes: req.body.notes || '',
-  });
+  let registration;
+  try {
+    const registrationId = await generateRegistrationId();
+    registration = await SemesterRegistration.create({
+      registrationId,
+      studentId: student._id,
+      programId: program._id,
+      batchId: batch._id,
+      academicSessionId: session._id,
+      programSemester: semesterNum,
+      registrationMode,
+      studentCategory,
+      semesterFeeSnapshot,
+      enrollmentIds,
+      status: 'Registered',
+      registeredBy: req.user?._id || null,
+      warnings,
+      notes: req.body.notes || '',
+    });
+  } catch (err) {
+    await compensateFailedRegistrationEnrollments(createdEnrollmentIds, capacityBumpOfferingIds);
+    if (err?.code === 11000) {
+      return res.status(409).json({
+        success: false,
+        message: 'Student is already registered for this semester in this batch and session',
+      });
+    }
+    throw err;
+  }
 
   const populated = await populateRegistration(
     SemesterRegistration.findById(registration._id)
@@ -456,15 +498,26 @@ export const generateSemesterRegistrationChallan = handle(async (req, res) => {
     return res.status(400).json({ success: false, message: 'Cannot generate challan for a dropped registration' });
   }
 
-  if (found.feeId) {
-    const existing = await Fee.findById(found.feeId);
-    if (existing && !existing.isDeleted) {
-      return res.status(409).json({
-        success: false,
-        message: 'Challan already exists for this registration',
-        data: { feeId: existing.feeId, _id: existing._id },
-      });
+  const existingByFeeId = found.feeId
+    ? await Fee.findOne({ _id: found.feeId, isDeleted: notDeleted })
+    : null;
+  const existingByRegistration = await Fee.findOne({
+    semesterRegistrationId: found._id,
+    source: 'semester_package',
+    isDeleted: notDeleted,
+  });
+  const existing = existingByFeeId || existingByRegistration;
+
+  if (existing) {
+    if (!found.feeId || found.feeId.toString() !== existing._id.toString()) {
+      found.feeId = existing._id;
+      await found.save();
     }
+    return res.status(409).json({
+      success: false,
+      message: 'Challan already exists for this registration',
+      data: { feeId: existing.feeId, _id: existing._id },
+    });
   }
 
   const registration = await populateRegistration(SemesterRegistration.findById(found._id));
@@ -477,13 +530,38 @@ export const generateSemesterRegistrationChallan = handle(async (req, res) => {
   const challanData = buildChallanFromRegistration(registration, student, { dueDate, dueDays, notes });
   challanData.createdBy = req.user?._id || null;
 
-  const fee = await Fee.create(challanData);
-
-  registration.feeId = fee._id;
-  if (registration.status === 'Registered') {
-    registration.status = 'Registered';
+  let fee;
+  try {
+    fee = await Fee.create(challanData);
+  } catch (err) {
+    if (err?.code === 11000) {
+      const raceExisting = await Fee.findOne({
+        semesterRegistrationId: found._id,
+        source: 'semester_package',
+        isDeleted: notDeleted,
+      });
+      if (raceExisting) {
+        found.feeId = raceExisting._id;
+        await found.save();
+        return res.status(409).json({
+          success: false,
+          message: 'Challan already exists for this registration',
+          data: { feeId: raceExisting.feeId, _id: raceExisting._id },
+        });
+      }
+    }
+    throw err;
   }
-  await registration.save();
+
+  try {
+    registration.feeId = fee._id;
+    await registration.save();
+  } catch (err) {
+    await Fee.findByIdAndUpdate(fee._id, {
+      $set: { isDeleted: true, deletedAt: new Date() },
+    });
+    throw err;
+  }
 
   const populatedFee = await Fee.findById(fee._id).populate(
     'semesterRegistrationId',

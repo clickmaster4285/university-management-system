@@ -39,8 +39,10 @@ export const getFaculties = handle(async (req, res) => {
 
   const facultyIds = faculties.map((f) => f._id);
   const deptCounts = await Department.aggregate([
-    { $match: { facultyId: { $in: facultyIds }, isDeleted: { $ne: true } } },
-    { $group: { _id: "$facultyId", count: { $sum: 1 } } },
+    { $match: { facultyIds: { $in: facultyIds }, isDeleted: { $ne: true } } },
+    { $unwind: '$facultyIds' },
+    { $match: { facultyIds: { $in: facultyIds } } },
+    { $group: { _id: '$facultyIds', count: { $sum: 1 } } },
   ]);
   const deptCountMap = new Map(deptCounts.map((d) => [String(d._id), d.count]));
 
@@ -79,10 +81,10 @@ export const getFacultyById = handle(async (req, res) => {
   const nd = { isDeleted: { $ne: true } };
 
   const [totalDepartments, totalPrograms, totalSubjects, totalBatches] = await Promise.all([
-    Department.countDocuments({ facultyId: fid, ...nd }),
-    Program.countDocuments({ departmentId: { $in: (await Department.find({ facultyId: fid, ...nd }).select("_id")).map(d => d._id) }, ...nd }),
-    Subject.countDocuments({ departmentId: { $in: (await Department.find({ facultyId: fid, ...nd }).select("_id")).map(d => d._id) }, ...nd }),
-    Batch.countDocuments({ departmentId: { $in: (await Department.find({ facultyId: fid, ...nd }).select("_id")).map(d => d._id) }, ...nd }),
+    Department.countDocuments({ facultyIds: fid, ...nd }),
+    Program.countDocuments({ departmentId: { $in: (await Department.find({ facultyIds: fid, ...nd }).select("_id")).map(d => d._id) }, ...nd }),
+    Subject.countDocuments({ departmentId: { $in: (await Department.find({ facultyIds: fid, ...nd }).select("_id")).map(d => d._id) }, ...nd }),
+    Batch.countDocuments({ departmentId: { $in: (await Department.find({ facultyIds: fid, ...nd }).select("_id")).map(d => d._id) }, ...nd }),
   ]);
 
   const data = populated.toObject();
@@ -338,7 +340,7 @@ export const deleteFaculty = handle(async (req, res) => {
   }
 
   // Check for departments using this faculty
-  const deptCount = await Department.countDocuments({ facultyId: faculty._id, isDeleted: { $ne: true } });
+  const deptCount = await Department.countDocuments({ facultyIds: faculty._id, isDeleted: { $ne: true } });
   if (deptCount > 0) {
     return res.status(400).json({
       success: false,
@@ -369,7 +371,7 @@ export const getFacultyStats = handle(async (req, res) => {
       $lookup: {
         from: 'departments',
         localField: '_id',
-        foreignField: 'facultyId',
+        foreignField: 'facultyIds',
         as: 'departments',
       },
     },

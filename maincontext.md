@@ -1,7 +1,7 @@
 # UniversityMS — Master Project Context
 
 > **Purpose of this file:** Single source of truth for anyone (or any AI session) working on this codebase. Read this first. It tracks vision, what is built, what is deferred, what to do, what not to do, and the roadmap.  
-> **Last updated:** 2026-09-07 — multi-campus faculty, cross-faculty department, campus admin, staff primary campus/faculty  
+> **Last updated:** 2026-09-26 — quality: money-path safety, scalar fixes, page refactors  
 > **Detailed academic spec:** `academic-architecture-plan.md`  
 > **Fees, sessions, batches & offerings flow:** `fee-plan.md`  
 > **Implementation details:** `backend/backendcontext.md`, `frontend/frontendcontext.md`
@@ -296,9 +296,9 @@ One `StaffMember` record per employee. UI is **distributed** across modules:
 | Portal access | `/access`, `/access/:id` | Login role + per-user module access |
 | Role assignments | `/role-assignments` | Scoped duties (HOD, exam controller, etc.) |
 
-Legacy `/hr` page and `Employee`-centric HR UI removed. `Employee` model may still exist for old data but new work uses `StaffMember`.
+Legacy `/hr` page and Employee-centric HR UI removed. **`Employee` and `Leave` models removed (Sep 2026)** — dashboard/reports use `StaffMember` / `StaffLeave`.
 
-### Platform roles & module permissions (Phase A — built, verify manually)
+### Platform roles & module permissions (Phase A — ✅ verified 2026-09-25)
 
 | Piece | Status |
 |-------|--------|
@@ -308,14 +308,11 @@ Legacy `/hr` page and `Employee`-centric HR UI removed. `Employee` model may sti
 | Frontend `ModuleRoute` + sidebar filtered by `moduleAccess` | ✅ |
 | Admin seed — `primaryRole: System Admin` + full module access | ✅ |
 | Test users (`SEED_TEST_USERS=true`) | ✅ finance@, faculty@, hr@scholaros.test |
-| **Manual verification** (role logins + apply templates) | ⏳ You do this once |
+| **Manual verification** (role logins + apply templates) | ✅ `scripts/verifyPhaseA.js` |
 
 **Module keys:** `dashboard`, `governance`, `academic_catalog`, `academic_ops`, `assessments`, `admissions`, `students`, `staff`, `library`, `hostel`, `transport`, `events`, `finance`, `hr`, `reports`, `settings`
 
-**Phase A checklist (manual):**
-1. Restart backend (picks up route guards + admin seed)
-2. Log in as Finance / Faculty / HR — confirm sidebar + API 403 blocks
-3. Settings → Roles & Permissions → **Apply to all users** for each role template
+**Re-verify:** `cd backend && node scripts/verifyPhaseA.js` (backend must be running).
 
 ### Workforce & HR documents (Phase B — ✅)
 
@@ -344,9 +341,9 @@ Files are served at `/uploads/...` (static). Download API requires auth.
 
 `User.primaryRole` + `User.moduleAccess` — from `PlatformRole` templates; drives sidebar and API `requireModule()`.
 
-### Teacher (academic staff) — parallel path
+### Academic staff (instructors)
 
-`Teacher` model still exists for academic offerings (`instructorId`). Long-term: link or merge with `StaffMember` where a professor is also on payroll. For now, use **Staff Directory** for HR and **Role Assignments** for scoped academic duties.
+`CourseOffering.instructorId` refs **`StaffMember`** (academic flag / teaching panel). There is no separate `Teacher` model. Use **Staff Directory** for HR and **Role Assignments** for scoped academic duties (HOD, etc.).
 
 ### Student intake & enrollment (Aug 2026 — ✅)
 
@@ -365,7 +362,7 @@ Two-stage intake replaces the monolithic `Admission` model for new work:
 
 Documents: `uploads/students/{admissionId|studentId}/{documentType}/...`
 
-Legacy `Admission.model.js` and old `AdmissionsPage.tsx` remain in repo but are **not** used by new routes.
+Legacy `Admission` model, `/api/admissions/legacy/*`, and old `AdmissionsPage.tsx` **removed (Sep 2026)**. Use StudentApplication pipeline only.
 
 ### Public website & staff portal (Aug 2026 — ✅)
 
@@ -391,13 +388,12 @@ Public layout: `PublicSiteLayout` — nav links + footer; admission CTA prominen
 
 | Priority | Work | Why |
 |----------|------|-----|
-| **Next** | Student portal login (`Student.userId`) | Grades, fees, attendance self-service |
-| **Next** | Leave balance admin UI | Edit quotas per staff from HR screen |
-| **Next** | Recruitment resume uploads | Store applicant CVs in `uploads/hr/recruitment/` |
-| **Next** | Phase A manual verification | Role logins, apply permission templates, smoke-test workforce |
+| **Done** | ~~Student portal login (`Student.userId`)~~ | ✅ Sep 2026 — `/student` + `/api/student-portal/*` |
+| **Done** | ~~Leave balance admin UI~~ | ✅ Sep 2026 — `WorkforceLeavePage` quotas + staff deep-link |
+| **Done** | ~~Recruitment resume uploads~~ | ✅ Sep 2026 — `cvPath` + multer under `uploads/hr/recruitment/` |
 | **Paused** | Wire Assignments / Exams / student Attendance to `offeringId` | Phase 6 |
-| **Cleanup** | Remove legacy `Admission` model + `AdmissionsPage.tsx` monolith | Replaced by StudentApplication pipeline |
-| **Cleanup** | Deprecate `Employee` model | Prefer `StaffMember` |
+| **Cleanup** | ~~Remove legacy `Admission` model + `AdmissionsPage.tsx` monolith~~ | ✅ Done Sep 2026 |
+| **Cleanup** | ~~Deprecate `Employee` model~~ | ✅ Done Sep 2026 — removed with `Leave` |
 
 ### Completed (Phase C + Student module — Aug 2026)
 
@@ -448,9 +444,9 @@ Public layout: `PublicSiteLayout` — nav links + footer; admission CTA prominen
 | Overwrite fee history | Use `SubjectFeeHistory` versioning; close old rows |
 | Skip curriculum check when creating offerings | Subject must be in program plan for that semester |
 | Use legacy `/semesters` or `/fees` pages | Removed — use Sessions + Program Semester Fees + (F5) challans |
-| Mix Employee and Teacher without a plan | Two models today — linking needs explicit design |
+| Mix Employee and Teacher without a plan | Employee/Leave/Teacher models removed — use StaffMember |
 | Add Super Admin or custom auth bypass | Only Admin/Teacher/Student/Staff |
-| Over-engineer permissions before teacher module is clean | Get Teacher CRUD right first, then roles |
+| Over-engineer permissions before staff/portal access is clean | Get StaffMember + PlatformRole right first |
 | Delete legacy Course files yet | ✅ Done |
 | Commit secrets (.env) | Use env vars for admin seed |
 
@@ -474,24 +470,23 @@ Public layout: `PublicSiteLayout` — nav links + footer; admission CTA prominen
 
 | Item | Status | Notes |
 |------|--------|-------|
-| Phase A manual verify | ⏳ Pending | Log in as Finance/Faculty/HR; apply role templates in Settings |
-| Student portal login | 📋 Not started | Link `Student.userId` for self-service |
-| Leave quota admin UI | 📋 Not started | Backend balances exist; no HR edit screen |
-| Recruitment resume uploads | 📋 Not started | Postings work; CV file storage not wired |
+| Phase A manual verify | ✅ Done 2026-09-25 | `node backend/scripts/verifyPhaseA.js` — Finance/Faculty/HR + apply templates |
+| Student portal login | ✅ Done 2026-09-26 | `completeAdmission` + `/api/student-portal` + `/student/*` |
+| Leave quota admin UI | ✅ Done 2026-09-26 | `WorkforceLeavePage` + `updateLeaveBalance` + staff link |
+| Recruitment resume uploads | ✅ Done 2026-09-26 | CV upload/download on applicants |
 | Phase 6 — offerings → assignments/exams/attendance | ⏸ Paused | Forms pick offering but store subject code strings |
 | Phase 7 — BatchFeePolicy | 📋 Future | Continuing-student fee rules |
-| Legacy `Admission` model + old UI | 🗑 Cleanup | Keep until old data migrated or confirmed unused |
-| Legacy `Employee` model | 🗑 Cleanup | Use `StaffMember` for new work |
-| Large page refactors | 📋 Backlog | Transport, Assignments, Library, Exams, Events (1000+ lines each) |
-| Teacher ↔ StaffMember merge | 📋 Future | Two parallel paths today |
+| Large page refactors | ✅ Done Sep 2026 | Assignments, Exams, Events, Library, Transport split |
+| ~~Legacy Admission / Employee / Leave cleanup~~ | ✅ Done Sep 2026 | Dashboard/reports use StaffMember / StaffLeave / StudentApplication |
 
 ### Next build sprint (recommended order)
 
-1. **Phase A verify** (~15 min) — restart backend, test role logins, apply permission templates
-2. **Student portal login** — `Student.userId` + limited student dashboard
-3. **Leave quota admin UI** — edit annual/sick/casual quotas per staff
-4. **Recruitment resume uploads** — multer path under `uploads/hr/recruitment/`
-5. **Legacy cleanup** — remove unused `Admission` monolith UI + migration scripts (already removed `migrateTeachersToStaff`)
+1. ~~**Phase A verify**~~ — ✅ Done 2026-09-25
+2. ~~**Student portal login**~~ — ✅ Done 2026-09-26
+3. ~~**Leave quota admin UI**~~ — ✅ Done 2026-09-26
+4. ~~**Recruitment resume uploads**~~ — ✅ Done 2026-09-26
+5. ~~**Legacy cleanup**~~ — ✅ Done Sep 2026
+6. **Phase 6** — un-pause decision: wire Assignment/Exam/Attendance to `offeringId`
 
 ### Later (paused / deferred)
 
@@ -503,13 +498,15 @@ Public layout: `PublicSiteLayout` — nav links + footer; admission CTA prominen
 
 ### ~~Now — your action (Phase A verify, ~15 min)~~
 
-Moved to **Not done / remains** above — still recommended before new features.
+✅ Done 2026-09-25 — see `backend/scripts/verifyPhaseA.js`.
 
 ---
 
-## 9. Removed legacy (Aug 2026)
+## 9. Removed legacy (Aug–Sep 2026)
 
-**Deleted:** `Course` model, `/api/courses`, `CoursesPage`, `features/courses.ts`, `seedCourses`.
+**Deleted (Aug 2026):** `Course` model, `/api/courses`, `CoursesPage`, `features/courses.ts`, `seedCourses`.
+
+**Deleted (Sep 2026 cleanup):** `Admission` model + `/api/admissions/legacy/*` + `admission.controller.js`; `Employee` + `Leave` models; `Finance` + `FeeStructure` models; `Payroll.employee` ref; frontend `AdmissionsPage.tsx`, `features/admissions.ts`, `LandingPage.tsx`. Dashboard/reports now use `StudentApplication` / `StaffMember` / `StaffLeave`.
 
 **Still uses subject code as text** (not offering ID yet): Assignment and Exam forms pick an **Offering** in the UI but store `course` / `courseCode` strings on the record. Full `offeringId` link is optional future work.
 
@@ -588,7 +585,7 @@ All features must be **easy to use, easy to follow, and easy to understand**.
 
 When starting a new task, confirm:
 
-- [ ] Phase A manual verify done? (role logins, apply templates)
+- [x] Phase A manual verify done? (role logins, apply templates) — ✅ 2026-09-25
 - [ ] Is this public (`/`, `/apply`) or staff (`/dashboard`, `/admissions`, etc.)?
 - [ ] Which phase does this belong to? (student portal, leave quotas, recruitment uploads, Phase 6, etc.)
 - [ ] Is there an existing pattern (WorkforceLeavePage, DepartmentViewModal, ApplicationsPipelinePage) to copy?
@@ -609,8 +606,7 @@ When starting a new task, confirm:
 | **Enrollment** | Student in one offering |
 | **Semester registration** | Student registered for a program semester (package fee snapshot) |
 | **feeSnapshot** | Fee amounts frozen at registration |
-| **Teacher** | Academic staff with User login; can instruct offerings |
-| **StaffMember** | Unified HR record — employment, schedule, payroll, portal access |
+| **Teacher** | Legacy JWT role bucket only — academic people are `StaffMember` |
+| **StaffMember** | Unified HR + academic staff record — employment, schedule, payroll, portal access, offerings instructor |
 | **PlatformRole** | Named role template with `moduleAccess` map |
 | **moduleAccess** | Per-user boolean map of which sidebar modules/APIs are allowed |
-| **Employee** | Legacy HR model — prefer StaffMember for new work |

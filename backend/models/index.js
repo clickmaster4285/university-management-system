@@ -1,5 +1,4 @@
 export { default as AcademicSession } from "./AcademicSession.model.js";
-export { default as Admission } from "./Admission.model.js";
 export { default as Assignment } from "./Assignment.model.js";
 export { default as Attendance } from "./Attendance.model.js";
 export { default as Batch } from "./Batch.model.js";
@@ -12,14 +11,10 @@ export { default as CourseOffering, OFFERING_STATUSES } from "./CourseOffering.m
 export { default as Enrollment, ENROLLMENT_STATUSES } from "./Enrollment.model.js";
 export { default as Department } from "./Department.model.js";
 export { default as Driver } from "./Driver.model.js";
-export { default as Employee } from "./Employee.model.js";
 export { default as Event } from "./Event.model.js";
 export { default as Exam } from "./Exam.model.js";
 export { default as Faculty } from "./Faculty.model.js";
 export { default as Fee } from "./Fee.model.js";
-export { default as FeeStructure } from "./FeeStructure.model.js";
-export { default as Finance } from "./Finance.model.js";
-export { default as Leave } from "./Leave.model.js";
 export { default as Notification } from "./Notification.model.js";
 export { default as Payroll } from "./Payroll.model.js";
 export { default as ProgramCurriculum } from "./ProgramCurriculum.model.js";

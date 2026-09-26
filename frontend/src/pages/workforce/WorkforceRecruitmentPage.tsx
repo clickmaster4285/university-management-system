@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { Briefcase, Loader2, Plus, UserPlus } from "lucide-react";
+import { Briefcase, Download, Loader2, Plus, Upload, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 import { DataTable, type Column } from "@/components/data-table";
 import { KpiCard } from "@/components/dashboard/kpi-card";
@@ -27,6 +27,10 @@ export default function WorkforceRecruitmentPage() {
   const [showForm, setShowForm] = useState(false);
   const [selected, setSelected] = useState<RecruitmentPosting | null>(null);
   const [applicantForm, setApplicantForm] = useState({ name: '', email: '', phone: '' });
+  const [cvFile, setCvFile] = useState<File | null>(null);
+  const [uploadingCvFor, setUploadingCvFor] = useState<string | null>(null);
+  const cvInputRef = useRef<HTMLInputElement>(null);
+  const [cvTargetApplicantId, setCvTargetApplicantId] = useState<string | null>(null);
   const [form, setForm] = useState({
     title: '',
     department: '',
@@ -78,13 +82,54 @@ export default function WorkforceRecruitmentPage() {
   const handleAddApplicant = async () => {
     if (!selected?._id || !applicantForm.name || !applicantForm.email) return;
     try {
-      const updated = await workforceAPI.addApplicant(selected._id, applicantForm);
+      let updated = await workforceAPI.addApplicant(selected._id, applicantForm);
+      const newApplicant = [...(updated.applicants || [])]
+        .reverse()
+        .find(
+          (a) =>
+            a.email?.toLowerCase() === applicantForm.email.toLowerCase() &&
+            a.name === applicantForm.name
+        );
+
+      if (cvFile && newApplicant?._id) {
+        updated = await workforceAPI.uploadApplicantCv(selected._id, newApplicant._id, cvFile);
+      }
+
       setSelected(updated);
       setApplicantForm({ name: '', email: '', phone: '' });
-      toast.success('Applicant added');
+      setCvFile(null);
+      toast.success(cvFile ? 'Applicant added with CV' : 'Applicant added');
       await loadData();
     } catch {
       toast.error('Failed to add applicant');
+    }
+  };
+
+  const handleUploadCv = async (applicantId: string, file: File) => {
+    if (!selected?._id) return;
+    setUploadingCvFor(applicantId);
+    try {
+      const updated = await workforceAPI.uploadApplicantCv(selected._id, applicantId, file);
+      setSelected(updated);
+      toast.success('CV uploaded');
+      await loadData();
+    } catch (err: unknown) {
+      const message =
+        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+        'Failed to upload CV';
+      toast.error(message);
+    } finally {
+      setUploadingCvFor(null);
+      setCvTargetApplicantId(null);
+    }
+  };
+
+  const handleDownloadCv = async (applicantId: string, fileName?: string) => {
+    if (!selected?._id) return;
+    try {
+      await workforceAPI.downloadApplicantCv(selected._id, applicantId, fileName);
+    } catch {
+      toast.error('Failed to download CV');
     }
   };
 
@@ -158,7 +203,7 @@ export default function WorkforceRecruitmentPage() {
             Recruitment
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Job postings, applicants, and hire-to-staff workflow.
+            Job postings, applicants, CV uploads, and hire-to-staff workflow.
           </p>
         </div>
         <Button variant="secondary" asChild>
@@ -223,12 +268,40 @@ export default function WorkforceRecruitmentPage() {
             <Button variant="outline" size="sm" onClick={() => setSelected(null)}>Close</Button>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-3 items-end">
             <Input placeholder="Applicant name" value={applicantForm.name} onChange={(e) => setApplicantForm((p) => ({ ...p, name: e.target.value }))} />
             <Input placeholder="Email" value={applicantForm.email} onChange={(e) => setApplicantForm((p) => ({ ...p, email: e.target.value }))} />
             <Input placeholder="Phone" value={applicantForm.phone} onChange={(e) => setApplicantForm((p) => ({ ...p, phone: e.target.value }))} />
-            <Button onClick={handleAddApplicant}>Add applicant</Button>
+            <div className="space-y-1">
+              <Label className="text-xs">CV (PDF/DOC/DOCX, max 10MB)</Label>
+              <Input
+                type="file"
+                accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                onChange={(e) => setCvFile(e.target.files?.[0] || null)}
+              />
+            </div>
+            <Button onClick={handleAddApplicant}>
+              <Plus className="h-4 w-4 mr-1" />
+              Add applicant
+            </Button>
           </div>
+          {cvFile && (
+            <p className="text-xs text-muted-foreground">Selected CV: {cvFile.name}</p>
+          )}
+
+          <input
+            ref={cvInputRef}
+            type="file"
+            className="hidden"
+            accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file && cvTargetApplicantId) {
+                handleUploadCv(cvTargetApplicantId, file);
+              }
+              e.target.value = '';
+            }}
+          />
 
           <div className="space-y-2">
             {(selected.applicants || []).map((applicant) => (
@@ -236,9 +309,46 @@ export default function WorkforceRecruitmentPage() {
                 <div>
                   <p className="font-medium">{applicant.name}</p>
                   <p className="text-xs text-muted-foreground">{applicant.email}</p>
+                  {applicant.cvOriginalName || applicant.cvPath ? (
+                    <p className="text-xs text-primary mt-1">
+                      CV: {applicant.cvOriginalName || 'Uploaded'}
+                    </p>
+                  ) : (
+                    <p className="text-xs text-muted-foreground mt-1">No CV uploaded</p>
+                  )}
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                   <Badge>{applicant.status}</Badge>
+                  {applicant._id && (applicant.cvPath || applicant.cvOriginalName) && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleDownloadCv(applicant._id!, applicant.cvOriginalName)}
+                    >
+                      <Download className="h-4 w-4 mr-1" />
+                      CV
+                    </Button>
+                  )}
+                  {applicant._id && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={uploadingCvFor === applicant._id}
+                      onClick={() => {
+                        setCvTargetApplicantId(applicant._id!);
+                        cvInputRef.current?.click();
+                      }}
+                    >
+                      {uploadingCvFor === applicant._id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <>
+                          <Upload className="h-4 w-4 mr-1" />
+                          {applicant.cvPath ? 'Replace CV' : 'Upload CV'}
+                        </>
+                      )}
+                    </Button>
+                  )}
                   {APPLICANT_STATUSES.filter((s) => s !== applicant.status).map((status) => (
                     <Button key={status} size="sm" variant="ghost" onClick={() => applicant._id && handleApplicantStatus(applicant._id, status)}>
                       {status}

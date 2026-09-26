@@ -15,6 +15,7 @@ export function AppLayout() {
 
   useEffect(() => {
     if (ready && !user) navigate("/login");
+    else if (ready && user?.role === "Student") navigate("/student");
   }, [ready, user, navigate]);
 
   if (!mounted || !ready) {

@@ -1,19 +1,6 @@
 import express from 'express';
 import { auth } from '../middleware/auth.js';
 import {
-  getAllAdmissions,
-  getAdmissionById,
-  createAdmission,
-  updateAdmission,
-  updateAdmissionStatus,
-  deleteAdmission,
-  getAdmissionStats,
-  getAdmissionsByProgram,
-  getAdmissionsByDateRange,
-  getAdmissionStatsByDepartment,
-  getRecentAdmissions,
-} from '../controllers/admission.controller.js';
-import {
   createInternalApplication,
   deleteApplication,
   getApplicationById,
@@ -72,19 +59,12 @@ router.post(
 router.get('/dossiers/:id/documents/:documentId/download', downloadDossierDocument);
 router.delete('/dossiers/:id/documents/:documentId', deleteDossierDocument);
 
-// Legacy admission routes (read-only shim during migration)
-router.post('/legacy', createAdmission);
-router.get('/legacy', getAllAdmissions);
-router.get('/legacy/stats/summary', getAdmissionStats);
-router.get('/legacy/stats/department', getAdmissionStatsByDepartment);
-router.get('/legacy/recent', getRecentAdmissions);
-router.get('/legacy/program/:program', getAdmissionsByProgram);
-router.get('/legacy/by-date', getAdmissionsByDateRange);
-router.get('/legacy/:id', getAdmissionById);
-router.put('/legacy/:id', updateAdmission);
-router.patch('/legacy/:id/status', updateAdmissionStatus);
-router.delete('/legacy/:id', deleteAdmission);
-
-export { listStudentDocuments, uploadStudentDocument, deleteStudentDocument, downloadStudentDocument, resolveStudentForUpload };
+export {
+  listStudentDocuments,
+  uploadStudentDocument,
+  deleteStudentDocument,
+  downloadStudentDocument,
+  resolveStudentForUpload,
+};
 
 export default router;

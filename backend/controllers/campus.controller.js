@@ -163,12 +163,12 @@ export const getCampusById = handle(async (req, res) => {
 
   const [totalFaculties, totalDepartments, totalPrograms, totalStudents, totalTeachers, totalSubjects] =
     await Promise.all([
-      Faculty.countDocuments({ campusId: cid, ...nd }),
-      Department.countDocuments({ campusId: cid, ...nd }),
-      Program.countDocuments({ departmentId: { $in: (await Department.find({ campusId: cid, ...nd }).select("_id")).map(d => d._id) }, ...nd }),
+      Faculty.countDocuments({ campusIds: cid, ...nd }),
+      Department.countDocuments({ campusIds: cid, ...nd }),
+      Program.countDocuments({ departmentId: { $in: (await Department.find({ campusIds: cid, ...nd }).select("_id")).map(d => d._id) }, ...nd }),
       User.countDocuments({ universityId: campus.universityId?._id || campus.universityId, role: "Student", ...nd }),
       User.countDocuments({ universityId: campus.universityId?._id || campus.universityId, role: "Teacher", ...nd }),
-      Subject.countDocuments({ departmentId: { $in: (await Department.find({ campusId: cid, ...nd }).select("_id")).map(d => d._id) }, ...nd }),
+      Subject.countDocuments({ departmentId: { $in: (await Department.find({ campusIds: cid, ...nd }).select("_id")).map(d => d._id) }, ...nd }),
     ]);
 
   const data = campus.toObject();
@@ -305,7 +305,7 @@ export const deleteCampus = handle(async (req, res) => {
   const deletedBy = req.user?._id || null;
 
   await Department.updateMany(
-    { campusId: campus._id, isDeleted: { $ne: true } },
+    { campusIds: campus._id, isDeleted: { $ne: true } },
     { $set: { isDeleted: true, deletedAt: now, deletedBy } }
   );
 

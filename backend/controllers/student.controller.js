@@ -1,5 +1,6 @@
 import { handle } from "../utils/asyncHandler.js";
 import { Student, Program, Department, Campus, Batch } from "../models/index.js";
+import { ensureStudentPortalAccount } from "../utils/studentPortalAccount.js";
 
 const notDeleted = { $ne: true };
 
@@ -9,7 +10,8 @@ function populateStudent(query) {
     .populate("departmentId", "name code")
     .populate("campusId", "name campusCode")
     .populate("batchId", "name code")
-    .populate("admissionId", "admissionId status");
+    .populate("admissionId", "admissionId status")
+    .populate("userId", "email role status");
 }
 
 export const getStudents = handle(async (req, res) => {
@@ -220,6 +222,52 @@ export const bulkCreateStudents = handle(async (_req, res) => {
   return res.status(400).json({
     success: false,
     message: "Bulk student creation is disabled. Complete admission dossiers instead.",
+  });
+});
+
+async function findStudentByIdentifier(identifier) {
+  const query = [{ studentId: identifier }];
+  if (identifier.match(/^[0-9a-fA-F]{24}$/)) {
+    query.unshift({ _id: identifier });
+  }
+  return Student.findOne({ $or: query, isDeleted: notDeleted });
+}
+
+export const enableStudentPortalLogin = handle(async (req, res) => {
+  const student = await findStudentByIdentifier(req.params.id);
+  if (!student) {
+    return res.status(404).json({ success: false, message: `Student ${req.params.id} not found` });
+  }
+
+  if (student.userId) {
+    return res.status(409).json({
+      success: false,
+      message: "Portal login already enabled for this student",
+    });
+  }
+
+  const { password } = req.body || {};
+  if (password && String(password).length < 8) {
+    return res.status(400).json({
+      success: false,
+      message: "Password must be at least 8 characters",
+    });
+  }
+
+  const result = await ensureStudentPortalAccount(student, { password });
+  if (result.error) {
+    return res.status(400).json({ success: false, message: result.error });
+  }
+
+  const populated = await populateStudent(Student.findById(student._id).select("-__v"));
+
+  res.status(201).json({
+    success: true,
+    data: populated,
+    portalLogin: result.portalLogin,
+    message: result.portalLogin?.temporaryPassword
+      ? "Portal login enabled. Temporary password shown once — save it now."
+      : "Portal login linked to existing student account",
   });
 });
 

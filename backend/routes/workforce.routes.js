@@ -19,13 +19,17 @@ import {
   addRecruitmentApplicant,
   createRecruitment,
   deleteRecruitment,
+  downloadApplicantCv,
   getRecruitmentById,
   getRecruitmentStats,
   hireApplicant,
   listRecruitments,
+  resolveRecruitmentForCvUpload,
   updateApplicantStatus,
   updateRecruitment,
+  uploadApplicantCv,
 } from '../controllers/recruitment.controller.js';
+import { recruitmentCvUpload } from '../middleware/upload.js';
 
 const router = Router();
 
@@ -60,6 +64,18 @@ router.post(
   '/recruitment/:id/applicants/:applicantId/hire',
   authorize('Admin'),
   hireApplicant
+);
+router.post(
+  '/recruitment/:id/applicants/:applicantId/cv',
+  authorize('Admin', 'Staff'),
+  resolveRecruitmentForCvUpload,
+  recruitmentCvUpload.single('file'),
+  uploadApplicantCv
+);
+router.get(
+  '/recruitment/:id/applicants/:applicantId/cv/download',
+  authorize('Admin', 'Staff'),
+  downloadApplicantCv
 );
 
 export default router;

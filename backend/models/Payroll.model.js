@@ -6,11 +6,6 @@ const payrollSchema = new mongoose.Schema({
     type: String,
     unique: true
   },
-  employee: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Employee',
-    default: null,
-  },
   staffMember: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'StaffMember',

@@ -1,6 +1,6 @@
 # Backend Context
 
-> **Last updated:** 2026-09-07 — multi-campus department/faculty, campus admin, staff primary campus/faculty
+> **Last updated:** 2026-09-26 — money-path idempotency, scalar query fixes, large page refactors
 
 ## API & data principles
 
@@ -17,12 +17,11 @@ Features must be **easy to use, easy to follow, and easy to understand** — bac
 
 All model files live in `backend/models/` with a `.model.js` suffix. Shared embedded sub-schemas (`address.js`, `academicSettings.js`) also live in `models/`.
 
-**Authoritative export list:** `backend/models/index.js` (49 models). Anything on disk but **not** in `index.js` is orphaned.
+**Authoritative export list:** `backend/models/index.js`. Anything on disk but **not** in `index.js` is orphaned.
 
 ```
 backend/models/
 ├── AcademicSession.model.js
-├── Admission.model.js              ← legacy intake
 ├── Assignment.model.js
 ├── Attendance.model.js
 ├── Batch.model.js
@@ -31,22 +30,18 @@ backend/models/
 ├── Bus.model.js
 ├── Campus.model.js
 ├── Counter.model.js                ← infrastructure (ID sequences)
-├── CourseOffering.model.js         ← replaces removed Course model
+├── CourseOffering.model.js
 ├── Department.model.js
 ├── Driver.model.js
-├── Employee.model.js               ← legacy HR; prefer StaffMember
 ├── Enrollment.model.js
 ├── Event.model.js
 ├── Exam.model.js
 ├── Faculty.model.js                ← org unit (not “teacher” person)
 ├── Fee.model.js                    ← challans / fee records (F5)
-├── FeeStructure.model.js           ← legacy; no API
-├── Finance.model.js                ← orphan (not used by controllers)
-├── Leave.model.js                  ← legacy employee leave
 ├── Notification.model.js
-├── Payroll.model.js                ← staff payroll (dual Employee/StaffMember ref)
-├── PermissionAuditLog.model.js     ← NEW Aug 2026
-├── PlatformRole.model.js           ← NEW Aug 2026
+├── Payroll.model.js                ← staff payroll (staffMember ref only)
+├── PermissionAuditLog.model.js
+├── PlatformRole.model.js
 ├── Program.model.js
 ├── ProgramCurriculum.model.js
 ├── ProgramSemesterFeeSchedule.model.js
@@ -56,15 +51,15 @@ backend/models/
 ├── Route.model.js
 ├── SemesterRegistration.model.js
 ├── Settings.model.js
-├── StaffAttendance.model.js        ← NEW Aug 2026
-├── StaffDocument.model.js          ← NEW Aug 2026
-├── StaffLeave.model.js             ← NEW Aug 2026
-├── StaffLeaveBalance.model.js      ← NEW Aug 2026
-├── StaffMember.model.js            ← NEW Aug 2026 (replaces Employee flow)
+├── StaffAttendance.model.js
+├── StaffDocument.model.js
+├── StaffLeave.model.js
+├── StaffLeaveBalance.model.js
+├── StaffMember.model.js
 ├── Student.model.js
-├── StudentAdmission.model.js       ← NEW Aug 2026
-├── StudentApplication.model.js     ← NEW Aug 2026
-├── StudentDocument.model.js        ← NEW Aug 2026
+├── StudentAdmission.model.js
+├── StudentApplication.model.js
+├── StudentDocument.model.js
 ├── Subject.model.js
 ├── SubjectFeeHistory.model.js
 ├── University.model.js
@@ -81,6 +76,11 @@ backend/models/
 | `Course` | Aug 2026 | `Subject` + `ProgramCurriculum` + `CourseOffering` + `Enrollment` |
 | `Semester` | Aug 2026 | Program semester number (1–8) on curriculum/offerings |
 | `Teacher` | Aug 2026 | `StaffMember` + `CourseOffering.instructorId` |
+| `Admission` | Sep 2026 | `StudentApplication` + `StudentAdmission` |
+| `Employee` | Sep 2026 | `StaffMember` |
+| `Leave` | Sep 2026 | `StaffLeave` |
+| `Finance` | Sep 2026 | `Fee` aggregates in finance controller |
+| `FeeStructure` | Sep 2026 | Subject fee history + semester fee packages |
 
 ---
 
@@ -129,33 +129,28 @@ Status legend:
 
 | Model | Status | API / usage | Notes |
 |-------|--------|-------------|-------|
-| `StudentApplication` | Active **NEW** | `/api/public/applications`, `/api/admissions/applications` | Public apply + internal pipeline |
-| `StudentAdmission` | Active **NEW** | `/api/admissions/dossiers` | Full dossier after promote |
-| `StudentDocument` | Active **NEW** | dossier + student document upload routes | |
+| `StudentApplication` | Active | `/api/public/applications`, `/api/admissions/applications` | Public apply + internal pipeline |
+| `StudentAdmission` | Active | `/api/admissions/dossiers` | Full dossier after promote |
+| `StudentDocument` | Active | dossier + student document upload routes | |
 | `Student` | Active | `/api/students` | Created only via `completeAdmission` |
-| `Admission` | **Legacy** | `/api/admissions/legacy/*` only | Old monolith intake — do not extend |
 
 ### HR & workforce
 
 | Model | Status | API / usage | Notes |
 |-------|--------|-------------|-------|
-| `StaffMember` | Active **NEW** | `/api/staff`, workforce | **Primary** employee record; has `primaryCampusId`, `primaryFacultyId` |
-| `StaffLeave` | Active **NEW** | `/api/workforce/leaves` | Replaces `Leave` |
-| `StaffLeaveBalance` | Active **NEW** | `/api/workforce/leaves/balance/:id` | Quotas per year |
-| `StaffAttendance` | Active **NEW** | `/api/workforce/attendance` | |
-| `StaffDocument` | Active **NEW** | `/api/staff/:id/documents` | |
-| `Payroll` | Active | `/api/staff/:id/payroll`, `GET /api/payroll` | Still has legacy `employee` ref field — new rows use `staffMember` |
-| `Recruitment` | Active **NEW** | `/api/workforce/recruitment` | Hire → creates `StaffMember` |
-| `Employee` | **Legacy** | `dashboard.controller`, `report.controller` only | Replaced by `StaffMember` |
-| `Leave` | **Legacy** | `dashboard.controller`, `report.controller` only | Replaced by `StaffLeave` |
+| `StaffMember` | Active | `/api/staff`, workforce | **Primary** employee record; has `primaryCampusId`, `primaryFacultyId` |
+| `StaffLeave` | Active | `/api/workforce/leaves` | |
+| `StaffLeaveBalance` | Active | `/api/workforce/leaves/balance/:id` | Quotas per year |
+| `StaffAttendance` | Active | `/api/workforce/attendance` | |
+| `StaffDocument` | Active | `/api/staff/:id/documents` | |
+| `Payroll` | Active | `/api/staff/:id/payroll`, `GET /api/payroll` | `staffMember` ref only |
+| `Recruitment` | Active | `/api/workforce/recruitment` | Hire → creates `StaffMember` |
 
 ### Finance
 
 | Model | Status | API / usage | Notes |
 |-------|--------|-------------|-------|
 | `Fee` | Active | `/api/challans`, finance summary reads | F5 challans; links `semesterRegistrationId` |
-| `FeeStructure` | **Orphan** | None (only `Fee.feeStructure` ref) | Old fee UI removed — model kept for existing rows |
-| `Finance` | **Orphan** | **None** | Exported in index; `finance.controller` aggregates from `Fee` only |
 
 ### Assessments & campus services
 
@@ -173,7 +168,7 @@ Status legend:
 | Model | Status | API / usage | Notes |
 |-------|--------|-------------|-------|
 | `Notification` | Active | `/api/notifications` | |
-| `Report` | Active | `/api/reports` | Some report types still read legacy `Employee`/`Admission` |
+| `Report` | Active | `/api/reports` | Reads Student, StaffMember, StudentApplication, Fee, etc. |
 
 ### Shared sub-schemas (not collections)
 
@@ -184,19 +179,9 @@ Status legend:
 
 ---
 
-## Orphan files (not mounted — safe to delete later)
+## Orphan files
 
-These exist on disk but are **not** registered in `routes/index.js`:
-
-| File | Was for | Replaced by |
-|------|---------|-------------|
-| `routes/teacher.routes.js` | Teacher CRUD | `StaffMember` + offerings |
-| `routes/hr.routes.js` | Employee + Leave CRUD | `/api/staff`, `/api/workforce/*` |
-| `controllers/teacher.controller.js` | Teacher model | `staffMember.controller.js` |
-| `controllers/employee.controller.js` | Employee model | `staffMember.controller.js` |
-| `controllers/leave.controller.js` | Leave model | `staffLeave.controller.js` |
-
-> `Teacher.model.js` may still exist on some machines but is **not** in `models/index.js` and has no mounted API.
+Orphan teacher/hr route and controller files were removed (or never present on this machine). Do not re-add.
 
 ---
 
@@ -205,7 +190,7 @@ These exist on disk but are **not** registered in `routes/index.js`:
 | Route prefix | Module key | Primary models |
 |--------------|------------|----------------|
 | `/api/public` | — (public) | `StudentApplication`, catalog reads |
-| `/api/admissions` | `admissions` | `StudentApplication`, `StudentAdmission`, `StudentDocument`, legacy `Admission` |
+| `/api/admissions` | `admissions` | `StudentApplication`, `StudentAdmission`, `StudentDocument` |
 | `/api/students` | `students` | `Student`, `StudentDocument` |
 | `/api/staff` | `staff` | `StaffMember`, `Payroll`, `StaffDocument`, `User` |
 | `/api/workforce` | `hr` | `StaffLeave`, `StaffAttendance`, `StaffLeaveBalance`, `Recruitment` |
@@ -244,7 +229,7 @@ Full module guard map: `backend/utils/apiRouteModules.js`
 All models are imported from the central index:
 
 ```js
-import { Student, Teacher, Course } from "../models/index.js";
+import { Student, StaffMember, CourseOffering } from "../models/index.js";
 ```
 
 Shared sub-schemas are imported directly by the models that use them:
@@ -265,9 +250,10 @@ import address from "./address.js";
 ## Single-University Architecture
 
 - The system manages one university; everything else is campus-scoped.
-- Only `User` and `Campus` carry a `universityId` reference. Other models (Course, Fee, ...) are NOT university/campus-scoped.
-- `Department` is campus-scoped via `campusId` (ref Campus).
-- Deleting a university soft-deletes it and cascades a soft-delete to all `User` and `Campus` documents with that `universityId`.
+- Only `User` and `Campus` carry a `universityId` reference. Other models are NOT university-scoped via a scalar.
+- **Faculty** spans campuses via `campusIds[]` + `campusAssignments[]`.
+- **Department** spans campuses via `campusIds[]` + `campusAssignments[]` and faculties via `facultyIds[]` (legacy scalar `campusId`/`facultyId` removed).
+- Deleting a university soft-deletes it and cascades a soft-delete to all `User` and `Campus` documents with that `universityId`. Campus delete soft-deletes departments with that campus in `campusIds`.
 
 ## Soft Delete
 
@@ -416,14 +402,15 @@ SemesterRegistration → Fee (challan)
 ## Fee challans (F5)
 
 - Extended `Fee` model: `semesterRegistrationId`, `source: semester_package`, `challanSnapshot`
-- `POST /api/semester-registrations/:id/generate-challan`
+- `POST /api/semester-registrations/:id/generate-challan` — idempotent (lookup existing Fee; unique partial index; compensate soft-delete if registration link fails)
 - `GET /api/challans`, `GET /api/challans/stats`, `GET /api/challans/:id`
-- `POST /api/challans/:id/payments` — partial/full payment; updates registration status
+- `POST /api/challans/:id/payments` — requires `transactionId` / `idempotencyKey`; duplicate txn returns existing payment (no double charge); retries registration status sync
+- Semester registration create compensates orphan enrollments if registration insert fails
 
 ## Removed legacy (Aug 2026)
 
 - **`Semester` model + `/api/semesters`** — calendar sub-periods inside a session; unused by offerings, batches, or fee packages. Use **program semester** (1–8) on curriculum/offerings instead.
-- **`/api/fees` + `/api/fee-structures` + legacy Fees UI** — replaced by Subject fee history + Program semester fee packages. `Fee` and `FeeStructure` **models kept** for F5 challan integration; finance/reports may read existing records.
+- **`/api/fees` + `/api/fee-structures` + legacy Fees UI** — replaced by Subject fee history + Program semester fee packages. `Fee` model kept for F5 challans; `FeeStructure` removed Sep 2026.
 
 ## Academic structure seed
 
@@ -491,7 +478,7 @@ Student documents: `uploads/students/{admissionId|studentId}/{documentType}/{id}
 
 ID generators: `generateStudentId.js` (`STU-0001`, `APP-26-0001`, `ADM-26-0001`)
 
-Legacy `Admission.model.js` kept for old data only. **No migration scripts** in repo — only seed scripts (`seed:academic`, `seedAdmin`, optional `seedTestRoleUsers`).
+Legacy `Admission` model and `/legacy` routes **removed Sep 2026**. Only seed scripts remain (`seed:academic`, `seedAdmin`, optional `seedTestRoleUsers`).
 
 ## Seeds & scripts
 
@@ -554,12 +541,17 @@ uploads/hr/{staffId}/{documentType}/{staffId}_{documentType}_{documentName}_{tim
 
 - Routes under `/api/workforce/recruitment` — module key `hr`
 - CRUD postings, add applicants, update status, **hire** → creates `StaffMember` with `hiredFromRecruitmentId`
+- **CV upload (Sep 2026):** applicant subdoc `cvPath` / `cvOriginalName` (optional `resume` string for URL/notes)
+  - `POST /api/workforce/recruitment/:id/applicants/:applicantId/cv` — multer PDF/DOC/DOCX ≤10 MB
+  - `GET /api/workforce/recruitment/:id/applicants/:applicantId/cv/download`
+  - Files under `uploads/hr/recruitment/{recruitmentId}/` via `getRecruitmentCvDirectory`
 
 ### Leave balances (Phase C)
 
 - Model: `StaffLeaveBalance` — per staff per year (annual/sick/casual/maternity/paternity quotas + used)
-- `GET/PUT /api/workforce/leaves/balance/:staffMemberId`
+- `GET/PUT /api/workforce/leaves/balance/:staffMemberId` — PUT accepts quota fields + optional `year` (Admin)
 - Validated on leave create; deducted/restored on approve/reject
+- Admin UI: `WorkforceLeavePage` Leave quotas section (frontend)
 
 ### Bulk attendance (Phase C)
 
@@ -580,8 +572,9 @@ uploads/hr/{staffId}/{documentType}/{staffId}_{documentType}_{documentName}_{tim
 
 - `SEED_TEST_USERS=true` — creates one user per `PLATFORM_ROLES` entry (except System Admin, Student)
 - Email: `{role-slug}@scholaros.test` · Password: `{RoleName}@123` (e.g. `university-admin@scholaros.test` / `UniversityAdmin@123`)
+- **Phase A verified 2026-09-25:** `node scripts/verifyPhaseA.js` (Finance/Faculty/HR module guards + apply-all templates)
 
-## Implementation status summary
+### Implementation status summary
 
 ### ✅ Done (backend)
 
@@ -600,21 +593,21 @@ uploads/hr/{staffId}/{documentType}/{staffId}_{documentType}_{documentName}_{tim
 
 | Item | Priority | Notes |
 |------|----------|-------|
-| Student portal auth (`Student.userId`) | High | No student login API yet |
+| Student portal auth (`Student.userId`) | ✅ Done | `completeAdmission` + `POST /students/:id/portal-login` + `/api/student-portal/*` |
 | Phase 6 — `offeringId` on Assignment/Exam/Attendance | Paused | Still use course code strings |
-| Delete orphan files | Low | `teacher.routes.js`, `hr.routes.js`, related controllers |
-| Remove legacy `Admission` model + `/legacy` routes | Low | After confirming no production data |
-| Remove `Employee` + `Leave` models | Low | Dashboard/reports still read them |
-| Remove `Finance` model (unused) | Low | `finance.controller` uses `Fee` only |
-| Remove `FeeStructure` model | Low | Only referenced by old `Fee` rows |
-| Payroll `employee` ref cleanup | Low | New payroll rows should use `staffMember` only |
-| Leave balance admin bulk UI | Medium | API exists; no admin bulk endpoint |
-| Recruitment resume upload | Medium | Applicants in DB only; no CV file path |
+| Leave quota admin UI | ✅ Done | PUT balance + HR UI; no bulk-by-department |
+| Recruitment resume upload | ✅ Done | `cvPath` + upload/download routes |
 | Phase 7 — `BatchFeePolicy` | Future | Continuing-student fees |
+
+**Removed Sep 2026:** Admission + legacy routes; Employee + Leave; Finance + FeeStructure; Payroll.employee; orphan teacher/hr controllers (already gone).
 
 ### Next backend tasks (recommended)
 
-1. `Student.userId` link + student-scoped routes (grades, fees, profile)
-2. Recruitment applicant document upload (`uploads/hr/recruitment/`)
-3. Optional: admin endpoint to bulk-set leave quotas per department
-4. Phase 6 when resumed: add `offeringId` ref to Assignment, Exam, Attendance models
+1. Phase 6 when resumed: add `offeringId` ref to Assignment, Exam, Attendance models
+2. Optional: student portal grades/attendance once Phase 6 exists
+
+### Student portal API (Sep 2026)
+
+- `completeAdmission` → `ensureStudentPortalAccount` (User + `Student.userId`; temp password once in `portalLogin`)
+- `POST /api/students/:id/portal-login` — staff enable for existing students
+- `GET /api/student-portal/me|registrations|challans` — auth + `requireStudentPortal` (no staff module key)

@@ -81,6 +81,8 @@ export interface RecruitmentApplicant {
   email: string;
   phone?: string;
   resume?: string;
+  cvPath?: string;
+  cvOriginalName?: string;
   status: ApplicantStatus;
   hiredStaffMemberId?: string;
   appliedDate?: string;
@@ -137,6 +139,21 @@ class WorkforceAPI {
     const res = await api.get(`/workforce/leaves/balance/${staffMemberId}`, {
       params: year ? { year } : undefined,
     });
+    return res.data?.data as StaffLeaveBalance;
+  }
+
+  async updateLeaveBalance(
+    staffMemberId: string,
+    payload: {
+      year?: number;
+      annualQuota?: number;
+      sickQuota?: number;
+      casualQuota?: number;
+      maternityQuota?: number;
+      paternityQuota?: number;
+    }
+  ) {
+    const res = await api.put(`/workforce/leaves/balance/${staffMemberId}`, payload);
     return res.data?.data as StaffLeaveBalance;
   }
 
@@ -265,6 +282,33 @@ class WorkforceAPI {
       `/workforce/recruitment/${recruitmentId}/applicants/${applicantId}/hire`
     );
     return res.data?.data as { recruitment: RecruitmentPosting; staffMember: unknown };
+  }
+
+  async uploadApplicantCv(recruitmentId: string, applicantId: string, file: File) {
+    const formData = new FormData();
+    formData.append('file', file);
+    const res = await api.post(
+      `/workforce/recruitment/${recruitmentId}/applicants/${applicantId}/cv`,
+      formData,
+      { headers: { 'Content-Type': 'multipart/form-data' } }
+    );
+    return res.data?.data as RecruitmentPosting;
+  }
+
+  async downloadApplicantCv(recruitmentId: string, applicantId: string, fileName?: string) {
+    const res = await api.get(
+      `/workforce/recruitment/${recruitmentId}/applicants/${applicantId}/cv/download`,
+      { responseType: 'blob' }
+    );
+    const blob = new Blob([res.data]);
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fileName || 'cv.pdf';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.URL.revokeObjectURL(url);
   }
 
   async listDocuments(staffId: string, documentType?: StaffDocumentType) {

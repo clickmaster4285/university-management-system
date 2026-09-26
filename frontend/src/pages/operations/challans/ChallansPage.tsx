@@ -115,6 +115,7 @@ export default function ChallansPage() {
       await feeChallanAPI.recordPayment(id, {
         amount,
         paymentMethod: payMethod,
+        transactionId: `PAY-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       });
       toast.success("Payment recorded");
       setPayDialogOpen(false);

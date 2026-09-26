@@ -38,6 +38,8 @@ export default function AdmissionDossierPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [completing, setCompleting] = useState(false);
+  const [portalCreds, setPortalCreds] = useState<{ email: string; temporaryPassword: string } | null>(null);
+  const [createdStudentPath, setCreatedStudentPath] = useState<string | null>(null);
 
   useEffect(() => {
     const load = async () => {
@@ -103,7 +105,15 @@ export default function AdmissionDossierPage() {
       const result = await studentAdmissionsAPI.completeAdmission(id);
       toast.success(result?.message || "Student created");
       const student = result?.data;
-      navigate(`/students/${student?.studentId || student?._id}`);
+      const studentPath = `/students/${student?.studentId || student?._id}`;
+      const login = result?.portalLogin;
+      if (login?.email && login?.temporaryPassword) {
+        setPortalCreds({ email: login.email, temporaryPassword: login.temporaryPassword });
+        setCreatedStudentPath(studentPath);
+        toast.message("Save portal password — shown once on this page");
+        return;
+      }
+      navigate(studentPath);
     } catch (err: unknown) {
       const data = getAdmissionApiError(err);
       const parts = [data?.message];
@@ -145,6 +155,26 @@ export default function AdmissionDossierPage() {
         </div>
         <Badge>{dossier.status}</Badge>
       </div>
+
+      {portalCreds ? (
+        <div className="rounded-lg border border-primary/30 bg-primary/5 p-4 space-y-2">
+          <h3 className="font-semibold">Student portal credentials (shown once)</h3>
+          <p className="text-sm">
+            Email: <span className="font-mono">{portalCreds.email}</span>
+          </p>
+          <p className="text-sm">
+            Temporary password: <span className="font-mono">{portalCreds.temporaryPassword}</span>
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Share securely. Student signs in at /login and lands on /student.
+          </p>
+          {createdStudentPath ? (
+            <Button type="button" onClick={() => navigate(createdStudentPath)}>
+              Open student profile
+            </Button>
+          ) : null}
+        </div>
+      ) : null}
 
       <div className="grid md:grid-cols-2 gap-4">
         <div className="space-y-3 border rounded-lg p-4">

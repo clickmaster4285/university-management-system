@@ -1,8 +1,28 @@
 import { handle } from '../utils/asyncHandler.js';
+import path from 'path';
+import fs from 'fs';
 import { Recruitment, StaffMember, Department } from '../models/index.js';
 import { generateStaffId } from '../utils/generateStaffId.js';
+import {
+  getRecruitmentCvRelativePath,
+  resolveUploadAbsolutePath,
+} from '../utils/uploadPaths.js';
 
 const notDeleted = { $ne: true };
+
+export const resolveRecruitmentForCvUpload = handle(async (req, res, next) => {
+  const record = await Recruitment.findOne({ _id: req.params.id, isDeleted: notDeleted });
+  if (!record) {
+    return res.status(404).json({ success: false, message: 'Recruitment posting not found' });
+  }
+  const applicant = record.applicants.id(req.params.applicantId);
+  if (!applicant) {
+    return res.status(404).json({ success: false, message: 'Applicant not found' });
+  }
+  req.recruitmentRecord = record;
+  req.recruitmentApplicant = applicant;
+  next();
+});
 
 export const listRecruitments = handle(async (req, res) => {
   const { status, search, page = 1, limit = 100 } = req.query;
@@ -215,7 +235,7 @@ export const hireApplicant = handle(async (req, res) => {
     hiredFromRecruitmentId: record._id,
     employments: [{
       departmentId: department._id,
-      campusId: department.campusId || null,
+      campusId: department.campusIds?.[0] || null,
       designation: record.title,
       employmentType: record.type === 'Internship' ? 'Intern' : record.type,
       isPrimary: true,
@@ -234,4 +254,61 @@ export const hireApplicant = handle(async (req, res) => {
     data: { recruitment: record, staffMember: staff },
     message: 'Applicant hired and staff record created',
   });
+});
+
+export const uploadApplicantCv = handle(async (req, res) => {
+  const record = req.recruitmentRecord;
+  const applicant = req.recruitmentApplicant;
+
+  if (!req.file) {
+    return res.status(400).json({ success: false, message: 'CV file is required' });
+  }
+
+  const recruitmentKey = record.positionId || record._id.toString();
+  const relativePath = getRecruitmentCvRelativePath(recruitmentKey, req.file.filename);
+
+  if (applicant.cvPath) {
+    const oldAbs = resolveUploadAbsolutePath(applicant.cvPath);
+    if (fs.existsSync(oldAbs)) {
+      try {
+        fs.unlinkSync(oldAbs);
+      } catch {
+        // ignore cleanup failure
+      }
+    }
+  }
+
+  applicant.cvPath = relativePath;
+  applicant.cvOriginalName = req.file.originalname || req.file.filename;
+  await record.save();
+
+  res.json({
+    success: true,
+    data: record,
+    message: 'CV uploaded successfully',
+  });
+});
+
+export const downloadApplicantCv = handle(async (req, res) => {
+  const record = await Recruitment.findOne({ _id: req.params.id, isDeleted: notDeleted });
+  if (!record) {
+    return res.status(404).json({ success: false, message: 'Recruitment posting not found' });
+  }
+
+  const applicant = record.applicants.id(req.params.applicantId);
+  if (!applicant) {
+    return res.status(404).json({ success: false, message: 'Applicant not found' });
+  }
+
+  if (!applicant.cvPath) {
+    return res.status(404).json({ success: false, message: 'No CV uploaded for this applicant' });
+  }
+
+  const absolutePath = resolveUploadAbsolutePath(applicant.cvPath);
+  if (!fs.existsSync(absolutePath)) {
+    return res.status(404).json({ success: false, message: 'CV file not found on server' });
+  }
+
+  const downloadName = applicant.cvOriginalName || path.basename(applicant.cvPath);
+  res.download(absolutePath, downloadName);
 });

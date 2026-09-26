@@ -3,7 +3,15 @@ import mongoose from 'mongoose';
 import { handle } from "../utils/asyncHandler.js";
 
 // Helper: derive a readable name from an email local-part
-import { Admission, Attendance, Employee, Fee, Leave, Report, Student, StaffMember } from '../models/index.js';
+import {
+  Attendance,
+  Fee,
+  Report,
+  StaffLeave,
+  StaffMember,
+  Student,
+  StudentApplication,
+} from '../models/index.js';
 const deriveNameFromEmail = (email) => {
   if (!email || typeof email !== 'string') return 'N/A';
   const local = email.split('@')[0] || '';
@@ -157,52 +165,71 @@ const generateTeacherReport = async (params = {}) => {
 // Helper: Generate admission report
 const generateAdmissionReport = async (params = {}) => {
   const { program, status, startDate, endDate } = params;
-  
-  const query = {};
-  query.isDeleted = { $ne: true };
-  if (program) query.program = program;
+
+  const query = { isDeleted: { $ne: true } };
+  if (program) query.programId = program;
   if (status) query.status = status;
   if (startDate || endDate) {
-    query.applicationDate = {};
-    if (startDate) query.applicationDate.$gte = new Date(startDate);
-    if (endDate) query.applicationDate.$lte = new Date(endDate);
+    query.submittedAt = {};
+    if (startDate) query.submittedAt.$gte = new Date(startDate);
+    if (endDate) query.submittedAt.$lte = new Date(endDate);
   }
-  
-  const admissions = await Admission.find(query).sort({ createdAt: -1 });
-  
+
+  const admissions = await StudentApplication.find(query)
+    .populate('programId', 'name code')
+    .populate('campusId', 'name code')
+    .sort({ createdAt: -1 });
+
   const total = admissions.length;
   const byStatus = {};
   const byProgram = {};
   const byDepartment = {};
-  
-  admissions.forEach(a => {
+
+  admissions.forEach((a) => {
     byStatus[a.status] = (byStatus[a.status] || 0) + 1;
-    byProgram[a.program] = (byProgram[a.program] || 0) + 1;
-    byDepartment[a.department] = (byDepartment[a.department] || 0) + 1;
+    const programLabel =
+      (a.programId && typeof a.programId === 'object' && (a.programId.name || a.programId.code)) ||
+      'Unassigned';
+    byProgram[programLabel] = (byProgram[programLabel] || 0) + 1;
+    const campusLabel =
+      (a.campusId && typeof a.campusId === 'object' && (a.campusId.name || a.campusId.code)) ||
+      'Unassigned';
+    byDepartment[campusLabel] = (byDepartment[campusLabel] || 0) + 1;
   });
-  
+
+  const pending =
+    (byStatus.Submitted || 0) + (byStatus['Under Review'] || 0) + (byStatus.Shortlisted || 0);
+
   return {
     title: 'Admissions Funnel Report',
     generatedAt: new Date().toISOString(),
     summary: {
       total,
-      pending: byStatus.Pending || 0,
+      pending,
       accepted: byStatus.Accepted || 0,
       rejected: byStatus.Rejected || 0,
-      enrolled: byStatus.Enrolled || 0
+      enrolled: byStatus.Promoted || 0,
     },
     byStatus,
     byProgram,
     byDepartment,
-    admissions: admissions.map(a => ({
-      id: a._id,
-      name: a.name || 'N/A',
-      email: a.email || '',
-      program: a.program || '',
-      department: a.department || '',
-      status: a.status || '',
-      applicationDate: a.applicationDate
-    }))
+    admissions: admissions.map((a) => {
+      const programLabel =
+        (a.programId && typeof a.programId === 'object' && (a.programId.name || a.programId.code)) ||
+        '';
+      const campusLabel =
+        (a.campusId && typeof a.campusId === 'object' && (a.campusId.name || a.campusId.code)) ||
+        '';
+      return {
+        id: a._id,
+        name: `${a.firstName || ''} ${a.lastName || ''}`.trim() || 'N/A',
+        email: a.email || '',
+        program: programLabel,
+        department: campusLabel,
+        status: a.status || '',
+        applicationDate: a.submittedAt,
+      };
+    }),
   };
 };
 
@@ -288,20 +315,24 @@ const generateFinanceReport = async (params = {}) => {
 // Helper: Generate HR report
 const generateHRReport = async (params = {}) => {
   const { department, status } = params;
-  
-  const query = {};
-  query.isDeleted = { $ne: true };
-  if (department) query.department = department;
+
+  const query = { isDeleted: { $ne: true } };
   if (status) query.status = status;
-  
-  const employees = await Employee.find(query).sort({ createdAt: -1 });
-  const leaves = await Leave.find({ status: 'Approved', isDeleted: { $ne: true } }).sort({ startDate: -1 });
-  
+  if (department) {
+    query['employments.departmentId'] = department;
+  }
+
+  const employees = await StaffMember.find(query).sort({ createdAt: -1 });
+  const leaves = await StaffLeave.find({
+    status: 'Approved',
+    isDeleted: { $ne: true },
+  }).sort({ startDate: -1 });
+
   const totalEmployees = employees.length;
-  const activeEmployees = employees.filter(e => e.status === 'Active').length;
-  const onLeave = employees.filter(e => e.status === 'On Leave').length;
+  const activeEmployees = employees.filter((e) => e.status === 'Active').length;
+  const onLeave = employees.filter((e) => e.status === 'On Leave').length;
   const totalLeaves = leaves.length;
-  
+
   return {
     title: 'Human Resources Report',
     generatedAt: new Date().toISOString(),
@@ -309,23 +340,27 @@ const generateHRReport = async (params = {}) => {
       totalEmployees,
       active: activeEmployees,
       onLeave,
-      totalLeaves
+      totalLeaves,
     },
-    employees: employees.map(e => ({
-      id: e._id,
-      name: getDisplayNameForRecord(e),
-      department: e.department || '',
-      designation: e.designation || '',
-      status: e.status || '',
-      salary: e.salary || 0
-    })),
-    leaves: leaves.map(l => ({
-      employee: l.employeeName || 'N/A',
+    employees: employees.map((e) => {
+      const primaryEmployment =
+        e.employments?.find((item) => item.isPrimary) || e.employments?.[0];
+      return {
+        id: e._id,
+        name: getDisplayNameForRecord(e),
+        department: primaryEmployment?.departmentId?.toString() || '',
+        designation: primaryEmployment?.designation || '',
+        status: e.status || '',
+        salary: e.currentSalary || e.salary || 0,
+      };
+    }),
+    leaves: leaves.map((l) => ({
+      employee: l.staffName || 'N/A',
       type: l.type || '',
       startDate: l.startDate,
       endDate: l.endDate,
-      days: l.days || 0
-    }))
+      days: l.days || 0,
+    })),
   };
 };
 

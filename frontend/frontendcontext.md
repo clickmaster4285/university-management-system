@@ -1,6 +1,6 @@
 # Frontend Context
 
-> **Last updated:** 2026-09-07 — multi-campus department/faculty, campus admin, staff primary campus/faculty
+> **Last updated:** 2026-09-26 — page refactors (assignments/exams/events/library/transport)
 
 ## Tech Stack
 
@@ -78,11 +78,9 @@ pages/academics/departments/
 - `DepartmentsPage.tsx` — list with `DepartmentViewModal`
 - `CampusesPage.tsx` — card grid + view modal + `CampusForm` on create/edit routes
 - `StudentsPage.tsx` — slim directory; profile at `/students/:id`
-- `ApplicationsPipelinePage.tsx` — replaces monolith `AdmissionsPage` for `/admissions`
+- `ApplicationsPipelinePage.tsx` — `/admissions` pipeline (monolith AdmissionsPage removed Sep 2026)
 
-**Still pending refactor** (500+ lines): TransportPage, AssignmentsPage, LibraryPage, ExamsPage, EventsPage, BatchesPage.
-
-**Legacy (do not extend):** `pages/academics/admissions/AdmissionsPage.tsx` — old monolith; route uses `ApplicationsPipelinePage`.
+**Still pending refactor** (if any): none of the former 1000+ line campus/academic list pages — Transport, Assignments, Library, Exams, Events, Batches are split (Sep 2026).
 
 ## Routing
 
@@ -158,9 +156,7 @@ Key barrel export: `features/index.ts` re-exports everything.
 
 ### Updated Files (reflecting backend ref changes)
 
-- **`features/teachers.ts`** — `Teacher` interface: `userId` (ref User), `departmentId` (ref Department). Removed `coursesTeaching`. `getAll` accepts `{ departmentId?, designation?, status?, search?, page?, limit? }`. No `bulkCreate` — teacher creation auto-creates User on backend.
-- **`features/departments.ts`** — `Department` interface: `campusIds[]`, `facultyIds[]`, `campusAssignments[]` (per-campus head, email, phone, location, establishedDate, status). Removed legacy scalar fields (`campusId`, `headId`, `facultyId`, `email`, `phone`, `location`, `establishedDate`, `status`). `getAll` accepts `{ campusId?, facultyId?, status?, search?, page?, limit? }`. Stats use `campusAssignments.status` (not `isActive`).
-- **`features/courses.ts`** — `Course` interface: `departmentId` (ref Department), `programId` (ref Program), `instructorId` (ref Teacher). All filter methods use `departmentId`. `CourseFilters` uses `departmentId`/`programId`.
+- **`features/departments.ts`** — `Department` interface: `campusIds[]`, `facultyIds[]`, `campusAssignments[]` (per-campus head, email, phone, location, establishedDate, status). Removed legacy scalar fields. `getAll` accepts `{ campusId?, facultyId?, status?, search?, page?, limit? }`.
 - **`features/attendance.ts`** — `AttendanceRecord` has `departmentId` alongside legacy `department`. API methods use `departmentId` in query params and payloads.
 - **`features/batches.ts`** — `getAll` accepts `departmentId` instead of `department`.
 - **`features/subjects.ts`** — `Subject` interface + CRUD + stats + fee history API (Phase 1–3)
@@ -171,12 +167,17 @@ Key barrel export: `features/index.ts` re-exports everything.
 - **`SubjectEditPage`** — tabs: Details (`SubjectForm`) + Fee History (`SubjectFeePanel`, grouped by program scope)
 - **`features/programs.ts`** — Program CRUD + stats + `getCurriculum` / `updateCurriculum`
 - **`features/faculties.ts`** — `Faculty` interface + `FacultyAPI` class with `getAll`, `getById`, `getStats`, `create`, `update`, `delete`.
-- **`features/campus.ts`** — `Campus` interface includes `campusAdminId` (ref StaffMember). `campusAPI.getAll()` (no params needed), `.getById(id)`, `.create(data)`, `.update(id, data)`, `.delete(id)`. No separate `setMain` — uses `update(id, { isMainCampus: true })`.
+- **`features/campus.ts`** — `Campus` interface includes `campusAdminId` (ref StaffMember).
 - **`features/university.ts`** — Single-university pattern: `getUniversity()`, `createUniversity(data)`, `updateUniversity(data)`, `deleteUniversity()`.
+- **`features/staffMembers.ts`** — includes `primaryCampusId`, `primaryFacultyId`
+- **`features/studentApplications.ts`**, **`features/studentAdmissions.ts`** — admissions pipeline
+
+### Removed (Sep 2026)
+
+- `features/admissions.ts`, `features/courses.ts`, `pages/academics/admissions/AdmissionsPage.tsx`, `pages/landing/LandingPage.tsx`
 
 ### Still using legacy patterns
 
-- `features/admissions.ts` — **deprecated** monolithic Admission API
 - Some large campus modules (Transport, Library, Events) — 1000+ line pages, not yet split
 - Assignment/Exam forms store subject code strings, not `offeringId` (Phase 6 paused)
 
@@ -249,15 +250,11 @@ Staff documents: `StaffDocumentsPanel` — uploads to `uploads/hr/{staffId}/{doc
 
 | Backend Model Field | Frontend `features/*.ts` Field | Notes |
 |---|---|---|
-| `Teacher.userId` (ref User) | `Teacher.userId` | Populated on read |
-| `Teacher.departmentId` (ref Department) | `Teacher.departmentId` | Was `department` string |
-| `Department.campusId` (ref Campus) | `Department.campusId` | Required on create |
-| `Department.headId` (ref Teacher) | `Department.headId` | Optional |
-| `Department.facultyId` (ref Faculty) | `Department.facultyId` | Was `faculty` string |
-| `Course.departmentId` (ref Department) | `Course.departmentId` | Was `department` string |
-| `Course.programId` (ref Program) | `Course.programId` | New |
-| `Course.instructorId` (ref Teacher) | `Course.instructorId` | Was ref User |
-| `Attendance.departmentId` (ref Department) | `AttendanceRecord.departmentId` | New — alongside legacy `department` |
+| `Department.campusIds[]` / `facultyIds[]` / `campusAssignments[]` | same | Multi-campus / multi-faculty |
+| `Campus.campusAdminId` (ref StaffMember) | `Campus.campusAdminId` | Campus administrator |
+| `StaffMember.primaryCampusId` / `primaryFacultyId` | same | Quick filters |
+| `CourseOffering.instructorId` (ref StaffMember) | `CourseOffering.instructorId` | Academic instructor |
+| `Attendance.departmentId` (ref Department) | `AttendanceRecord.departmentId` | Alongside legacy `department` string |
 | `Program` (model) | `Program` | Full CRUD API service exists |
 | `Faculty` (model) | `Faculty` | Full CRUD API service exists |
 | `University` (single) | `University` | Only 4 endpoints: GET/POST/PUT/DELETE `/universities` (no :id) |
@@ -292,8 +289,8 @@ Frontend pages (separate pages, NOT modals):
 ## Faculty System
 
 Backend:
-- `Faculty` model: `campusId` (ref Campus), `headId` (ref Teacher), soft-delete
-- Controller validates campus/teacher, blocks duplicate name/code per campus, soft-deletes
+- `Faculty` model: `campusIds[]` + `campusAssignments[]` (global; spans campuses), soft-delete
+- Controller validates campuses, soft-deletes
 - All routes require `auth + authorize("Admin")`
 
 Frontend:
@@ -303,8 +300,8 @@ Frontend:
 ## Department System
 
 Backend (updated):
-- `Department` model: `campusId`, `facultyId`, `headId`, `status` Active/Inactive, soft-delete
-- Controller: validates faculty same campus, soft delete, blocks delete if programs/courses/teachers/batches linked
+- `Department` model: `campusIds[]`, `facultyIds[]`, `campusAssignments[]`, soft-delete
+- Controller: soft delete, blocks delete if programs/subjects/batches linked
 - List API: `campusId`, `facultyId`, `status`, `search`, pagination
 - All routes require `auth + authorize("Admin")`
 
@@ -360,22 +357,25 @@ Frontend:
 
 | Item | Priority | Notes |
 |------|----------|-------|
-| Student portal (logged-in student) | High | No student dashboard yet |
-| Leave quota admin UI | Medium | Backend balances exist |
-| Recruitment resume upload UI | Medium | Manage button only today |
-| Phase A manual verification | High | Test role logins + apply templates |
-| Large page refactors | Low | Transport, Assignments, Library, Exams, Events |
+| Student portal (logged-in student) | ✅ Done | `StudentPortalLayout` + `/student/*` + `studentPortalAPI` |
+| Leave quota admin UI | ✅ Done | `WorkforceLeavePage` quotas + staff deep-link `?staffId=` |
+| Recruitment resume upload UI | ✅ Done | CV upload/download on `WorkforceRecruitmentPage` |
+| Phase A manual verification | ✅ Done | `backend/scripts/verifyPhaseA.js` |
+| Large page refactors | ✅ Done | Transport, Assignments, Library, Exams, Events split Sep 2026 |
 | Phase 6 — offeringId in Assignment/Exam forms | Paused | |
-| Remove legacy `AdmissionsPage.tsx` | Low | File in repo, unused by routes |
-| `LandingPage.tsx` | Low | Orphaned; `/landing` redirects to `/` |
+
+**Removed Sep 2026:** `AdmissionsPage.tsx`, `features/admissions.ts`, `LandingPage.tsx`, `features/courses.ts`.
 
 ### Next frontend tasks (recommended)
 
-1. Student portal pages after backend `Student.userId`
-2. Leave quota editor on staff profile or HR settings
-3. Recruitment applicant CV upload in `WorkforceRecruitmentPage`
-4. Delete or merge `LandingPage.tsx` if no longer needed
-5. Phase 6 when resumed: offering picker stores `offeringId` on records
+1. Phase 6 when resumed: offering picker stores `offeringId` on records
+2. Optional: grades/attendance in student portal after Phase 6
+
+### Student portal (Sep 2026)
+
+- Login: `role === 'Student'` → `/student`; `AppLayout` redirects Students away
+- Pages: home, registrations, fees, profile under `/student`
+- Staff: dossier complete shows temp password; student profile “Enable portal login”
 
 ## UI Components
 

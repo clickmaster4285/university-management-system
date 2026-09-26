@@ -1,8 +1,10 @@
 import multer from 'multer';
 import path from 'path';
 import {
+  buildRecruitmentCvFileName,
   buildStaffDocumentFileName,
   buildStudentDocumentFileName,
+  getRecruitmentCvDirectory,
   getStaffDocumentDirectory,
   getStudentDocumentDirectory,
 } from '../utils/uploadPaths.js';
@@ -12,6 +14,12 @@ const ALLOWED_MIME_TYPES = new Set([
   'image/jpeg',
   'image/png',
   'image/webp',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+]);
+
+const CV_MIME_TYPES = new Set([
+  'application/pdf',
   'application/msword',
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
 ]);
@@ -100,3 +108,37 @@ export const createStudentDocumentUpload = () =>
   });
 
 export const studentDocumentUpload = createStudentDocumentUpload();
+
+export const createRecruitmentCvUpload = () =>
+  multer({
+    storage: multer.diskStorage({
+      destination: (req, _file, cb) => {
+        try {
+          const recruitmentId = req.recruitmentRecord?.positionId || req.params.id;
+          const dir = getRecruitmentCvDirectory(recruitmentId);
+          cb(null, dir);
+        } catch (error) {
+          cb(error);
+        }
+      },
+      filename: (req, file, cb) => {
+        const recruitmentId = req.recruitmentRecord?.positionId || req.params.id;
+        const applicantId = req.params.applicantId;
+        const fileName = buildRecruitmentCvFileName({
+          recruitmentId,
+          applicantId,
+          originalName: file.originalname,
+        });
+        cb(null, fileName);
+      },
+    }),
+    limits: { fileSize: 10 * 1024 * 1024 },
+    fileFilter: (_req, file, cb) => {
+      if (!CV_MIME_TYPES.has(file.mimetype)) {
+        return cb(new Error('Unsupported file type. Allowed: PDF, DOC, DOCX'));
+      }
+      return cb(null, true);
+    },
+  });
+
+export const recruitmentCvUpload = createRecruitmentCvUpload();

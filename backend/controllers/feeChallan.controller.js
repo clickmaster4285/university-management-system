@@ -97,11 +97,33 @@ export const recordChallanPayment = handle(async (req, res) => {
     return res.status(404).json({ success: false, message: 'Challan not found' });
   }
 
-  const { amount, paymentMethod = 'Cash', transactionId, notes } = req.body;
+  const { amount, paymentMethod = 'Cash', transactionId, idempotencyKey, notes } = req.body;
   const payAmount = Number(amount);
+  const txnId = String(transactionId || idempotencyKey || '').trim();
+
+  if (!txnId) {
+    return res.status(400).json({
+      success: false,
+      message: 'transactionId (or idempotencyKey) is required to record a payment',
+    });
+  }
 
   if (!Number.isFinite(payAmount) || payAmount <= 0) {
     return res.status(400).json({ success: false, message: 'Payment amount must be greater than zero' });
+  }
+
+  found.paymentHistory = found.paymentHistory || [];
+  const duplicate = found.paymentHistory.find(
+    (entry) => entry.transactionId && entry.transactionId === txnId && entry.status !== 'Failed'
+  );
+  if (duplicate) {
+    const challan = await populateChallan(Fee.findById(found._id));
+    return res.status(200).json({
+      success: true,
+      data: challan,
+      message: 'Payment already recorded for this transactionId (idempotent)',
+      idempotent: true,
+    });
   }
 
   const remaining = found.remainingAmount ?? found.amount - (found.paidAmount || 0);
@@ -113,12 +135,11 @@ export const recordChallanPayment = handle(async (req, res) => {
   }
 
   found.paidAmount = (found.paidAmount || 0) + payAmount;
-  found.paymentHistory = found.paymentHistory || [];
   found.paymentHistory.push({
     amount: payAmount,
     method: paymentMethod,
     date: new Date(),
-    transactionId: transactionId || '',
+    transactionId: txnId,
     notes: notes || '',
     status: 'Completed',
   });
@@ -133,14 +154,25 @@ export const recordChallanPayment = handle(async (req, res) => {
   }
 
   found.paymentMethod = paymentMethod;
+  found.transactionId = txnId;
   found.updatedBy = req.user?._id || null;
   await found.save();
 
-  if (found.semesterRegistrationId) {
+  const syncRegistrationStatus = async () => {
+    if (!found.semesterRegistrationId) return;
     const registration = await SemesterRegistration.findById(found.semesterRegistrationId);
-    if (registration) {
-      registration.status = found.paymentStatus === 'Paid' ? 'Paid' : 'Partial';
-      await registration.save();
+    if (!registration) return;
+    registration.status = found.paymentStatus === 'Paid' ? 'Paid' : 'Partial';
+    await registration.save();
+  };
+
+  try {
+    await syncRegistrationStatus();
+  } catch {
+    try {
+      await syncRegistrationStatus();
+    } catch (retryErr) {
+      console.error('Failed to sync semester registration status after payment:', retryErr?.message);
     }
   }
 

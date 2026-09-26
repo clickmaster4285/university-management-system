@@ -11,6 +11,7 @@ import {
   StudentDocument,
 } from '../models/index.js';
 import { generateStudentId } from '../utils/generateStudentId.js';
+import { ensureStudentPortalAccount } from '../utils/studentPortalAccount.js';
 import { STUDENT_DOCUMENT_TYPES } from '../utils/uploadPaths.js';
 
 const notDeleted = { $ne: true };
@@ -253,6 +254,11 @@ export const completeAdmission = handle(async (req, res) => {
     await application.save();
   }
 
+  const portalResult = await ensureStudentPortalAccount(student);
+  if (portalResult.error) {
+    console.warn('[completeAdmission] portal account:', portalResult.error);
+  }
+
   const populated = await Student.findById(student._id)
     .populate('programId', 'name code')
     .populate('departmentId', 'name code')
@@ -263,7 +269,10 @@ export const completeAdmission = handle(async (req, res) => {
   res.status(201).json({
     success: true,
     data: populated,
-    message: `Student ${studentId} created successfully`,
+    portalLogin: portalResult.portalLogin,
+    message: portalResult.portalLogin?.temporaryPassword
+      ? `Student ${studentId} created. Portal login credentials shown once — save them now.`
+      : `Student ${studentId} created successfully`,
   });
 });
 

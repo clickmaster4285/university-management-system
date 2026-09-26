@@ -18,6 +18,11 @@ const ForgotPasswordPage = lazy(() => import("./pages/auth/ForgotPasswordPage"))
 const OtpPage = lazy(() => import("./pages/auth/OtpPage"));
 const NotFoundPage = lazy(() => import("./pages/NotFoundPage"));
 const AppLayout = lazy(() => import("./layouts/AppLayout"));
+const StudentPortalLayout = lazy(() => import("./layouts/StudentPortalLayout"));
+const StudentPortalHomePage = lazy(() => import("./pages/student-portal/StudentPortalHomePage"));
+const StudentPortalRegistrationsPage = lazy(() => import("./pages/student-portal/StudentPortalRegistrationsPage"));
+const StudentPortalFeesPage = lazy(() => import("./pages/student-portal/StudentPortalFeesPage"));
+const StudentPortalProfilePage = lazy(() => import("./pages/student-portal/StudentPortalProfilePage"));
 
 // Dashboard & Overview
 const DashboardPage = lazy(() => import("./pages/dashboard/DashboardPage"));
@@ -81,14 +86,28 @@ const StaffAccessPage = lazy(() => import("./pages/access/StaffAccessPage"));
 const RoleAssignmentsPage = lazy(() => import("./pages/people/role-assignments/RoleAssignmentsPage"));
 const AttendancePage = lazy(() => import("./pages/academics/attendance/AttendancePage"));
 const AssignmentsPage = lazy(() => import("./pages/academics/assignments/AssignmentsPage"));
+const AssignmentCreatePage = lazy(() => import("./pages/academics/assignments/AssignmentCreatePage"));
+const AssignmentEditPage = lazy(() => import("./pages/academics/assignments/AssignmentEditPage"));
 const ExamsPage = lazy(() => import("./pages/academics/exams/ExamsPage"));
+const ExamCreatePage = lazy(() => import("./pages/academics/exams/ExamCreatePage"));
+const ExamEditPage = lazy(() => import("./pages/academics/exams/ExamEditPage"));
 const OnlineClassesPage = lazy(() => import("./pages/academics/online-classes/OnlineClassesPage"));
 
 // Campus Services Modular Pages
 const LibraryPage = lazy(() => import("./pages/campus/library/LibraryPage"));
+const BookCreatePage = lazy(() => import("./pages/campus/library/BookCreatePage"));
+const BookEditPage = lazy(() => import("./pages/campus/library/BookEditPage"));
 const HostelPage = lazy(() => import("./pages/campus/hostel/HostelPage"));
 const TransportPage = lazy(() => import("./pages/campus/transport/TransportPage"));
+const BusCreatePage = lazy(() => import("./pages/campus/transport/BusCreatePage"));
+const BusEditPage = lazy(() => import("./pages/campus/transport/BusEditPage"));
+const DriverCreatePage = lazy(() => import("./pages/campus/transport/DriverCreatePage"));
+const DriverEditPage = lazy(() => import("./pages/campus/transport/DriverEditPage"));
+const RouteCreatePage = lazy(() => import("./pages/campus/transport/RouteCreatePage"));
+const RouteEditPage = lazy(() => import("./pages/campus/transport/RouteEditPage"));
 const EventsPage = lazy(() => import("./pages/campus/events/EventsPage"));
+const EventCreatePage = lazy(() => import("./pages/campus/events/EventCreatePage"));
+const EventEditPage = lazy(() => import("./pages/campus/events/EventEditPage"));
 const SmartQrPage = lazy(() => import("./pages/campus/qr/SmartQrPage"));
 
 // Operations & Administration
@@ -137,6 +156,14 @@ export const App = () => (
               <Route path="/login" element={<LoginPage />} />
               <Route path="/forgot-password" element={<ForgotPasswordPage />} />
               <Route path="/otp" element={<OtpPage />} />
+
+              {/* Student portal (authenticated, Student role only) */}
+              <Route path="/student" element={<StudentPortalLayout />}>
+                <Route index element={<StudentPortalHomePage />} />
+                <Route path="registrations" element={<StudentPortalRegistrationsPage />} />
+                <Route path="fees" element={<StudentPortalFeesPage />} />
+                <Route path="profile" element={<StudentPortalProfilePage />} />
+              </Route>
 
               {/* Staff portal (authenticated) */}
               <Route element={<AppLayout />}>
@@ -201,14 +228,28 @@ export const App = () => (
                 <Route path="/role-assignments/staff/:staffId" element={<RoleAssignmentsPage />} />
                 <Route path="/attendance" element={<AttendancePage />} />
                 <Route path="/assignments" element={<AssignmentsPage />} />
+                <Route path="/assignments/create" element={<AssignmentCreatePage />} />
+                <Route path="/assignments/edit/:id" element={<AssignmentEditPage />} />
                 <Route path="/exams" element={<ExamsPage />} />
+                <Route path="/exams/create" element={<ExamCreatePage />} />
+                <Route path="/exams/edit/:id" element={<ExamEditPage />} />
                 <Route path="/online-classes" element={<OnlineClassesPage />} />
 
                 {/* Campus Services */}
                 <Route path="/library" element={<LibraryPage />} />
+                <Route path="/library/create" element={<BookCreatePage />} />
+                <Route path="/library/edit/:id" element={<BookEditPage />} />
                 <Route path="/hostel" element={<HostelPage />} />
                 <Route path="/transport" element={<TransportPage />} />
+                <Route path="/transport/buses/create" element={<BusCreatePage />} />
+                <Route path="/transport/buses/edit/:id" element={<BusEditPage />} />
+                <Route path="/transport/drivers/create" element={<DriverCreatePage />} />
+                <Route path="/transport/drivers/edit/:id" element={<DriverEditPage />} />
+                <Route path="/transport/routes/create" element={<RouteCreatePage />} />
+                <Route path="/transport/routes/edit/:id" element={<RouteEditPage />} />
                 <Route path="/events" element={<EventsPage />} />
+                <Route path="/events/create" element={<EventCreatePage />} />
+                <Route path="/events/edit/:id" element={<EventEditPage />} />
                 <Route path="/qr" element={<SmartQrPage />} />
 
                 {/* Operations */}

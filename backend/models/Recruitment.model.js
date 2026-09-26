@@ -35,6 +35,14 @@ const recruitmentSchema = new mongoose.Schema({
     email: String,
     phone: String,
     resume: String,
+    cvPath: {
+      type: String,
+      default: '',
+    },
+    cvOriginalName: {
+      type: String,
+      default: '',
+    },
     status: {
       type: String,
       enum: ['Applied', 'Shortlisted', 'Interviewed', 'Offered', 'Rejected', 'Hired'],

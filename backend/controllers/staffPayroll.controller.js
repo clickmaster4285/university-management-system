@@ -94,7 +94,6 @@ export const updateStaffPayroll = handle(async (req, res) => {
   const updates = { ...req.body };
   delete updates.payrollId;
   delete updates.staffMember;
-  delete updates.employee;
 
   if (updates.year) updates.year = Number(updates.year);
   if (updates.baseSalary !== undefined) updates.baseSalary = Number(updates.baseSalary);

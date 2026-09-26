@@ -106,5 +106,25 @@ export const getStudentDocumentRelativePath = (ownerId, documentType, fileName) 
   return path.posix.join(UPLOAD_MODULES.STUDENTS, safeOwnerId, safeType, fileName);
 };
 
+export const buildRecruitmentCvFileName = ({ recruitmentId, applicantId, originalName }) => {
+  const ext = path.extname(originalName || '').toLowerCase() || '';
+  const id = sanitizeSegment(applicantId || 'applicant');
+  const posting = sanitizeSegment(recruitmentId || 'recruitment');
+  const stamp = Date.now();
+  return `${posting}_${id}_${stamp}${ext}`;
+};
+
+export const getRecruitmentCvDirectory = (recruitmentId) => {
+  const safeId = sanitizeSegment(recruitmentId);
+  const dir = path.join(UPLOAD_ROOT, UPLOAD_MODULES.HR, 'recruitment', safeId);
+  ensureDirectory(dir);
+  return dir;
+};
+
+export const getRecruitmentCvRelativePath = (recruitmentId, fileName) => {
+  const safeId = sanitizeSegment(recruitmentId);
+  return path.posix.join(UPLOAD_MODULES.HR, 'recruitment', safeId, fileName);
+};
+
 export const resolveUploadAbsolutePath = (relativePath) =>
   path.join(UPLOAD_ROOT, ...String(relativePath).split('/'));

@@ -21,9 +21,9 @@ export function LoginPage() {
     setLoading(true);
 
     try {
-      await login({ email, password });
+      const user = await login({ email, password });
       toast.success("Welcome back");
-      navigate("/dashboard");
+      navigate(user?.role === "Student" ? "/student" : "/dashboard");
     } catch (error: any) {
       toast.error(error?.message || 'Login failed');
     } finally {

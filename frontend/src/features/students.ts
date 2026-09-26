@@ -5,6 +5,7 @@ export interface Student {
   _id?: string;
   studentId?: string;
   admissionId?: string | { admissionId: string; status: string };
+  userId?: string | { _id?: string; email?: string; role?: string; status?: string };
   firstName?: string;
   lastName?: string;
   fullName?: string;
@@ -35,6 +36,11 @@ export interface Student {
   updatedAt?: string;
 }
 
+export type PortalLoginCredentials = {
+  email: string;
+  temporaryPassword: string | null;
+};
+
 export const studentAPI = {
   getAll: async (params?: Record<string, string | number>) => {
     const result = await apiClient.get('/students', { params });
@@ -51,6 +57,16 @@ export const studentAPI = {
 
   update: (id: string, data: Partial<Student>) => apiClient.put(`/students/${id}`, data),
   delete: (id: string) => apiClient.delete(`/students/${id}`),
+
+  enablePortalLogin: async (id: string, password?: string) => {
+    const result = await apiClient.post(`/students/${id}/portal-login`, password ? { password } : {});
+    return result.data as {
+      success: boolean;
+      data: Student;
+      portalLogin?: PortalLoginCredentials | null;
+      message?: string;
+    };
+  },
 
   getStats: async () => {
     const result = await apiClient.get('/students/stats');

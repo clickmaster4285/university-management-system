@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import {
   Briefcase,
+  CalendarDays,
   ChevronRight,
   Clock,
   DollarSign,
@@ -24,6 +25,14 @@ const modules = [
     to: (id: string) => `/workforce/${id}`,
     icon: Clock,
     summary: (staff: StaffMember) => formatScheduleSummary(staff.workSchedule),
+  },
+  {
+    key: "leave-quotas",
+    title: "Leave quotas",
+    description: "Annual, sick, casual entitlements",
+    to: (id: string) => `/workforce/leaves?staffId=${id}`,
+    icon: CalendarDays,
+    summary: () => "View & edit quotas",
   },
   {
     key: "payroll",

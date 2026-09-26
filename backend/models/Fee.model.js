@@ -50,15 +50,6 @@ const feeSchema = new mongoose.Schema({
     default: 'Regular'
   },
 
-  // ==================== FEE STRUCTURE REFERENCE ====================
-  feeStructureId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'FeeStructure'
-  },
-  feeStructureName: {
-    type: String,
-    trim: true
-  },
   semesterRegistrationId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'SemesterRegistration',
@@ -492,15 +483,25 @@ feeSchema.index({ studentName: 1 });
 feeSchema.index({ studentEmail: 1 });
 feeSchema.index({ paymentStatus: 1 });
 feeSchema.index({ dueDate: 1 });
-feeSchema.index({ feeStructureId: 1 });
 feeSchema.index({ program: 1 });
 feeSchema.index({ semester: 1 });
-feeSchema.index({ semesterRegistrationId: 1 });
 feeSchema.index({ source: 1 });
 feeSchema.index({ isActive: 1 });
 feeSchema.index({ invoiceNumber: 1 });
 feeSchema.index({ 'installmentDetails.dueDate': 1 });
 feeSchema.index({ createdAt: -1 });
+// One active semester-package challan per registration (idempotent generate-challan)
+feeSchema.index(
+  { semesterRegistrationId: 1 },
+  {
+    unique: true,
+    partialFilterExpression: {
+      source: 'semester_package',
+      semesterRegistrationId: { $type: 'objectId' },
+      isDeleted: { $ne: true },
+    },
+  }
+);
 
 // ==================== PRE-SAVE MIDDLEWARE ====================
 feeSchema.pre('save', async function(next) {

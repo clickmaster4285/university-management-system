@@ -217,9 +217,7 @@ export function DepartmentForm({ mode, department }: DepartmentFormProps) {
         code: formData.code,
         description: formData.description,
         campusIds: formData.campusIds,
-        campusId: formData.campusIds[0] || undefined,
         facultyIds: formData.facultyIds,
-        facultyId: formData.facultyIds[0] || undefined,
         campusAssignments,
       };
       if (mode === "create") {

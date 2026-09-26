@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useState } from "react";
-import { Link } from "react-router-dom";
-import { CalendarDays, Check, Eye, Loader2, Plus, X } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
+import { CalendarDays, Check, Eye, Loader2, Pencil, Plus, X } from "lucide-react";
 import { toast } from "sonner";
 import { DataTable, type Column } from "@/components/data-table";
 import { KpiCard } from "@/components/dashboard/kpi-card";
@@ -23,7 +23,32 @@ const LEAVE_TYPES: LeaveType[] = [
   "Other",
 ];
 
+const QUOTA_FIELDS = [
+  { key: "annualQuota", label: "Annual", type: "Annual" },
+  { key: "sickQuota", label: "Sick", type: "Sick" },
+  { key: "casualQuota", label: "Casual", type: "Casual" },
+  { key: "maternityQuota", label: "Maternity", type: "Maternity" },
+  { key: "paternityQuota", label: "Paternity", type: "Paternity" },
+] as const;
+
+type QuotaForm = {
+  annualQuota: number;
+  sickQuota: number;
+  casualQuota: number;
+  maternityQuota: number;
+  paternityQuota: number;
+};
+
+const emptyQuotaForm = (): QuotaForm => ({
+  annualQuota: 20,
+  sickQuota: 10,
+  casualQuota: 5,
+  maternityQuota: 90,
+  paternityQuota: 10,
+});
+
 export default function WorkforceLeavePage() {
+  const [searchParams] = useSearchParams();
   const [leaves, setLeaves] = useState<StaffLeave[]>([]);
   const [staffMembers, setStaffMembers] = useState<StaffMember[]>([]);
   const [stats, setStats] = useState({ pending: 0, approved: 0, onLeaveToday: 0 });
@@ -40,6 +65,14 @@ export default function WorkforceLeavePage() {
   const [leaveBalance, setLeaveBalance] = useState<StaffLeaveBalance | null>(null);
   const [viewingLeave, setViewingLeave] = useState<StaffLeave | null>(null);
 
+  const [quotaStaffId, setQuotaStaffId] = useState("");
+  const [quotaYear, setQuotaYear] = useState(new Date().getFullYear());
+  const [quotaBalance, setQuotaBalance] = useState<StaffLeaveBalance | null>(null);
+  const [quotaLoading, setQuotaLoading] = useState(false);
+  const [showQuotaEdit, setShowQuotaEdit] = useState(false);
+  const [quotaForm, setQuotaForm] = useState<QuotaForm>(emptyQuotaForm());
+  const [savingQuota, setSavingQuota] = useState(false);
+
   const loadBalance = useCallback(async (staffMemberId: string) => {
     if (!staffMemberId) {
       setLeaveBalance(null);
@@ -50,6 +83,30 @@ export default function WorkforceLeavePage() {
       setLeaveBalance(balance);
     } catch {
       setLeaveBalance(null);
+    }
+  }, []);
+
+  const loadQuotaBalance = useCallback(async (staffMemberId: string, year: number) => {
+    if (!staffMemberId) {
+      setQuotaBalance(null);
+      return;
+    }
+    setQuotaLoading(true);
+    try {
+      const balance = await workforceAPI.getLeaveBalance(staffMemberId, year);
+      setQuotaBalance(balance);
+      setQuotaForm({
+        annualQuota: balance.balances?.find((b) => b.type === "Annual")?.quota ?? 20,
+        sickQuota: balance.balances?.find((b) => b.type === "Sick")?.quota ?? 10,
+        casualQuota: balance.balances?.find((b) => b.type === "Casual")?.quota ?? 5,
+        maternityQuota: balance.balances?.find((b) => b.type === "Maternity")?.quota ?? 90,
+        paternityQuota: balance.balances?.find((b) => b.type === "Paternity")?.quota ?? 10,
+      });
+    } catch {
+      setQuotaBalance(null);
+      toast.error("Failed to load leave quotas");
+    } finally {
+      setQuotaLoading(false);
     }
   }, []);
 
@@ -75,6 +132,27 @@ export default function WorkforceLeavePage() {
     loadData();
   }, [loadData]);
 
+  useEffect(() => {
+    const fromQuery = searchParams.get("staffId");
+    if (fromQuery) {
+      setQuotaStaffId(fromQuery);
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (quotaStaffId) {
+      loadQuotaBalance(quotaStaffId, quotaYear);
+    } else {
+      setQuotaBalance(null);
+    }
+  }, [quotaStaffId, quotaYear, loadQuotaBalance]);
+
+  const quotaStaffLabel = useMemo(() => {
+    const staff = staffMembers.find((s) => getStaffRecordId(s) === quotaStaffId);
+    if (!staff) return "";
+    return `${staff.firstName} ${staff.lastName} (${staff.staffId})`;
+  }, [staffMembers, quotaStaffId]);
+
   const handleCreate = async () => {
     if (!form.staffMemberId || !form.startDate || !form.endDate) {
       toast.error("Staff, start date, and end date are required");
@@ -87,6 +165,9 @@ export default function WorkforceLeavePage() {
       setShowForm(false);
       setForm({ staffMemberId: "", type: "Annual", startDate: "", endDate: "", reason: "" });
       await loadData();
+      if (quotaStaffId === form.staffMemberId) {
+        await loadQuotaBalance(quotaStaffId, quotaYear);
+      }
     } catch (err: unknown) {
       const message =
         (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
@@ -103,8 +184,30 @@ export default function WorkforceLeavePage() {
       await workforceAPI.updateLeaveStatus(leave._id, { status });
       toast.success(`Leave ${status.toLowerCase()}`);
       await loadData();
+      if (quotaStaffId) await loadQuotaBalance(quotaStaffId, quotaYear);
     } catch {
       toast.error("Failed to update leave status");
+    }
+  };
+
+  const handleSaveQuotas = async () => {
+    if (!quotaStaffId) return;
+    setSavingQuota(true);
+    try {
+      const updated = await workforceAPI.updateLeaveBalance(quotaStaffId, {
+        year: quotaYear,
+        ...quotaForm,
+      });
+      setQuotaBalance(updated);
+      setShowQuotaEdit(false);
+      toast.success("Leave quotas updated");
+    } catch (err: unknown) {
+      const message =
+        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+        "Failed to update quotas";
+      toast.error(message);
+    } finally {
+      setSavingQuota(false);
     }
   };
 
@@ -165,7 +268,7 @@ export default function WorkforceLeavePage() {
             Leave management
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Requests, approvals, and leave linked to workforce schedules.
+            Requests, approvals, quotas, and leave linked to workforce schedules.
           </p>
         </div>
         <Button variant="secondary" asChild>
@@ -177,6 +280,85 @@ export default function WorkforceLeavePage() {
         <KpiCard label="Pending" value={stats.pending} icon={CalendarDays} tone="warning" />
         <KpiCard label="Approved" value={stats.approved} icon={CalendarDays} tone="success" />
         <KpiCard label="On leave today" value={stats.onLeaveToday} icon={CalendarDays} />
+      </div>
+
+      <div className="mb-6 border rounded-lg p-4 space-y-4 bg-muted/20">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="font-semibold">Leave quotas</h2>
+            <p className="text-xs text-muted-foreground">
+              View and edit annual entitlements per staff member
+            </p>
+          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={!quotaStaffId || !quotaBalance}
+            onClick={() => setShowQuotaEdit(true)}
+          >
+            <Pencil className="h-4 w-4 mr-2" />
+            Edit quotas
+          </Button>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="space-y-2 md:col-span-2">
+            <Label>Staff member</Label>
+            <select
+              value={quotaStaffId}
+              onChange={(e) => setQuotaStaffId(e.target.value)}
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+            >
+              <option value="">Select staff to manage quotas</option>
+              {staffMembers.map((staff) => (
+                <option key={getStaffRecordId(staff)} value={getStaffRecordId(staff)}>
+                  {staff.firstName} {staff.lastName} ({staff.staffId})
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="space-y-2">
+            <Label>Year</Label>
+            <Input
+              type="number"
+              value={quotaYear}
+              onChange={(e) => setQuotaYear(Number(e.target.value) || new Date().getFullYear())}
+              min={2020}
+              max={2100}
+            />
+          </div>
+        </div>
+        {quotaLoading ? (
+          <div className="flex justify-center py-4">
+            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+          </div>
+        ) : quotaBalance ? (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b text-left text-muted-foreground">
+                  <th className="py-2 pr-4 font-medium">Type</th>
+                  <th className="py-2 pr-4 font-medium">Quota</th>
+                  <th className="py-2 pr-4 font-medium">Used</th>
+                  <th className="py-2 font-medium">Remaining</th>
+                </tr>
+              </thead>
+              <tbody>
+                {quotaBalance.balances?.map((b) => (
+                  <tr key={b.type} className="border-b last:border-0">
+                    <td className="py-2 pr-4 font-medium">{b.type}</td>
+                    <td className="py-2 pr-4">{b.quota}</td>
+                    <td className="py-2 pr-4">{b.used}</td>
+                    <td className="py-2">
+                      <Badge variant="outline">{b.remaining}</Badge>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground">Select a staff member to view quotas.</p>
+        )}
       </div>
 
       {showForm && (
@@ -282,12 +464,16 @@ export default function WorkforceLeavePage() {
       {viewingLeave && (
         <div
           className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
-          onClick={(e) => { if (e.target === e.currentTarget) setViewingLeave(null); }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setViewingLeave(null);
+          }}
         >
           <div className="bg-background rounded-2xl shadow-2xl w-full max-w-md border">
             <div className="flex items-center justify-between p-5 border-b">
               <h2 className="text-lg font-bold">Leave request</h2>
-              <Button variant="ghost" size="sm" onClick={() => setViewingLeave(null)}>Close</Button>
+              <Button variant="ghost" size="sm" onClick={() => setViewingLeave(null)}>
+                Close
+              </Button>
             </div>
             <div className="p-5 space-y-3 text-sm">
               <div>
@@ -297,7 +483,9 @@ export default function WorkforceLeavePage() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-muted-foreground">Type</p>
-                  <Badge variant="outline" className="mt-1">{viewingLeave.type}</Badge>
+                  <Badge variant="outline" className="mt-1">
+                    {viewingLeave.type}
+                  </Badge>
                 </div>
                 <div>
                   <p className="text-muted-foreground">Status</p>
@@ -322,6 +510,62 @@ export default function WorkforceLeavePage() {
                   <p className="mt-1">{viewingLeave.reason}</p>
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showQuotaEdit && (
+        <div
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setShowQuotaEdit(false);
+          }}
+        >
+          <div className="bg-background rounded-2xl shadow-2xl w-full max-w-lg border">
+            <div className="flex items-center justify-between p-5 border-b">
+              <div>
+                <h2 className="text-lg font-bold">Edit leave quotas</h2>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {quotaStaffLabel || "Staff"} · {quotaYear}
+                </p>
+              </div>
+              <Button variant="ghost" size="sm" onClick={() => setShowQuotaEdit(false)}>
+                Close
+              </Button>
+            </div>
+            <div className="p-5 space-y-4">
+              {QUOTA_FIELDS.map((field) => (
+                <div key={field.key} className="space-y-2">
+                  <Label>{field.label} quota (days)</Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    value={quotaForm[field.key]}
+                    onChange={(e) =>
+                      setQuotaForm((p) => ({
+                        ...p,
+                        [field.key]: Math.max(0, Number(e.target.value) || 0),
+                      }))
+                    }
+                  />
+                  {quotaBalance && (
+                    <p className="text-xs text-muted-foreground">
+                      Used: {quotaBalance.balances?.find((b) => b.type === field.type)?.used ?? 0} ·
+                      Remaining will recalculate after save
+                    </p>
+                  )}
+                </div>
+              ))}
+              <div className="flex gap-2 pt-2">
+                <Button onClick={handleSaveQuotas} disabled={savingQuota}>
+                  {savingQuota ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                  Save quotas
+                </Button>
+                <Button variant="outline" onClick={() => setShowQuotaEdit(false)}>
+                  Cancel
+                </Button>
+              </div>
             </div>
           </div>
         </div>
