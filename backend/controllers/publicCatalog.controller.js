@@ -4,10 +4,66 @@ import {
   Campus,
   Program,
   StudentApplication,
+  StudentDocument,
 } from '../models/index.js';
 import { generateApplicationId } from '../utils/generateStudentId.js';
+import { parseApplicationExtendedFields } from '../utils/applicationFields.js';
 
 const notDeleted = { $ne: true };
+
+const normalizeCnic = (value) => String(value || '').replace(/\D/g, '');
+
+async function findPublicApplicationByIdAndCnic(applicationId, cnic) {
+  const application = await StudentApplication.findOne({
+    applicationId: String(applicationId || '').trim(),
+    isDeleted: notDeleted,
+  });
+  if (!application || normalizeCnic(cnic) !== normalizeCnic(application.cnic)) {
+    return null;
+  }
+  return application;
+}
+
+function serializeTrackApplication(application, documents) {
+  const latestByType = new Map();
+  for (const doc of documents) {
+    if (!latestByType.has(doc.documentType)) {
+      latestByType.set(doc.documentType, doc);
+    }
+  }
+
+  const canEdit = ['Action Required', 'Submitted', 'Under Review'].includes(application.status);
+
+  return {
+    _id: application._id,
+    applicationId: application.applicationId,
+    fullName: application.fullName,
+    status: application.status,
+    applicantMessage: application.applicantMessage || '',
+    applicantReply: application.applicantReply || '',
+    canEdit,
+    firstName: application.firstName,
+    lastName: application.lastName,
+    email: application.email,
+    phone: application.phone,
+    cnic: application.cnic,
+    dateOfBirth: application.dateOfBirth,
+    gender: application.gender,
+    nationality: application.nationality,
+    religion: application.religion,
+    programId: application.programId,
+    campusId: application.campusId,
+    academicSessionId: application.academicSessionId,
+    guardian: application.guardian,
+    address: application.address,
+    previousDegree: application.previousDegree,
+    previousMarks: application.previousMarks,
+    previousEducation: application.previousEducation,
+    submittedAt: application.submittedAt,
+    updatedAt: application.updatedAt,
+    documents: Array.from(latestByType.values()),
+  };
+}
 
 export const getPublicPrograms = handle(async (_req, res) => {
   const programs = await Program.find({ isDeleted: notDeleted, status: 'Active' })
@@ -47,8 +103,6 @@ export const submitPublicApplication = handle(async (req, res) => {
     programId,
     campusId,
     academicSessionId,
-    previousDegree,
-    previousMarks,
   } = req.body;
 
   if (!firstName || !lastName || !email || !phone || !cnic || !programId || !campusId) {
@@ -56,6 +110,20 @@ export const submitPublicApplication = handle(async (req, res) => {
       success: false,
       message: 'firstName, lastName, email, phone, cnic, programId, and campusId are required',
     });
+  }
+
+  const extended = parseApplicationExtendedFields(req.body);
+  if (!extended.dateOfBirth) {
+    return res.status(400).json({ success: false, message: 'dateOfBirth is required' });
+  }
+  if (!extended.gender) {
+    return res.status(400).json({ success: false, message: 'gender is required' });
+  }
+  if (!extended.guardian.fatherName) {
+    return res.status(400).json({ success: false, message: 'guardian.fatherName is required' });
+  }
+  if (!extended.address.city) {
+    return res.status(400).json({ success: false, message: 'address.city is required' });
   }
 
   const program = await Program.findOne({ _id: programId, isDeleted: notDeleted });
@@ -94,8 +162,7 @@ export const submitPublicApplication = handle(async (req, res) => {
     programId,
     campusId,
     academicSessionId: academicSessionId || null,
-    previousDegree: previousDegree || '',
-    previousMarks: previousMarks || '',
+    ...extended,
     source: 'public',
     status: 'Submitted',
   });
@@ -121,15 +188,7 @@ export const trackPublicApplication = handle(async (req, res) => {
     });
   }
 
-  const application = await StudentApplication.findOne({
-    applicationId: String(applicationId).trim(),
-    cnic: String(cnic).trim(),
-    isDeleted: notDeleted,
-  })
-    .populate('programId', 'name code')
-    .populate('campusId', 'name campusCode')
-    .select('-remarks -reviewedBy -deletedAt -deletedBy');
-
+  const application = await findPublicApplicationByIdAndCnic(applicationId, cnic);
   if (!application) {
     return res.status(404).json({
       success: false,
@@ -137,16 +196,120 @@ export const trackPublicApplication = handle(async (req, res) => {
     });
   }
 
+  await application.populate([
+    { path: 'programId', select: 'name code' },
+    { path: 'campusId', select: 'name campusCode' },
+    { path: 'academicSessionId', select: 'name code' },
+  ]);
+
+  const documents = await StudentDocument.find({
+    studentApplication: application._id,
+    isDeleted: notDeleted,
+  })
+    .select(
+      'documentType documentName originalName fileName mimeType reviewStatus reviewNotes reviewedAt createdAt'
+    )
+    .sort({ createdAt: -1 });
+
   res.json({
     success: true,
-    data: {
-      applicationId: application.applicationId,
-      fullName: application.fullName,
-      status: application.status,
-      program: application.programId,
-      campus: application.campusId,
-      submittedAt: application.submittedAt,
-      updatedAt: application.updatedAt,
-    },
+    data: serializeTrackApplication(application, documents),
+  });
+});
+
+export const updatePublicApplication = handle(async (req, res) => {
+  const application = await findPublicApplicationByIdAndCnic(req.params.id, req.body.cnic);
+  if (!application) {
+    return res.status(404).json({
+      success: false,
+      message: 'No application found with the provided details',
+    });
+  }
+
+  if (['Promoted', 'Accepted', 'Rejected'].includes(application.status)) {
+    return res.status(400).json({
+      success: false,
+      message: 'This application can no longer be edited',
+    });
+  }
+
+  const {
+    firstName,
+    lastName,
+    email,
+    phone,
+    programId,
+    campusId,
+    academicSessionId,
+    applicantReply,
+  } = req.body;
+
+  if (!firstName || !lastName || !email || !phone || !programId || !campusId) {
+    return res.status(400).json({
+      success: false,
+      message: 'firstName, lastName, email, phone, programId, and campusId are required',
+    });
+  }
+
+  const extended = parseApplicationExtendedFields(req.body);
+  if (!extended.dateOfBirth) {
+    return res.status(400).json({ success: false, message: 'dateOfBirth is required' });
+  }
+  if (!extended.gender) {
+    return res.status(400).json({ success: false, message: 'gender is required' });
+  }
+  if (!extended.guardian.fatherName) {
+    return res.status(400).json({ success: false, message: 'guardian.fatherName is required' });
+  }
+  if (!extended.address.city) {
+    return res.status(400).json({ success: false, message: 'address.city is required' });
+  }
+
+  const program = await Program.findOne({ _id: programId, isDeleted: notDeleted });
+  if (!program) {
+    return res.status(400).json({ success: false, message: 'Invalid program selected' });
+  }
+  const campus = await Campus.findOne({ _id: campusId, isDeleted: notDeleted });
+  if (!campus) {
+    return res.status(400).json({ success: false, message: 'Invalid campus selected' });
+  }
+
+  application.firstName = String(firstName).trim();
+  application.lastName = String(lastName).trim();
+  application.email = String(email).toLowerCase().trim();
+  application.phone = String(phone).trim();
+  // CNIC stays locked as identity key
+  application.programId = programId;
+  application.campusId = campusId;
+  application.academicSessionId = academicSessionId || null;
+  Object.assign(application, extended);
+
+  if (applicantReply !== undefined) {
+    application.applicantReply = String(applicantReply || '').trim();
+    application.applicantRepliedAt = new Date();
+  }
+
+  application.status = 'Under Review';
+  await application.save();
+
+  await application.populate([
+    { path: 'programId', select: 'name code' },
+    { path: 'campusId', select: 'name campusCode' },
+    { path: 'academicSessionId', select: 'name code' },
+  ]);
+
+  const documents = await StudentDocument.find({
+    studentApplication: application._id,
+    isDeleted: notDeleted,
+  })
+    .select(
+      'documentType documentName originalName fileName mimeType reviewStatus reviewNotes reviewedAt createdAt'
+    )
+    .sort({ createdAt: -1 });
+
+  res.json({
+    success: true,
+    data: serializeTrackApplication(application, documents),
+    message: 'Updates sent to admissions. Your application is back Under Review.',
   });
 });

@@ -128,3 +128,41 @@ export const getRecruitmentCvRelativePath = (recruitmentId, fileName) => {
 
 export const resolveUploadAbsolutePath = (relativePath) =>
   path.join(UPLOAD_ROOT, ...String(relativePath).split('/'));
+
+/** Build DB relative path from the file multer actually wrote */
+export const relativePathFromUploadedFile = (file) => {
+  if (!file?.path) return null;
+  const absolute = path.resolve(file.path);
+  const root = path.resolve(UPLOAD_ROOT);
+  const relative = path.relative(root, absolute);
+  if (!relative || relative.startsWith('..')) return null;
+  return relative.split(path.sep).join('/');
+};
+
+/** If stored path is missing, locate the same fileName under uploads/students */
+export const findStudentUploadByFileName = (fileName) => {
+  if (!fileName) return null;
+  const studentsRoot = path.join(UPLOAD_ROOT, UPLOAD_MODULES.STUDENTS);
+  if (!fs.existsSync(studentsRoot)) return null;
+
+  const stack = [studentsRoot];
+  while (stack.length) {
+    const dir = stack.pop();
+    let entries = [];
+    try {
+      entries = fs.readdirSync(dir, { withFileTypes: true });
+    } catch {
+      continue;
+    }
+    for (const entry of entries) {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        stack.push(full);
+      } else if (entry.name === fileName) {
+        const relative = path.relative(UPLOAD_ROOT, full).split(path.sep).join('/');
+        return { absolutePath: full, relativePath: relative };
+      }
+    }
+  }
+  return null;
+};

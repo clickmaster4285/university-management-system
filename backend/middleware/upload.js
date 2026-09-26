@@ -69,10 +69,13 @@ export const createStudentDocumentUpload = () =>
           const ownerId =
             req.studentAdmission?.admissionId ||
             req.studentAdmission?._id?.toString() ||
+            req.studentApplication?.applicationId ||
+            req.studentApplication?._id?.toString() ||
             req.studentRecord?.studentId ||
             req.studentRecord?._id?.toString() ||
             req.params.id;
-          const documentType = req.body.documentType || 'other';
+          const documentType =
+            req.body.documentType || req.query.documentType || 'other';
           const dir = getStudentDocumentDirectory(ownerId, documentType);
           cb(null, dir);
         } catch (error) {
@@ -83,12 +86,17 @@ export const createStudentDocumentUpload = () =>
         const ownerId =
           req.studentAdmission?.admissionId ||
           req.studentAdmission?._id?.toString() ||
+          req.studentApplication?.applicationId ||
+          req.studentApplication?._id?.toString() ||
           req.studentRecord?.studentId ||
           req.studentRecord?._id?.toString() ||
           req.params.id;
-        const documentType = req.body.documentType || 'other';
+        const documentType =
+          req.body.documentType || req.query.documentType || 'other';
         const documentName =
-          req.body.documentName || path.basename(file.originalname, path.extname(file.originalname));
+          req.body.documentName ||
+          req.query.documentName ||
+          path.basename(file.originalname, path.extname(file.originalname));
         const fileName = buildStudentDocumentFileName({
           ownerId,
           documentType,

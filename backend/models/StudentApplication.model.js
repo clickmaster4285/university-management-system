@@ -32,6 +32,25 @@ const studentApplicationSchema = new mongoose.Schema(
       required: [true, 'CNIC is required'],
       trim: true,
     },
+    dateOfBirth: {
+      type: Date,
+      default: null,
+    },
+    gender: {
+      type: String,
+      enum: ['Male', 'Female', 'Other', ''],
+      default: '',
+    },
+    nationality: {
+      type: String,
+      default: 'Pakistani',
+      trim: true,
+    },
+    religion: {
+      type: String,
+      default: '',
+      trim: true,
+    },
     programId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Program',
@@ -47,6 +66,20 @@ const studentApplicationSchema = new mongoose.Schema(
       ref: 'AcademicSession',
       default: null,
     },
+    guardian: {
+      fatherName: { type: String, trim: true, default: '' },
+      motherName: { type: String, trim: true, default: '' },
+      guardianName: { type: String, trim: true, default: '' },
+      guardianPhone: { type: String, trim: true, default: '' },
+      guardianRelation: { type: String, trim: true, default: '' },
+    },
+    address: {
+      street: { type: String, trim: true, default: '' },
+      city: { type: String, trim: true, default: '' },
+      state: { type: String, trim: true, default: '' },
+      postalCode: { type: String, trim: true, default: '' },
+      country: { type: String, trim: true, default: 'Pakistan' },
+    },
     previousDegree: {
       type: String,
       default: '',
@@ -57,6 +90,18 @@ const studentApplicationSchema = new mongoose.Schema(
       default: '',
       trim: true,
     },
+    previousEducation: {
+      type: [
+        {
+          institution: { type: String, trim: true, default: '' },
+          degree: { type: String, trim: true, default: '' },
+          grade: { type: String, trim: true, default: '' },
+          yearOfCompletion: { type: Number, default: null },
+          percentage: { type: Number, default: null },
+        },
+      ],
+      default: [],
+    },
     source: {
       type: String,
       enum: ['public', 'internal'],
@@ -64,7 +109,15 @@ const studentApplicationSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ['Submitted', 'Under Review', 'Shortlisted', 'Accepted', 'Rejected', 'Promoted'],
+      enum: [
+        'Submitted',
+        'Under Review',
+        'Action Required',
+        'Shortlisted',
+        'Accepted',
+        'Rejected',
+        'Promoted',
+      ],
       default: 'Submitted',
     },
     submittedAt: {
@@ -80,6 +133,22 @@ const studentApplicationSchema = new mongoose.Schema(
       type: String,
       default: '',
       trim: true,
+    },
+    /** Visible to the applicant on the public track page */
+    applicantMessage: {
+      type: String,
+      default: '',
+      trim: true,
+    },
+    /** Latest note from applicant when they send corrections back */
+    applicantReply: {
+      type: String,
+      default: '',
+      trim: true,
+    },
+    applicantRepliedAt: {
+      type: Date,
+      default: null,
     },
     admissionDossierId: {
       type: mongoose.Schema.Types.ObjectId,

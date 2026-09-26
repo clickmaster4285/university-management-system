@@ -1,6 +1,7 @@
 import { handle } from "../utils/asyncHandler.js";
 import { Student, Program, Department, Campus, Batch } from "../models/index.js";
 import { ensureStudentPortalAccount } from "../utils/studentPortalAccount.js";
+import { generateStudentId } from "../utils/generateStudentId.js";
 
 const notDeleted = { $ne: true };
 
@@ -74,9 +75,121 @@ export const getStudentById = handle(async (req, res) => {
 });
 
 export const createStudent = handle(async (req, res) => {
-  return res.status(400).json({
-    success: false,
-    message: "Students must be created by completing an admission dossier",
+  const {
+    firstName,
+    lastName,
+    email,
+    phone,
+    cnic,
+    programId,
+    campusId,
+    batchId,
+    fatherName,
+    motherName,
+    dateOfBirth,
+    gender,
+    city,
+    currentSemester,
+    status,
+  } = req.body;
+
+  if (!firstName || !lastName || !email || !phone || !cnic || !programId || !campusId || !batchId) {
+    return res.status(400).json({
+      success: false,
+      message:
+        "firstName, lastName, email, phone, cnic, programId, campusId, and batchId are required",
+    });
+  }
+
+  if (!fatherName || !String(fatherName).trim()) {
+    return res.status(400).json({ success: false, message: "fatherName is required" });
+  }
+  if (!city || !String(city).trim()) {
+    return res.status(400).json({ success: false, message: "city is required" });
+  }
+  if (!gender || !["Male", "Female", "Other"].includes(gender)) {
+    return res.status(400).json({ success: false, message: "gender is required" });
+  }
+  if (!dateOfBirth) {
+    return res.status(400).json({ success: false, message: "dateOfBirth is required" });
+  }
+
+  const normalizedEmail = String(email).toLowerCase().trim();
+  const normalizedCnic = String(cnic).trim();
+
+  const duplicate = await Student.findOne({
+    isDeleted: notDeleted,
+    $or: [{ email: normalizedEmail }, { cnic: normalizedCnic }],
+  });
+  if (duplicate) {
+    return res.status(409).json({
+      success: false,
+      message: "A student with this email or CNIC already exists",
+    });
+  }
+
+  const [program, campus, batch] = await Promise.all([
+    Program.findById(programId),
+    Campus.findById(campusId),
+    Batch.findById(batchId),
+  ]);
+
+  if (!program) {
+    return res.status(400).json({ success: false, message: "Invalid program" });
+  }
+  if (!campus) {
+    return res.status(400).json({ success: false, message: "Invalid campus" });
+  }
+  if (!batch) {
+    return res.status(400).json({ success: false, message: "Invalid batch" });
+  }
+
+  let departmentId = program.departmentId || null;
+  let departmentName = "";
+  if (departmentId) {
+    const department = await Department.findById(departmentId);
+    departmentName = department?.name || "";
+  }
+
+  const studentId = await generateStudentId();
+  const student = await Student.create({
+    studentId,
+    firstName: String(firstName).trim(),
+    lastName: String(lastName).trim(),
+    name: `${String(firstName).trim()} ${String(lastName).trim()}`.trim(),
+    fatherName: String(fatherName).trim(),
+    motherName: motherName ? String(motherName).trim() : "",
+    cnic: normalizedCnic,
+    email: normalizedEmail,
+    phone: String(phone).trim(),
+    programId,
+    departmentId,
+    campusId,
+    batchId,
+    program: program.name || "",
+    department: departmentName,
+    campus: campus.name || "",
+    city: String(city).trim(),
+    status: status || "Active",
+    enrollmentDate: new Date(),
+    currentSemester: currentSemester ? Number(currentSemester) : 1,
+    semester: currentSemester ? Number(currentSemester) : 1,
+  });
+
+  // dateOfBirth/gender stored only on admission today — keep on student if schema supports later
+  void dateOfBirth;
+  void gender;
+
+  const portalResult = await ensureStudentPortalAccount(student);
+  const populated = await populateStudent(Student.findById(student._id).select("-__v"));
+
+  res.status(201).json({
+    success: true,
+    data: populated,
+    portalLogin: portalResult.portalLogin,
+    message: portalResult.portalLogin?.temporaryPassword
+      ? `Student ${studentId} created. Portal password shown once — save it now.`
+      : `Student ${studentId} created successfully`,
   });
 });
 

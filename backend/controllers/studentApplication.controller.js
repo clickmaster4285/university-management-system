@@ -4,8 +4,10 @@ import {
   Program,
   StudentApplication,
   StudentAdmission,
+  StudentDocument,
 } from '../models/index.js';
 import { generateApplicationId, generateAdmissionDossierId } from '../utils/generateStudentId.js';
+import { parseApplicationExtendedFields } from '../utils/applicationFields.js';
 
 const notDeleted = { $ne: true };
 
@@ -19,12 +21,13 @@ function populateApplication(query) {
 }
 
 export const listApplications = handle(async (req, res) => {
-  const { status, programId, campusId, search, page = 1, limit = 50 } = req.query;
+  const { status, programId, campusId, source, search, page = 1, limit = 50 } = req.query;
   const filter = { isDeleted: notDeleted };
 
   if (status) filter.status = status;
   if (programId) filter.programId = programId;
   if (campusId) filter.campusId = campusId;
+  if (source === 'public' || source === 'internal') filter.source = source;
 
   if (search) {
     filter.$or = [
@@ -47,13 +50,17 @@ export const listApplications = handle(async (req, res) => {
   res.json({ success: true, count: data.length, total, data });
 });
 
-export const getApplicationStats = handle(async (_req, res) => {
+export const getApplicationStats = handle(async (req, res) => {
   const match = { isDeleted: notDeleted };
-  const [total, submitted, underReview, shortlisted, accepted, rejected, promoted] =
+  if (req.query.source === 'public' || req.query.source === 'internal') {
+    match.source = req.query.source;
+  }
+  const [total, submitted, underReview, actionRequired, shortlisted, accepted, rejected, promoted] =
     await Promise.all([
       StudentApplication.countDocuments(match),
       StudentApplication.countDocuments({ ...match, status: 'Submitted' }),
       StudentApplication.countDocuments({ ...match, status: 'Under Review' }),
+      StudentApplication.countDocuments({ ...match, status: 'Action Required' }),
       StudentApplication.countDocuments({ ...match, status: 'Shortlisted' }),
       StudentApplication.countDocuments({ ...match, status: 'Accepted' }),
       StudentApplication.countDocuments({ ...match, status: 'Rejected' }),
@@ -62,7 +69,16 @@ export const getApplicationStats = handle(async (_req, res) => {
 
   res.json({
     success: true,
-    data: { total, submitted, underReview, shortlisted, accepted, rejected, promoted },
+    data: {
+      total,
+      submitted,
+      underReview,
+      actionRequired,
+      shortlisted,
+      accepted,
+      rejected,
+      promoted,
+    },
   });
 });
 
@@ -93,8 +109,6 @@ export const createInternalApplication = handle(async (req, res) => {
     programId,
     campusId,
     academicSessionId,
-    previousDegree,
-    previousMarks,
   } = req.body;
 
   if (!firstName || !lastName || !email || !phone || !cnic || !programId || !campusId) {
@@ -109,6 +123,7 @@ export const createInternalApplication = handle(async (req, res) => {
     return res.status(400).json({ success: false, message: 'Invalid program' });
   }
 
+  const extended = parseApplicationExtendedFields(req.body);
   const applicationId = await generateApplicationId();
   const application = await StudentApplication.create({
     applicationId,
@@ -120,8 +135,7 @@ export const createInternalApplication = handle(async (req, res) => {
     programId,
     campusId,
     academicSessionId: academicSessionId || null,
-    previousDegree: previousDegree || '',
-    previousMarks: previousMarks || '',
+    ...extended,
     source: 'internal',
     status: 'Submitted',
     reviewedBy: req.user?._id || null,
@@ -142,14 +156,22 @@ export const updateApplicationStatus = handle(async (req, res) => {
     return res.status(404).json({ success: false, message: 'Application not found' });
   }
 
-  const { status, remarks } = req.body;
-  const allowed = ['Submitted', 'Under Review', 'Shortlisted', 'Accepted', 'Rejected'];
+  const { status, remarks, applicantMessage } = req.body;
+  const allowed = [
+    'Submitted',
+    'Under Review',
+    'Action Required',
+    'Shortlisted',
+    'Accepted',
+    'Rejected',
+  ];
   if (!allowed.includes(status)) {
     return res.status(400).json({ success: false, message: 'Invalid status' });
   }
 
   application.status = status;
   if (remarks !== undefined) application.remarks = remarks;
+  if (applicantMessage !== undefined) application.applicantMessage = applicantMessage;
   application.reviewedBy = req.user?._id || null;
   await application.save();
 
@@ -183,6 +205,13 @@ export const promoteApplication = handle(async (req, res) => {
   const program = await Program.findById(application.programId);
   const admissionId = await generateAdmissionDossierId();
 
+  const previousEducation =
+    Array.isArray(application.previousEducation) && application.previousEducation.length
+      ? application.previousEducation
+      : application.previousDegree
+        ? [{ degree: application.previousDegree, grade: application.previousMarks || '', institution: '' }]
+        : [];
+
   const dossier = await StudentAdmission.create({
     admissionId,
     applicationId: application._id,
@@ -191,15 +220,17 @@ export const promoteApplication = handle(async (req, res) => {
     email: application.email,
     phone: application.phone,
     cnic: application.cnic,
+    dateOfBirth: application.dateOfBirth || null,
+    gender: application.gender || '',
+    nationality: application.nationality || 'Pakistani',
+    religion: application.religion || '',
     programId: application.programId,
     departmentId: program?.departmentId || null,
     campusId: application.campusId,
     academicSessionId: application.academicSessionId,
-    guardian: { fatherName: '' },
-    previousEducation:
-      application.previousDegree
-        ? [{ degree: application.previousDegree, grade: application.previousMarks || '' }]
-        : [],
+    guardian: application.guardian || { fatherName: '' },
+    address: application.address || {},
+    previousEducation,
     status: 'In Progress',
     admissionOfficer: req.user?._id || null,
   });
@@ -208,6 +239,12 @@ export const promoteApplication = handle(async (req, res) => {
   application.admissionDossierId = dossier._id;
   application.reviewedBy = req.user?._id || null;
   await application.save();
+
+  // Attach any documents uploaded with the public application to the new dossier
+  await StudentDocument.updateMany(
+    { studentApplication: application._id, isDeleted: notDeleted },
+    { $set: { studentAdmission: dossier._id } }
+  );
 
   res.status(201).json({ success: true, data: dossier });
 });

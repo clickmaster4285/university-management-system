@@ -11,7 +11,7 @@ import { Separator } from "@/components/ui/separator";
 import {
   LayoutDashboard, GraduationCap, Building2, Layers, BookOpen,
   Users, UserPlus, UserCheck, CalendarCheck, ClipboardList, ClipboardCheck,
-  Video, Calendar, School, Library, Home, Bus, QrCode,
+  Video, Calendar, School, Library, Home, Bus, QrCode, Globe,
   DollarSign, Wallet, Briefcase, BarChart3, Settings, Bell, Receipt,
   Sparkles, University, BookMarked, ChevronRight, Clock, Shield, UserCog,
   CalendarDays,
@@ -35,6 +35,7 @@ const SIDEBAR_ICONS: Record<string, React.ComponentType<{ className?: string }>>
   "/access": Shield,
   "/role-assignments": UserCog,
   "/admissions": UserPlus,
+  "/admissions/online": Globe,
   "/students": GraduationCap,
   "/academic-sessions": Calendar,
   "/batches": Layers,

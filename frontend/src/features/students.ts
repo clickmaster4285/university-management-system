@@ -58,6 +58,16 @@ export const studentAPI = {
   update: (id: string, data: Partial<Student>) => apiClient.put(`/students/${id}`, data),
   delete: (id: string) => apiClient.delete(`/students/${id}`),
 
+  create: async (data: Record<string, unknown>) => {
+    const result = await apiClient.post('/students', data);
+    return result.data as {
+      success: boolean;
+      data: Student;
+      portalLogin?: PortalLoginCredentials | null;
+      message?: string;
+    };
+  },
+
   enablePortalLogin: async (id: string, password?: string) => {
     const result = await apiClient.post(`/students/${id}/portal-login`, password ? { password } : {});
     return result.data as {

@@ -12,6 +12,8 @@ export const STUDENT_DOCUMENT_TYPES = [
   'other',
 ];
 
+export const STUDENT_DOCUMENT_REVIEW_STATUSES = ['Pending', 'Approved', 'Rejected'];
+
 const studentDocumentSchema = new mongoose.Schema(
   {
     documentId: {
@@ -21,7 +23,12 @@ const studentDocumentSchema = new mongoose.Schema(
     studentAdmission: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'StudentAdmission',
-      required: true,
+      default: null,
+    },
+    studentApplication: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'StudentApplication',
+      default: null,
     },
     student: {
       type: mongoose.Schema.Types.ObjectId,
@@ -68,6 +75,25 @@ const studentDocumentSchema = new mongoose.Schema(
       default: '',
       trim: true,
     },
+    reviewStatus: {
+      type: String,
+      enum: STUDENT_DOCUMENT_REVIEW_STATUSES,
+      default: 'Pending',
+    },
+    reviewNotes: {
+      type: String,
+      default: '',
+      trim: true,
+    },
+    reviewedAt: {
+      type: Date,
+      default: null,
+    },
+    reviewedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      default: null,
+    },
     uploadedBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
@@ -100,6 +126,7 @@ studentDocumentSchema.pre('save', function preSave(next) {
 });
 
 studentDocumentSchema.index({ studentAdmission: 1, documentType: 1 });
+studentDocumentSchema.index({ studentApplication: 1, documentType: 1 });
 studentDocumentSchema.index({ student: 1 });
 
 export default mongoose.model('StudentDocument', studentDocumentSchema);

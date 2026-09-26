@@ -127,7 +127,8 @@ export const SIDEBAR_NAV: SidebarNavSectionConfig[] = [
   {
     label: "Students",
     items: [
-      { to: "/admissions", label: "Applications", module: "admissions" },
+      { to: "/admissions", label: "Visitor", module: "admissions", exact: true },
+      { to: "/admissions/online", label: "Online applicants", module: "admissions" },
       { to: "/students", label: "Student Directory", module: "students" },
     ],
   },

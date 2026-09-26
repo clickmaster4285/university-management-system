@@ -81,6 +81,8 @@ export const STUDENT_DOCUMENT_TYPE_LABELS: Record<StudentDocumentType, string> =
   other: 'Other',
 };
 
+export type StudentDocumentReviewStatus = 'Pending' | 'Approved' | 'Rejected';
+
 export interface StudentDocument {
   _id?: string;
   documentId?: string;
@@ -92,6 +94,9 @@ export interface StudentDocument {
   fileSize?: number;
   relativePath?: string;
   notes?: string;
+  reviewStatus?: StudentDocumentReviewStatus;
+  reviewNotes?: string;
+  reviewedAt?: string;
   createdAt?: string;
 }
 
@@ -171,12 +176,13 @@ export const studentAdmissionsAPI = {
     payload: { file: File; documentType: StudentDocumentType; documentName: string; notes?: string }
   ) => {
     const formData = new FormData();
-    formData.append('file', payload.file);
     formData.append('documentType', payload.documentType);
     formData.append('documentName', payload.documentName);
     if (payload.notes) formData.append('notes', payload.notes);
+    formData.append('file', payload.file);
     const response = await api.post(`/admissions/dossiers/${dossierId}/documents`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
+      params: { documentType: payload.documentType, documentName: payload.documentName },
     });
     return response.data?.data as StudentDocument;
   },
@@ -184,6 +190,18 @@ export const studentAdmissionsAPI = {
   deleteDossierDocument: async (dossierId: string, documentId: string) => {
     const response = await api.delete(`/admissions/dossiers/${dossierId}/documents/${documentId}`);
     return response.data;
+  },
+
+  reviewDossierDocument: async (
+    dossierId: string,
+    documentId: string,
+    payload: { reviewStatus: StudentDocumentReviewStatus; reviewNotes?: string }
+  ) => {
+    const response = await api.patch(
+      `/admissions/dossiers/${dossierId}/documents/${documentId}/review`,
+      payload
+    );
+    return response.data?.data as StudentDocument;
   },
 
   listStudentDocuments: async (studentId: string) => {
@@ -196,12 +214,13 @@ export const studentAdmissionsAPI = {
     payload: { file: File; documentType: StudentDocumentType; documentName: string; notes?: string }
   ) => {
     const formData = new FormData();
-    formData.append('file', payload.file);
     formData.append('documentType', payload.documentType);
     formData.append('documentName', payload.documentName);
     if (payload.notes) formData.append('notes', payload.notes);
+    formData.append('file', payload.file);
     const response = await api.post(`/students/${studentId}/documents`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
+      params: { documentType: payload.documentType, documentName: payload.documentName },
     });
     return response.data?.data as StudentDocument;
   },

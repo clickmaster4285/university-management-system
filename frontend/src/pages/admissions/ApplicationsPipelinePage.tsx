@@ -1,24 +1,22 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Eye, Loader2, Plus, UserPlus } from "lucide-react";
+import { Eye, Globe, Loader2, Plus, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 import { DataTable, type Column } from "@/components/data-table";
 import { KpiCard } from "@/components/dashboard/kpi-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   studentApplicationsAPI,
   type ApplicationStatus,
   type StudentApplication,
 } from "@/features/studentApplications";
-import { programAPI } from "@/features/programs";
-import { campusAPI } from "@/features/campus";
 
 const STATUS_OPTIONS: ApplicationStatus[] = [
   "Submitted",
   "Under Review",
+  "Action Required",
   "Shortlisted",
   "Accepted",
   "Rejected",
@@ -31,8 +29,20 @@ const resolveRefLabel = (value: StudentApplication["programId"]) => {
   return value;
 };
 
-export default function ApplicationsPipelinePage() {
+export type IntakeListVariant = "visitor" | "online";
+
+interface ApplicationsPipelinePageProps {
+  /** visitor = walk-in / staff-entered (internal); online = /apply portal (public) */
+  variant?: IntakeListVariant;
+}
+
+export default function ApplicationsPipelinePage({
+  variant = "visitor",
+}: ApplicationsPipelinePageProps) {
   const navigate = useNavigate();
+  const source = variant === "online" ? "public" : "internal";
+  const isOnline = variant === "online";
+
   const [applications, setApplications] = useState<StudentApplication[]>([]);
   const [stats, setStats] = useState({
     total: 0,
@@ -46,42 +56,24 @@ export default function ApplicationsPipelinePage() {
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState("all");
   const [search, setSearch] = useState("");
-  const [showForm, setShowForm] = useState(false);
-  const [programs, setPrograms] = useState<Array<{ _id: string; name: string; code: string }>>([]);
-  const [campuses, setCampuses] = useState<Array<{ _id: string; name: string }>>([]);
-  const [form, setForm] = useState({
-    firstName: "",
-    lastName: "",
-    email: "",
-    phone: "",
-    cnic: "",
-    programId: "",
-    campusId: "",
-    previousDegree: "",
-    previousMarks: "",
-  });
 
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const params: Record<string, string | number> = { limit: 500 };
+      const params: Record<string, string | number> = { limit: 500, source };
       if (search) params.search = search;
-      const [listRes, statsRes, programRes, campusRes] = await Promise.all([
+      const [listRes, statsRes] = await Promise.all([
         studentApplicationsAPI.list(params),
-        studentApplicationsAPI.getStats(),
-        programAPI.getAll(),
-        campusAPI.getAll(),
+        studentApplicationsAPI.getStats({ source }),
       ]);
       setApplications(listRes.data || []);
       setStats(statsRes);
-      setPrograms(programRes?.data || programRes || []);
-      setCampuses(Array.isArray(campusRes?.data) ? campusRes.data : []);
     } catch {
-      toast.error("Failed to load applications");
+      toast.error(isOnline ? "Failed to load online applicants" : "Failed to load visitor applications");
     } finally {
       setLoading(false);
     }
-  }, [search]);
+  }, [search, source, isOnline]);
 
   useEffect(() => {
     loadData();
@@ -91,40 +83,26 @@ export default function ApplicationsPipelinePage() {
     return applications.filter((app) => statusFilter === "all" || app.status === statusFilter);
   }, [applications, statusFilter]);
 
-  const handleCreate = async () => {
-    if (!form.firstName || !form.lastName || !form.email || !form.phone || !form.cnic || !form.programId || !form.campusId) {
-      toast.error("Please fill all required fields");
-      return;
-    }
-    try {
-      await studentApplicationsAPI.createInternal(form);
-      toast.success("Internal application created");
-      setShowForm(false);
-      setForm({
-        firstName: "",
-        lastName: "",
-        email: "",
-        phone: "",
-        cnic: "",
-        programId: "",
-        campusId: "",
-        previousDegree: "",
-        previousMarks: "",
-      });
-      await loadData();
-    } catch {
-      toast.error("Failed to create application");
-    }
-  };
-
   const columns: Column<StudentApplication>[] = [
     {
       key: "applicationId",
-      header: "Application",
+      header: "Applicant",
       cell: (row) => (
         <div>
-          <div className="font-medium">{row.firstName} {row.lastName}</div>
+          <div className="font-medium">
+            {row.firstName} {row.lastName}
+          </div>
           <div className="text-xs text-muted-foreground font-mono">{row.applicationId}</div>
+        </div>
+      ),
+    },
+    {
+      key: "contact",
+      header: "Contact",
+      cell: (row) => (
+        <div className="text-sm">
+          <div className="truncate max-w-[180px]">{row.email}</div>
+          <div className="text-xs text-muted-foreground">{row.phone}</div>
         </div>
       ),
     },
@@ -132,11 +110,6 @@ export default function ApplicationsPipelinePage() {
       key: "program",
       header: "Program",
       cell: (row) => resolveRefLabel(row.programId),
-    },
-    {
-      key: "source",
-      header: "Source",
-      cell: (row) => <Badge variant="outline">{row.source}</Badge>,
     },
     {
       key: "status",
@@ -147,76 +120,105 @@ export default function ApplicationsPipelinePage() {
       key: "actions",
       header: "",
       cell: (row) => (
-        <Button size="sm" variant="outline" onClick={() => navigate(`/admissions/${row.applicationId}`)}>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() =>
+            navigate(`/admissions/${row.applicationId}`, {
+              state: { from: isOnline ? "online" : "visitor" },
+            })
+          }
+        >
           <Eye className="h-4 w-4" /> Review
         </Button>
       ),
     },
   ];
 
+  const TitleIcon = isOnline ? Globe : UserPlus;
+
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <UserPlus className="h-6 w-6 text-primary" /> Applications pipeline
+          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
+            <TitleIcon className="h-6 w-6 text-primary" />
+            {isOnline ? "Online applicants" : "Visitor applications"}
           </h1>
-          <p className="text-sm text-muted-foreground">Review public and internal intake applications</p>
+          <p className="text-sm text-muted-foreground mt-1">
+            {isOnline
+              ? "Track students who applied from the public /apply portal. Review, shortlist, accept, then promote to dossier."
+              : "Walk-in and staff-assisted intake. Create a visitor application, then review and promote to dossier."}
+          </p>
         </div>
-        <Button onClick={() => setShowForm((v) => !v)}>
-          <Plus className="h-4 w-4" /> Internal application
-        </Button>
+        {!isOnline ? (
+          <Button onClick={() => navigate("/admissions/internal/create")}>
+            <Plus className="h-4 w-4" /> New visitor application
+          </Button>
+        ) : null}
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <KpiCard label="Total" value={stats.total} icon={UserPlus} />
-        <KpiCard label="Submitted" value={stats.submitted} icon={UserPlus} />
-        <KpiCard label="Under review" value={stats.underReview} icon={UserPlus} />
-        <KpiCard label="Promoted" value={stats.promoted} icon={UserPlus} />
+        <KpiCard label="Total" value={stats.total} icon={TitleIcon} onClick={() => setStatusFilter("all")} />
+        <KpiCard
+          label="Submitted"
+          value={stats.submitted}
+          icon={TitleIcon}
+          onClick={() => setStatusFilter("Submitted")}
+        />
+        <KpiCard
+          label="Under review"
+          value={stats.underReview}
+          icon={TitleIcon}
+          onClick={() => setStatusFilter("Under Review")}
+        />
+        <KpiCard
+          label="Promoted"
+          value={stats.promoted}
+          icon={TitleIcon}
+          onClick={() => setStatusFilter("Promoted")}
+        />
       </div>
 
-      {showForm && (
-        <div className="border rounded-lg p-4 space-y-4 bg-muted/20">
-          <h3 className="font-medium">Quick internal application</h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <div><Label>First name</Label><Input value={form.firstName} onChange={(e) => setForm({ ...form, firstName: e.target.value })} /></div>
-            <div><Label>Last name</Label><Input value={form.lastName} onChange={(e) => setForm({ ...form, lastName: e.target.value })} /></div>
-            <div><Label>CNIC</Label><Input value={form.cnic} onChange={(e) => setForm({ ...form, cnic: e.target.value })} /></div>
-            <div><Label>Email</Label><Input value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></div>
-            <div><Label>Phone</Label><Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></div>
-            <div>
-              <Label>Program</Label>
-              <select className="w-full h-10 rounded-md border px-3 text-sm" value={form.programId} onChange={(e) => setForm({ ...form, programId: e.target.value })}>
-                <option value="">Select</option>
-                {programs.map((p) => <option key={p._id} value={p._id}>{p.name}</option>)}
-              </select>
-            </div>
-            <div>
-              <Label>Campus</Label>
-              <select className="w-full h-10 rounded-md border px-3 text-sm" value={form.campusId} onChange={(e) => setForm({ ...form, campusId: e.target.value })}>
-                <option value="">Select</option>
-                {campuses.map((c) => <option key={c._id} value={c._id}>{c.name}</option>)}
-              </select>
-            </div>
-          </div>
-          <Button onClick={handleCreate}>Create application</Button>
-        </div>
-      )}
-
-      <div className="flex flex-wrap gap-3">
-        <Input placeholder="Search name, email, CNIC, application ID..." value={search} onChange={(e) => setSearch(e.target.value)} className="max-w-sm" />
-        <select className="h-10 rounded-md border px-3 text-sm" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+      <div className="flex flex-wrap items-center gap-3">
+        <Input
+          placeholder="Search name, email, CNIC, application ID…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="max-w-sm"
+        />
+        <select
+          className="h-10 rounded-md border bg-background px-3 text-sm"
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+        >
           <option value="all">All statuses</option>
-          {STATUS_OPTIONS.map((status) => <option key={status} value={status}>{status}</option>)}
+          {STATUS_OPTIONS.map((status) => (
+            <option key={status} value={status}>
+              {status}
+            </option>
+          ))}
         </select>
+        {statusFilter !== "all" ? (
+          <Button type="button" variant="ghost" size="sm" onClick={() => setStatusFilter("all")}>
+            Clear filter
+          </Button>
+        ) : null}
       </div>
 
       {loading ? (
-        <div className="flex justify-center py-16"><Loader2 className="h-8 w-8 animate-spin" /></div>
+        <div className="flex justify-center py-16">
+          <Loader2 className="h-8 w-8 animate-spin" />
+        </div>
+      ) : filtered.length === 0 ? (
+        <div className="rounded-lg border border-dashed p-10 text-center text-sm text-muted-foreground">
+          {isOnline
+            ? "No online applications yet. Applicants appear here after submitting /apply."
+            : "No visitor applications yet. Use New visitor application for walk-ins."}
+        </div>
       ) : (
         <DataTable columns={columns} data={filtered} />
       )}
-
     </div>
   );
 }

@@ -376,6 +376,7 @@ Frontend:
 - Login: `role === 'Student'` → `/student`; `AppLayout` redirects Students away
 - Pages: home, registrations, fees, profile under `/student`
 - Staff: dossier complete shows temp password; student profile “Enable portal login”
+- Shared `StudentDossierForm` on `/apply`, admission dossier, and `/students/create` (directory add)
 
 ## UI Components
 

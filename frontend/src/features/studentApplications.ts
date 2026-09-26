@@ -1,5 +1,6 @@
 import axios from 'axios';
 import api from './axios';
+import type { StudentDocument } from './studentAdmissions';
 
 const normalizeApiBase = (value?: string) => {
   const fallback = 'http://localhost:4006/api';
@@ -19,6 +20,7 @@ export const publicApi = axios.create({
 export type ApplicationStatus =
   | 'Submitted'
   | 'Under Review'
+  | 'Action Required'
   | 'Shortlisted'
   | 'Accepted'
   | 'Rejected'
@@ -41,15 +43,43 @@ export interface StudentApplication {
   email: string;
   phone: string;
   cnic: string;
+  dateOfBirth?: string | null;
+  gender?: string;
+  nationality?: string;
+  religion?: string;
   programId: string | RefSummary;
   campusId: string | RefSummary;
   academicSessionId?: string | RefSummary | null;
+  guardian?: {
+    fatherName?: string;
+    motherName?: string;
+    guardianName?: string;
+    guardianPhone?: string;
+    guardianRelation?: string;
+  };
+  address?: {
+    street?: string;
+    city?: string;
+    state?: string;
+    postalCode?: string;
+    country?: string;
+  };
   previousDegree?: string;
   previousMarks?: string;
+  previousEducation?: Array<{
+    institution?: string;
+    degree?: string;
+    grade?: string;
+    yearOfCompletion?: number | null;
+    percentage?: number | null;
+  }>;
   source: 'public' | 'internal';
   status: ApplicationStatus;
   submittedAt?: string;
   remarks?: string;
+  applicantMessage?: string;
+  applicantReply?: string;
+  applicantRepliedAt?: string;
   admissionDossierId?: string | { _id: string; admissionId: string; status: string };
   reviewedBy?: string | { firstName?: string; lastName?: string; email?: string };
   createdAt?: string;
@@ -60,6 +90,7 @@ export interface ApplicationStats {
   total: number;
   submitted: number;
   underReview: number;
+  actionRequired?: number;
   shortlisted: number;
   accepted: number;
   rejected: number;
@@ -96,8 +127,8 @@ export const studentApplicationsAPI = {
     return response.data as { data: StudentApplication[]; total: number };
   },
 
-  getStats: async () => {
-    const response = await api.get('/admissions/applications/stats');
+  getStats: async (params?: { source?: string }) => {
+    const response = await api.get('/admissions/applications/stats', { params });
     return (response.data?.data || response.data) as ApplicationStats;
   },
 
@@ -111,8 +142,17 @@ export const studentApplicationsAPI = {
     return response.data?.data as StudentApplication;
   },
 
-  updateStatus: async (id: string, status: ApplicationStatus, remarks?: string) => {
-    const response = await api.patch(`/admissions/applications/${id}/status`, { status, remarks });
+  updateStatus: async (
+    id: string,
+    status: ApplicationStatus,
+    remarks?: string,
+    applicantMessage?: string
+  ) => {
+    const response = await api.patch(`/admissions/applications/${id}/status`, {
+      status,
+      remarks,
+      applicantMessage,
+    });
     return response.data?.data as StudentApplication;
   },
 
@@ -146,10 +186,81 @@ export const studentApplicationsAPI = {
     return response.data;
   },
 
+  uploadPublicApplicationDocument: async (
+    applicationId: string,
+    payload: { file: File; documentType: string; documentName: string; cnic: string }
+  ) => {
+    const formData = new FormData();
+    formData.append('documentType', payload.documentType);
+    formData.append('documentName', payload.documentName);
+    formData.append('cnic', payload.cnic);
+    formData.append('file', payload.file);
+    const response = await publicApi.post(
+      `/public/applications/${applicationId}/documents`,
+      formData,
+      {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        params: { documentType: payload.documentType, documentName: payload.documentName },
+      }
+    );
+    return response.data?.data;
+  },
+
+  listDocuments: async (applicationId: string) => {
+    const response = await api.get(`/admissions/applications/${applicationId}/documents`);
+    return (response.data?.data || []) as StudentDocument[];
+  },
+
+  uploadDocument: async (
+    applicationId: string,
+    payload: { file: File; documentType: string; documentName: string }
+  ) => {
+    const formData = new FormData();
+    formData.append('documentType', payload.documentType);
+    formData.append('documentName', payload.documentName);
+    formData.append('file', payload.file);
+    const response = await api.post(
+      `/admissions/applications/${applicationId}/documents`,
+      formData,
+      {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        params: { documentType: payload.documentType, documentName: payload.documentName },
+      }
+    );
+    return response.data?.data;
+  },
+
+  deleteDocument: async (applicationId: string, documentId: string) => {
+    const response = await api.delete(
+      `/admissions/applications/${applicationId}/documents/${documentId}`
+    );
+    return response.data;
+  },
+
+  reviewDocument: async (
+    applicationId: string,
+    documentId: string,
+    payload: { reviewStatus: 'Pending' | 'Approved' | 'Rejected'; reviewNotes?: string }
+  ) => {
+    const response = await api.patch(
+      `/admissions/applications/${applicationId}/documents/${documentId}/review`,
+      payload
+    );
+    return response.data?.data as StudentDocument;
+  },
+
   trackPublicApplication: async (applicationId: string, cnic: string) => {
     const response = await publicApi.get('/public/applications/track', {
       params: { applicationId, cnic },
     });
     return response.data?.data;
+  },
+
+  updatePublicApplication: async (
+    applicationId: string,
+    payload: Record<string, unknown> & { cnic: string; applicantReply?: string }
+  ) => {
+    const response = await publicApi.put(`/public/applications/${applicationId}`, payload);
+    return response.data;
   },
 };

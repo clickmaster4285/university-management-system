@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
-import { FileText } from "lucide-react";
 import { toast } from "sonner";
 import api from "@/features/axios";
-import { StudentDocumentSlots } from "@/components/student/StudentDocumentSlots";
+import {
+  StudentDocumentSlots,
+  resolveFileBlob,
+} from "@/components/student/StudentDocumentSlots";
 import {
   STUDENT_DOCUMENT_TYPE_LABELS,
   studentAdmissionsAPI,
@@ -46,17 +48,12 @@ export function StudentDocumentsPanel({ student }: StudentDocumentsPanelProps) {
     await loadDocuments();
   };
 
-  const handleDownload = async (doc: StudentDocument) => {
-    if (!doc._id) return;
+  const handleFetchFile = async (doc: StudentDocument) => {
+    if (!doc._id) throw new Error("Missing document id");
     const res = await api.get(`/students/${studentId}/documents/${doc._id}/download`, {
       responseType: "blob",
     });
-    const url = window.URL.createObjectURL(res.data);
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = doc.originalName || doc.fileName;
-    anchor.click();
-    window.URL.revokeObjectURL(url);
+    return resolveFileBlob(res.data as Blob, String(res.headers["content-type"] || ""));
   };
 
   const handleDelete = async (doc: StudentDocument) => {
@@ -67,26 +64,15 @@ export function StudentDocumentsPanel({ student }: StudentDocumentsPanelProps) {
   };
 
   return (
-    <div className="space-y-4">
-      <div>
-        <h3 className="text-lg font-semibold flex items-center gap-2">
-          <FileText className="h-5 w-5 text-primary" />
-          Student documents
-        </h3>
-        <p className="text-sm text-muted-foreground mt-1">
-          Upload each document directly in its slot under{" "}
-          <code>uploads/students/{student.studentId || studentId}/document_type/</code>
-        </p>
-      </div>
-
-      <StudentDocumentSlots
-        documents={documents}
-        loading={loading}
-        onUpload={handleUpload}
-        onDownload={handleDownload}
-        onDelete={handleDelete}
-      />
-    </div>
+    <StudentDocumentSlots
+      documents={documents}
+      loading={loading}
+      onUpload={handleUpload}
+      onFetchFile={handleFetchFile}
+      onDelete={handleDelete}
+      title="Student documents"
+      description={`Upload each document in its slot under uploads/students/${student.studentId || studentId}/document_type/`}
+    />
   );
 }
 

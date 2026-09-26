@@ -1,12 +1,15 @@
 import { useCallback, useEffect, useState } from "react";
-import { FileText } from "lucide-react";
 import { toast } from "sonner";
 import api from "@/features/axios";
-import { StudentDocumentSlots } from "@/components/student/StudentDocumentSlots";
+import {
+  StudentDocumentSlots,
+  resolveFileBlob,
+} from "@/components/student/StudentDocumentSlots";
 import {
   STUDENT_DOCUMENT_TYPE_LABELS,
   studentAdmissionsAPI,
   type StudentDocument,
+  type StudentDocumentReviewStatus,
   type StudentDocumentType,
 } from "@/features/studentAdmissions";
 
@@ -16,7 +19,11 @@ interface AdmissionDocumentsPanelProps {
   onDocumentsChange?: () => void;
 }
 
-export function AdmissionDocumentsPanel({ dossierId, ownerLabel, onDocumentsChange }: AdmissionDocumentsPanelProps) {
+export function AdmissionDocumentsPanel({
+  dossierId,
+  ownerLabel,
+  onDocumentsChange,
+}: AdmissionDocumentsPanelProps) {
   const [documents, setDocuments] = useState<StudentDocument[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -47,17 +54,25 @@ export function AdmissionDocumentsPanel({ dossierId, ownerLabel, onDocumentsChan
     await loadDocuments();
   };
 
-  const handleDownload = async (doc: StudentDocument) => {
-    if (!doc._id) return;
+  const handleFetchFile = async (doc: StudentDocument) => {
+    if (!doc._id) throw new Error("Missing document id");
     const res = await api.get(`/admissions/dossiers/${dossierId}/documents/${doc._id}/download`, {
       responseType: "blob",
     });
-    const url = window.URL.createObjectURL(res.data);
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = doc.originalName || doc.fileName;
-    anchor.click();
-    window.URL.revokeObjectURL(url);
+    return resolveFileBlob(res.data as Blob, String(res.headers["content-type"] || ""));
+  };
+
+  const handleReview = async (
+    doc: StudentDocument,
+    reviewStatus: StudentDocumentReviewStatus,
+    reviewNotes?: string
+  ) => {
+    if (!doc._id) return;
+    await studentAdmissionsAPI.reviewDossierDocument(dossierId, doc._id, {
+      reviewStatus,
+      reviewNotes,
+    });
+    await loadDocuments();
   };
 
   const handleDelete = async (doc: StudentDocument) => {
@@ -69,23 +84,17 @@ export function AdmissionDocumentsPanel({ dossierId, ownerLabel, onDocumentsChan
 
   return (
     <div className="space-y-4">
-      <div>
-        <h3 className="text-lg font-semibold flex items-center gap-2">
-          <FileText className="h-5 w-5 text-primary" />
-          Admission documents
-        </h3>
-        <p className="text-sm text-muted-foreground mt-1">
-          Upload each document directly in its slot. Files are stored under{" "}
-          <code>uploads/students/{ownerLabel || dossierId}/document_type/</code>
-        </p>
-      </div>
-
       <StudentDocumentSlots
         documents={documents}
         loading={loading}
         onUpload={handleUpload}
-        onDownload={handleDownload}
+        onFetchFile={handleFetchFile}
+        onReview={handleReview}
         onDelete={handleDelete}
+        title="Admission documents"
+        description={`Upload, view, approve, or reject documents for ${
+          ownerLabel || dossierId
+        }.`}
       />
     </div>
   );

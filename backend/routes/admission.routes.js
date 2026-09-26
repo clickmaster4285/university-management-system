@@ -17,14 +17,21 @@ import {
   updateDossier,
 } from '../controllers/studentAdmission.controller.js';
 import {
+  deleteApplicationDocument,
   deleteDossierDocument,
   deleteStudentDocument,
+  downloadApplicationDocument,
   downloadDossierDocument,
   downloadStudentDocument,
+  listApplicationDocuments,
   listDossierDocuments,
   listStudentDocuments,
+  resolveApplicationForUpload,
   resolveDossierForUpload,
   resolveStudentForUpload,
+  reviewApplicationDocument,
+  reviewDossierDocument,
+  uploadApplicationDocument,
   uploadDossierDocument,
   uploadStudentDocument,
 } from '../controllers/studentDocument.controller.js';
@@ -42,6 +49,16 @@ router.get('/applications/:id', getApplicationById);
 router.patch('/applications/:id/status', updateApplicationStatus);
 router.post('/applications/:id/promote', promoteApplication);
 router.delete('/applications/:id', deleteApplication);
+router.get('/applications/:id/documents', listApplicationDocuments);
+router.post(
+  '/applications/:id/documents',
+  resolveApplicationForUpload,
+  studentDocumentUpload.single('file'),
+  uploadApplicationDocument
+);
+router.get('/applications/:id/documents/:documentId/download', downloadApplicationDocument);
+router.patch('/applications/:id/documents/:documentId/review', reviewApplicationDocument);
+router.delete('/applications/:id/documents/:documentId', deleteApplicationDocument);
 
 // Admission dossiers
 router.get('/dossiers/document-types', getDossierDocumentTypes);
@@ -57,6 +74,7 @@ router.post(
   uploadDossierDocument
 );
 router.get('/dossiers/:id/documents/:documentId/download', downloadDossierDocument);
+router.patch('/dossiers/:id/documents/:documentId/review', reviewDossierDocument);
 router.delete('/dossiers/:id/documents/:documentId', deleteDossierDocument);
 
 export {

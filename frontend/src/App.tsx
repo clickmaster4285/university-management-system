@@ -39,9 +39,11 @@ const CampusEditPage = lazy(() => import("./pages/university/campuses/CampusEdit
 const CampusDetailPage = lazy(() => import("./pages/university/campuses/CampusDetailPage"));
 
 // Academics Modular Pages
-const AdmissionsPage = lazy(() => import("./pages/admissions/ApplicationsPipelinePage"));
+const AdmissionsPage = lazy(() => import("./pages/admissions/VisitorApplicationsPage"));
+const OnlineApplicantsPage = lazy(() => import("./pages/admissions/OnlineApplicantsPage"));
 const ApplicationReviewPage = lazy(() => import("./pages/admissions/ApplicationReviewPage"));
 const AdmissionDossierPage = lazy(() => import("./pages/admissions/AdmissionDossierPage"));
+const InternalApplicationCreatePage = lazy(() => import("./pages/admissions/InternalApplicationCreatePage"));
 const DepartmentsPage = lazy(() => import("./pages/academics/departments/DepartmentsPage"));
 const DepartmentCreatePage = lazy(() => import("./pages/academics/departments/DepartmentCreatePage"));
 const DepartmentEditPage = lazy(() => import("./pages/academics/departments/DepartmentEditPage"));
@@ -68,6 +70,7 @@ const BatchCreatePage = lazy(() => import("./pages/academics/batches/BatchCreate
 const BatchEditPage = lazy(() => import("./pages/academics/batches/BatchEditPage"));
 const SemesterRegistrationsPage = lazy(() => import("./pages/academics/registrations/SemesterRegistrationsPage"));
 const StudentsPage = lazy(() => import("./pages/academics/students/StudentsPage"));
+const StudentCreatePage = lazy(() => import("./pages/academics/students/StudentCreatePage"));
 const StudentProfilePage = lazy(() => import("./pages/students/StudentProfilePage"));
 const StudentDocumentsPage = lazy(() => import("./pages/students/StudentDocumentsPage"));
 const StaffPage = lazy(() => import("./pages/people/staff/StaffPage"));
@@ -180,6 +183,8 @@ export const App = () => (
 
                 {/* Academics */}
                 <Route path="/admissions" element={<AdmissionsPage />} />
+                <Route path="/admissions/online" element={<OnlineApplicantsPage />} />
+                <Route path="/admissions/internal/create" element={<InternalApplicationCreatePage />} />
                 <Route path="/admissions/dossier/:id" element={<AdmissionDossierPage />} />
                 <Route path="/admissions/:id" element={<ApplicationReviewPage />} />
                 <Route path="/departments" element={<DepartmentsPage />} />
@@ -208,6 +213,7 @@ export const App = () => (
                 <Route path="/batches/edit/:id" element={<BatchEditPage />} />
                 <Route path="/semester-registrations" element={<SemesterRegistrationsPage />} />
                 <Route path="/students" element={<StudentsPage />} />
+                <Route path="/students/create" element={<StudentCreatePage />} />
                 <Route path="/students/:id/documents" element={<StudentDocumentsPage />} />
                 <Route path="/students/:id" element={<StudentProfilePage />} />
                 <Route path="/staff" element={<StaffPage />} />

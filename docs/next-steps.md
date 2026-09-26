@@ -54,6 +54,8 @@
 4. **Layout** — `StudentPortalLayout` + `/student`, `/student/registrations`, `/student/fees`, `/student/profile`.
 5. **APIs** — `GET /api/student-portal/me|registrations|challans` via `requireStudentPortal` (scoped to linked Student). Grades/attendance still wait on Phase 6.
 
+**Related (Sep 2026):** Full online apply form + shared `StudentDossierForm` reused by `/apply`, admission dossier, and directory **Add student**. Applications still reviewed (Shortlisted / Accepted / …) then promoted → dossier → complete.
+
 **Done when:** A student can log in after admission and see their own profile, semester registrations, and challans — and cannot access staff routes.
 
 ---
