@@ -7,7 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { attendanceAPI, StudentAttendance, AttendanceSummary } from "@/features/attendance";
-import { departmentAPI, type Department } from "@/features/departments";
+import { offeringAPI, type CourseOffering } from "@/features/offerings";
+import { type Subject } from "@/features/subjects";
 import { 
   CalendarCheck, 
   UserCheck, 
@@ -51,7 +52,7 @@ export function AttendancePage() {
   const [summary, setSummary] = useState<AttendanceSummary | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [departments, setDepartments] = useState<Department[]>([]);
+  const [offerings, setOfferings] = useState<CourseOffering[]>([]);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -68,26 +69,36 @@ export function AttendancePage() {
     notMarked: 0
   });
   
-  // Filter state
+  // Filter state — offering-first
   const [filters, setFilters] = useState({
-    program: '',
-    semester: '',
-    departmentId: ''
+    offeringId: '',
+    date: new Date().toISOString().split('T')[0],
   });
 
-  // Programs list
-  const programs = ['BSCS', 'BSSE', 'BBA', 'MBA', 'BEE', 'BME', 'BSAI', 'BSDS', 'BSEE', 'MSDS'];
-  const semesters = [1, 2, 3, 4, 5, 6, 7, 8];
+  const getOfferingLabel = (offering: CourseOffering) => {
+    const subject = typeof offering.subjectId === 'object' ? (offering.subjectId as Subject) : null;
+    const batch = typeof offering.batchId === 'object' ? offering.batchId : null;
+    const session = typeof offering.academicSessionId === 'object' ? offering.academicSessionId : null;
+    const parts = [
+      offering.offeringId,
+      subject?.code,
+      subject?.name,
+      batch && typeof batch === 'object' ? `Batch ${(batch as { code?: string }).code || ''}` : null,
+      session && typeof session === 'object' ? (session as { name?: string }).name : null,
+      `Sem ${offering.semester}`,
+    ].filter(Boolean);
+    return parts.join(' — ');
+  };
 
-  // Fetch departments
-  const fetchDepartments = async () => {
+  // Fetch active offerings
+  const fetchOfferings = async () => {
     try {
-      const response = await departmentAPI.getAll();
-      if (response && response.data) {
-        setDepartments(Array.isArray(response.data) ? response.data : []);
+      const response = await offeringAPI.getAll({ status: 'Active', limit: 500 });
+      if (response && response.success) {
+        setOfferings(response.data || []);
       }
     } catch (error) {
-      console.error('Failed to fetch departments:', error);
+      console.error('Failed to fetch offerings:', error);
     }
   };
 
@@ -249,24 +260,24 @@ export function AttendancePage() {
   };
 
   useEffect(() => {
-    fetchDepartments();
-    fetchOverallTodayStats(); // ✅ Fetch overall stats on load
+    fetchOfferings();
+    fetchOverallTodayStats();
     fetchWeeklyStats();
   }, []);
 
   // Refresh chart when attendance is marked
   const refreshData = async () => {
-    await fetchOverallTodayStats(); // ✅ Refresh overall stats
+    await fetchOverallTodayStats();
     await fetchWeeklyStats();
-    if (filters.program && filters.semester && filters.departmentId) {
+    if (filters.offeringId) {
       await fetchStudents();
     }
   };
 
-  // Fetch students for attendance
+  // Fetch enrolled students for selected offering
   const fetchStudents = async () => {
-    if (!filters.program || !filters.semester || !filters.departmentId) {
-      toast.error('Please select Program, Semester and Department');
+    if (!filters.offeringId) {
+      toast.error('Please select a course offering');
       return;
     }
 
@@ -274,19 +285,26 @@ export function AttendancePage() {
       setLoading(true);
       setError(null);
       const response = await attendanceAPI.getStudentsForAttendance({
-        program: filters.program,
-        semester: parseInt(filters.semester),
-        departmentId: filters.departmentId
+        offeringId: filters.offeringId,
+        date: filters.date || undefined,
       });
 
-      if (response && response.data) {
-        setStudents(response.data.students || []);
-        calculateTodayStats(response.data.students || []);
+      const payload = (response as any)?.data?.students
+        ? (response as any).data
+        : (response as any)?.data?.data || (response as any)?.data;
+
+      if (payload) {
+        setStudents(payload.students || []);
+        if (payload.summary) {
+          setSummary(payload.summary);
+        } else {
+          calculateTodayStats(payload.students || []);
+        }
       }
     } catch (error: any) {
       console.error('Failed to fetch students:', error);
-      setError('Failed to load students. Please try again.');
-      toast.error('Failed to load students');
+      setError('Failed to load enrolled students. Please try again.');
+      toast.error('Failed to load enrolled students');
       setStudents([]);
       setSummary(null);
     } finally {
@@ -337,6 +355,11 @@ export function AttendancePage() {
       return;
     }
 
+    if (!filters.offeringId) {
+      toast.error('Please select a course offering');
+      return;
+    }
+
     const attendanceData = markedStudents.map(student => ({
       studentId: student._id,
       status: student.attendanceStatus as 'Present' | 'Absent' | 'Late' | 'Leave'
@@ -346,9 +369,8 @@ export function AttendancePage() {
       setIsSubmitting(true);
       const response = await attendanceAPI.markAttendance({
         attendance: attendanceData,
-        program: filters.program,
-        semester: parseInt(filters.semester),
-        departmentId: filters.departmentId,
+        offeringId: filters.offeringId,
+        date: filters.date || undefined,
         markedBy: 'Admin'
       });
 
@@ -356,7 +378,7 @@ export function AttendancePage() {
       if (res && (res.success || res.data?.success || res.status === 200)) {
         toast.success(`Attendance marked: ${res.data?.summary?.successful || res.data?.data?.summary?.successful || 0} students`);
         await fetchStudents();
-        await fetchOverallTodayStats(); // ✅ Refresh overall stats after marking
+        await fetchOverallTodayStats();
         await fetchWeeklyStats();
         setIsFormOpen(false);
       }
@@ -603,63 +625,48 @@ export function AttendancePage() {
                 <X className="h-4 w-4" />
               </Button>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="program">Program *</Label>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2 md:col-span-2">
+                <Label htmlFor="offeringId">Course Offering *</Label>
                 <select
-                  id="program"
-                  value={filters.program}
-                  onChange={(e) => handleFilterChange('program', e.target.value)}
+                  id="offeringId"
+                  value={filters.offeringId}
+                  onChange={(e) => handleFilterChange('offeringId', e.target.value)}
                   className="w-full border rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-primary"
                 >
-                  <option value="">Select Program</option>
-                  {programs.map(p => (
-                    <option key={p} value={p}>{p}</option>
+                  <option value="">Select active offering</option>
+                  {offerings.map((o) => (
+                    <option key={o._id} value={o._id}>
+                      {getOfferingLabel(o)}
+                    </option>
                   ))}
                 </select>
+                {offerings.length === 0 && (
+                  <p className="text-xs text-yellow-600">No active offerings. Create one under Academics → Offerings.</p>
+                )}
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="semester">Semester *</Label>
-                <select
-                  id="semester"
-                  value={filters.semester}
-                  onChange={(e) => handleFilterChange('semester', e.target.value)}
-                  className="w-full border rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-primary"
-                >
-                  <option value="">Select Semester</option>
-                  {semesters.map(s => (
-                    <option key={s} value={s}>Semester {s}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="department">Department *</Label>
-                <select
-                  id="department"
-                  value={filters.departmentId}
-                  onChange={(e) => handleFilterChange('departmentId', e.target.value)}
-                  className="w-full border rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-primary"
-                >
-                  <option value="">Select Department</option>
-                  {departments.map(d => (
-                    <option key={d._id} value={d._id}>{d.name}</option>
-                  ))}
-                </select>
+                <Label htmlFor="attendanceDate">Date *</Label>
+                <Input
+                  id="attendanceDate"
+                  type="date"
+                  value={filters.date}
+                  onChange={(e) => handleFilterChange('date', e.target.value)}
+                />
               </div>
             </div>
 
             <div className="flex gap-3 mt-4">
               <Button 
                 onClick={fetchStudents}
-                disabled={loading || !filters.program || !filters.semester || !filters.departmentId}
+                disabled={loading || !filters.offeringId}
                 className="gradient-brand text-white border-0"
               >
                 {loading ? (
                   <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Loading...</>
                 ) : (
-                  <><Users className="h-4 w-4 mr-2" /> Fetch Students</>
+                  <><Users className="h-4 w-4 mr-2" /> Load Enrolled Students</>
                 )}
               </Button>
             </div>

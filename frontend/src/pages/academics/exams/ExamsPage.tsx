@@ -7,6 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { examAPI, Exam } from "@/features/exam";
+import { offeringAPI, type CourseOffering } from "@/features/offerings";
+import { type Subject } from "@/features/subjects";
 import {
   ClipboardCheck,
   TrendingUp,
@@ -48,14 +50,19 @@ export function ExamsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [offeringFilter, setOfferingFilter] = useState("");
+  const [offerings, setOfferings] = useState<CourseOffering[]>([]);
   const [stats, setStats] = useState<any>(null);
 
-  const fetchExams = async () => {
+  const fetchExams = async (offeringId?: string) => {
     try {
       setLoading(true);
       setError(null);
 
-      const response = await examAPI.getAll({ limit: 100 });
+      const response = await examAPI.getAll({
+        limit: 100,
+        ...(offeringId ? { offeringId } : {}),
+      });
 
       let data: Exam[] = [];
       if (response && response.success) {
@@ -118,9 +125,25 @@ export function ExamsPage() {
   };
 
   useEffect(() => {
-    fetchExams();
+    fetchExams(offeringFilter || undefined);
     fetchStats();
+    offeringAPI
+      .getAll({ status: "Active", limit: 500 })
+      .then((res) => {
+        if (res?.success) setOfferings(res.data || []);
+      })
+      .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    fetchExams(offeringFilter || undefined);
+  }, [offeringFilter]);
+
+  const getOfferingLabel = (offering: CourseOffering) => {
+    const subject =
+      typeof offering.subjectId === "object" ? (offering.subjectId as Subject) : null;
+    return `${offering.offeringId || ""} — ${subject?.code || ""} ${subject?.name || ""}`.trim();
+  };
 
   const getStatusChartData = () => {
     if (!stats) return [];
@@ -446,7 +469,19 @@ export function ExamsPage() {
             className="pl-9"
           />
         </div>
-        {searchQuery && (
+        <select
+          value={offeringFilter}
+          onChange={(e) => setOfferingFilter(e.target.value)}
+          className="border rounded-lg px-3 py-2 text-sm bg-white min-w-[220px]"
+        >
+          <option value="">All offerings</option>
+          {offerings.map((o) => (
+            <option key={o._id} value={o._id}>
+              {getOfferingLabel(o)}
+            </option>
+          ))}
+        </select>
+        {(searchQuery || offeringFilter) && (
           <div className="text-sm text-muted-foreground">
             Found {filteredExams.length} of {exams.length} exams
           </div>
@@ -459,7 +494,7 @@ export function ExamsPage() {
           <div>
             <p className="font-medium">Failed to load data</p>
             <p className="text-sm">{error}</p>
-            <Button variant="outline" size="sm" className="mt-2" onClick={fetchExams}>
+            <Button variant="outline" size="sm" className="mt-2" onClick={() => fetchExams(offeringFilter || undefined)}>
               <RefreshCw className="h-3 w-3 mr-2" /> Retry
             </Button>
           </div>

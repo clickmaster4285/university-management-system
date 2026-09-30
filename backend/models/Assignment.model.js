@@ -19,6 +19,31 @@ const assignmentSchema = new mongoose.Schema({
   },
 
   // Course & Academic Information
+  offeringId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'CourseOffering',
+    default: null,
+  },
+  subjectId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Subject',
+    default: null,
+  },
+  programId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Program',
+    default: null,
+  },
+  batchId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Batch',
+    default: null,
+  },
+  academicSessionId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'AcademicSession',
+    default: null,
+  },
   course: {
     type: String,
     required: [true, 'Course is required'],
@@ -249,6 +274,11 @@ assignmentSchema.index({ instructor: 1 });
 assignmentSchema.index({ status: 1 });
 assignmentSchema.index({ dueDate: 1 });
 assignmentSchema.index({ courseCode: 1 });
+assignmentSchema.index({ offeringId: 1 });
+assignmentSchema.index({ subjectId: 1 });
+assignmentSchema.index({ batchId: 1 });
+assignmentSchema.index({ academicSessionId: 1 });
+assignmentSchema.index({ programId: 1 });
 
 // Pre-save middleware to generate assignment ID
 assignmentSchema.pre('save', async function(next) {

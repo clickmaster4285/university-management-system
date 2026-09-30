@@ -1,7 +1,7 @@
 # UniversityMS — Master Project Context
 
 > **Purpose of this file:** Single source of truth for anyone (or any AI session) working on this codebase. Read this first. It tracks vision, what is built, what is deferred, what to do, what not to do, and the roadmap.  
-> **Last updated:** 2026-09-26 — quality: money-path safety, scalar fixes, page refactors  
+> **Last updated:** 2026-09-28 — Phase 6 offerings wired; academic-architecture-plan refreshed  
 > **Detailed academic spec:** `academic-architecture-plan.md`  
 > **Fees, sessions, batches & offerings flow:** `fee-plan.md`  
 > **Implementation details:** `backend/backendcontext.md`, `frontend/frontendcontext.md`
@@ -170,8 +170,8 @@ When a student enrolls (`POST /api/offerings/:id/enroll`):
 |-----------|--------|
 | Subject, Program, Batch, Session, Teacher | ✅ Yes |
 | Enrollment + fee snapshot | ✅ Yes |
-| Assignments, Exams | Pick an **Offering** in forms (subject code stored on record) |
-| Attendance | 📋 Not wired to offering yet |
+| Assignments, Exams | ✅ Linked via `offeringId` (+ legacy course strings kept) |
+| Attendance | ✅ Per-offering marks; roster from Enrollment |
 
 ### API quick reference
 
@@ -203,7 +203,7 @@ When a student enrolls (`POST /api/offerings/:id/enroll`):
 | **4** | Migrate legacy Course data | ⏭ Skipped — use `npm run seed:academic` |
 | **5** | CourseOffering + Enrollment + feeSnapshot | ✅ Done |
 | **5b** | ProgramSemesterFeeSchedule (F2) + Semester Fees UI (F3) + SemesterRegistration (F4) | ✅ Done |
-| **6** | Wire Assignments / Exams / Attendance to `offeringId` | ⏸ **Paused** — not needed right now |
+| **6** | Wire Assignments / Exams / Attendance to `offeringId` | ✅ Done (staff modules, Sep 2026) |
 | **7** | BatchFeePolicy, FeeAdjustment (optional) | 📋 Future |
 | **8** | Deprecate legacy `Course` | ✅ Done (Aug 2026) |
 
@@ -391,7 +391,7 @@ Public layout: `PublicSiteLayout` — nav links + footer; admission CTA prominen
 | **Done** | ~~Student portal login (`Student.userId`)~~ | ✅ Sep 2026 — `/student` + `/api/student-portal/*` |
 | **Done** | ~~Leave balance admin UI~~ | ✅ Sep 2026 — `WorkforceLeavePage` quotas + staff deep-link |
 | **Done** | ~~Recruitment resume uploads~~ | ✅ Sep 2026 — `cvPath` + multer under `uploads/hr/recruitment/` |
-| **Paused** | Wire Assignments / Exams / student Attendance to `offeringId` | Phase 6 |
+| **Done** | ~~Wire Assignments / Exams / staff Attendance to `offeringId`~~ | ✅ Phase 6 staff modules (Sep 2026) |
 | **Cleanup** | ~~Remove legacy `Admission` model + `AdmissionsPage.tsx` monolith~~ | ✅ Done Sep 2026 |
 | **Cleanup** | ~~Deprecate `Employee` model~~ | ✅ Done Sep 2026 — removed with `Leave` |
 
@@ -408,9 +408,9 @@ Public layout: `PublicSiteLayout` — nav links + footer; admission CTA prominen
 | Legacy HR cleanup | ✅ removed `hr.routes`, `employee.controller`, `leave.controller`, `HrPage` |
 | **Student module** | ✅ public apply/track, admissions pipeline, dossier + docs, student directory |
 
-**Paused (Phase 6):** Wire Assignments / Exams / **student** Attendance to `offeringId`.
+**Phase 6 (staff):** Assignments / Exams / Attendance store `offeringId` and denormalized academic refs. Student portal grades/attendance remain a follow-up.
 
-> **Decision (2026-08-29):** Phase 6 (offerings → assignments/exams/attendance) remains paused. People, permissions, and workforce are the active focus.
+> **Update (2026-09):** Phase 6 staff wiring shipped. Student portal gradebook/attendance still deferred.
 
 ---
 
@@ -474,7 +474,7 @@ Public layout: `PublicSiteLayout` — nav links + footer; admission CTA prominen
 | Student portal login | ✅ Done 2026-09-26 | `completeAdmission` + `/api/student-portal` + `/student/*` |
 | Leave quota admin UI | ✅ Done 2026-09-26 | `WorkforceLeavePage` + `updateLeaveBalance` + staff link |
 | Recruitment resume uploads | ✅ Done 2026-09-26 | CV upload/download on applicants |
-| Phase 6 — offerings → assignments/exams/attendance | ⏸ Paused | Forms pick offering but store subject code strings |
+| Phase 6 — offerings → assignments/exams/attendance | ✅ Done (staff) | `offeringId` on records; attendance per class; backfill + index sync scripts |
 | Phase 7 — BatchFeePolicy | 📋 Future | Continuing-student fee rules |
 | Large page refactors | ✅ Done Sep 2026 | Assignments, Exams, Events, Library, Transport split |
 | ~~Legacy Admission / Employee / Leave cleanup~~ | ✅ Done Sep 2026 | Dashboard/reports use StaffMember / StaffLeave / StudentApplication |
@@ -486,14 +486,14 @@ Public layout: `PublicSiteLayout` — nav links + footer; admission CTA prominen
 3. ~~**Leave quota admin UI**~~ — ✅ Done 2026-09-26
 4. ~~**Recruitment resume uploads**~~ — ✅ Done 2026-09-26
 5. ~~**Legacy cleanup**~~ — ✅ Done Sep 2026
-6. **Phase 6** — un-pause decision: wire Assignment/Exam/Attendance to `offeringId`
+6. ~~**Phase 6**~~ — ✅ Staff modules: Assignment/Exam/Attendance linked to `offeringId`
 
 ### Later (paused / deferred)
 
-- Phase 6: Assignments, Exams, Attendance → full `offeringId` link on records
+- Student portal: assignments, grades, attendance views
 - Phase 7: BatchFeePolicy for continuing students
 - Full finance integration: enrollment snapshots → challans → payments reconciliation
-- Attendance + gradebook per offering
+- Gradebook polish per offering
 - Multi-campus reporting, accreditation exports
 
 ### ~~Now — your action (Phase A verify, ~15 min)~~
@@ -508,7 +508,9 @@ Public layout: `PublicSiteLayout` — nav links + footer; admission CTA prominen
 
 **Deleted (Sep 2026 cleanup):** `Admission` model + `/api/admissions/legacy/*` + `admission.controller.js`; `Employee` + `Leave` models; `Finance` + `FeeStructure` models; `Payroll.employee` ref; frontend `AdmissionsPage.tsx`, `features/admissions.ts`, `LandingPage.tsx`. Dashboard/reports now use `StudentApplication` / `StaffMember` / `StaffLeave`.
 
-**Still uses subject code as text** (not offering ID yet): Assignment and Exam forms pick an **Offering** in the UI but store `course` / `courseCode` strings on the record. Full `offeringId` link is optional future work.
+**Assignment / Exam / Attendance (Phase 6):** Staff create/mark flows store Mongo `offeringId` and denormalize subject/program/batch/session. Legacy `course` / `courseCode` strings remain for reports and old rows.
+
+**Seed:** `npm run seed:all` now includes offerings → enrollments → sample assignments/exams/attendance (`scripts/seedOfferingsAssessments.js`). Standalone: `npm run seed:offerings`. One-time migrations: `npm run seed:backfill-offerings`, `npm run seed:sync-attendance-indexes`.
 
 ---
 

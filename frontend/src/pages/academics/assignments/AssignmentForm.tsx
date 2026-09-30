@@ -27,6 +27,7 @@ const programs = ['BSCS', 'BSSE', 'BBA', 'MBA', 'BEE', 'BME', 'BSAI', 'BSDS', 'B
 export type AssignmentFormData = {
   title: string;
   description: string;
+  offeringId: string;
   course: string;
   courseCode: string;
   department: string;
@@ -59,6 +60,7 @@ const getAssignmentRecordId = (assignment: Assignment) => assignment._id || "";
 const emptyForm = (user?: { name?: string; email?: string } | null): AssignmentFormData => ({
   title: '',
   description: '',
+  offeringId: '',
   course: '',
   courseCode: '',
   department: '',
@@ -89,6 +91,7 @@ const emptyForm = (user?: { name?: string; email?: string } | null): AssignmentF
 const toFormData = (assignment: Assignment): AssignmentFormData => ({
   title: assignment.title || '',
   description: assignment.description || '',
+  offeringId: typeof assignment.offeringId === 'string' ? assignment.offeringId : (assignment.offeringId as { _id?: string } | null)?._id || '',
   course: assignment.course || '',
   courseCode: assignment.courseCode || '',
   department: assignment.department || '',
@@ -143,9 +146,30 @@ export function AssignmentForm({ mode, assignment }: AssignmentFormProps) {
       try {
         setOfferingsLoading(true);
         const response = await offeringAPI.getAll({ status: 'Active', limit: 500 });
+        let list: CourseOffering[] = [];
         if (response && response.success) {
-          setOfferings(response.data || []);
+          list = response.data || [];
         }
+
+        // Ensure edit rehydrate works if linked offering is no longer Active
+        const linkedId =
+          mode === 'edit' && assignment?.offeringId
+            ? typeof assignment.offeringId === 'string'
+              ? assignment.offeringId
+              : (assignment.offeringId as { _id?: string })?._id
+            : '';
+        if (linkedId && !list.some((o) => o._id === linkedId)) {
+          try {
+            const one = await offeringAPI.getById(linkedId);
+            if (one?.success && one.data) {
+              list = [one.data, ...list];
+            }
+          } catch {
+            // ignore — select will show empty until user picks again
+          }
+        }
+
+        setOfferings(list);
       } catch (error) {
         console.error('Failed to fetch offerings:', error);
         toast.error('Failed to load offerings');
@@ -155,7 +179,7 @@ export function AssignmentForm({ mode, assignment }: AssignmentFormProps) {
       }
     };
     fetchOfferings();
-  }, []);
+  }, [mode, assignment?.offeringId]);
 
   useEffect(() => {
     if (mode === "create") {
@@ -182,6 +206,7 @@ export function AssignmentForm({ mode, assignment }: AssignmentFormProps) {
 
       setFormData({
         ...formData,
+        offeringId: selected._id || '',
         course: subject?.name || '',
         courseCode: subject?.code || '',
         department: dept?.name || formData.department,
@@ -194,6 +219,7 @@ export function AssignmentForm({ mode, assignment }: AssignmentFormProps) {
     } else {
       setFormData({
         ...formData,
+        offeringId: '',
         course: '',
         courseCode: '',
       });
@@ -258,7 +284,7 @@ export function AssignmentForm({ mode, assignment }: AssignmentFormProps) {
     setIsSubmitting(true);
 
     try {
-      const requiredFields = ['title', 'description', 'course', 'courseCode', 'department', 'program', 'instructor', 'dueDate', 'submissionDeadline'];
+      const requiredFields = ['title', 'description', 'offeringId', 'dueDate', 'submissionDeadline'];
       const missingFields = requiredFields.filter(field => !formData[field as keyof typeof formData]);
 
       if (missingFields.length > 0) {
@@ -276,6 +302,7 @@ export function AssignmentForm({ mode, assignment }: AssignmentFormProps) {
         }));
 
       const assignmentData = {
+        offeringId: formData.offeringId,
         title: formData.title,
         description: formData.description,
         course: formData.course,
@@ -424,7 +451,7 @@ export function AssignmentForm({ mode, assignment }: AssignmentFormProps) {
                 name="courseSelect"
                 onChange={handleOfferingSelect}
                 className="w-full border rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary"
-                value={formData.courseCode ? offerings.find((o) => getOfferingSubject(o)?.code === formData.courseCode)?._id || '' : ''}
+                value={formData.offeringId}
                 required
               >
                 <option value="">Select an offering</option>

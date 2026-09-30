@@ -2,12 +2,39 @@ import mongoose from 'mongoose';
 import { handle } from "../utils/asyncHandler.js";
 
 import { Exam } from '../models/index.js';
+import { resolveOfferingAcademicFields } from '../utils/resolveOfferingAcademicFields.js';
+
 const normalizeUserRef = (value) => {
   if (!value) return undefined;
   if (mongoose.Types.ObjectId.isValid(value)) {
     return new mongoose.Types.ObjectId(value);
   }
   return undefined;
+};
+
+const OFFERING_DENORM_KEYS = [
+  'offeringId',
+  'subjectId',
+  'programId',
+  'batchId',
+  'academicSessionId',
+  'course',
+  'courseCode',
+  'department',
+  'program',
+  'semester',
+  'academicYear',
+  'instructor',
+  'instructorEmail',
+];
+
+const applyOfferingFields = (target, resolved) => {
+  if (!resolved) return;
+  for (const key of OFFERING_DENORM_KEYS) {
+    if (resolved[key] !== undefined && resolved[key] !== null && resolved[key] !== '') {
+      target[key] = resolved[key];
+    }
+  }
 };
 
 export const getAllExams = handle(async (req, res) => {
@@ -17,6 +44,11 @@ export const getAllExams = handle(async (req, res) => {
     type,
     instructor,
     department,
+    offeringId,
+    subjectId,
+    batchId,
+    academicSessionId,
+    programId,
     fromDate,
     toDate,
     search,
@@ -30,6 +62,21 @@ export const getAllExams = handle(async (req, res) => {
   if (type) query.type = type;
   if (instructor) query.instructor = { $regex: instructor, $options: 'i' };
   if (department) query.department = department;
+  if (offeringId && mongoose.Types.ObjectId.isValid(offeringId)) {
+    query.offeringId = offeringId;
+  }
+  if (subjectId && mongoose.Types.ObjectId.isValid(subjectId)) {
+    query.subjectId = subjectId;
+  }
+  if (batchId && mongoose.Types.ObjectId.isValid(batchId)) {
+    query.batchId = batchId;
+  }
+  if (academicSessionId && mongoose.Types.ObjectId.isValid(academicSessionId)) {
+    query.academicSessionId = academicSessionId;
+  }
+  if (programId && mongoose.Types.ObjectId.isValid(programId)) {
+    query.programId = programId;
+  }
   if (fromDate || toDate) {
     query.examDate = {};
     if (fromDate) query.examDate.$gte = new Date(fromDate);
@@ -87,7 +134,25 @@ export const getExamById = handle(async (req, res) => {
 });
 
 export const createExam = handle(async (req, res) => {
-  const requiredFields = ['title', 'type', 'course', 'courseCode', 'department', 'program', 'semester', 'instructor', 'examDate', 'startTime', 'endTime', 'duration', 'hall', 'totalMarks', 'passingMarks'];
+  const offeringId = req.body.offeringId;
+  if (!offeringId) {
+    return res.status(400).json({
+      success: false,
+      message: 'offeringId is required',
+      data: null
+    });
+  }
+
+  const resolved = await resolveOfferingAcademicFields(offeringId);
+  if (!resolved) {
+    return res.status(400).json({
+      success: false,
+      message: 'Course offering not found',
+      data: null
+    });
+  }
+
+  const requiredFields = ['title', 'type', 'examDate', 'startTime', 'endTime', 'duration', 'hall', 'totalMarks', 'passingMarks'];
   const missingFields = requiredFields.filter(field => !req.body[field]);
 
   if (missingFields.length > 0) {
@@ -98,8 +163,23 @@ export const createExam = handle(async (req, res) => {
     });
   }
 
+  const payload = { ...req.body };
+  applyOfferingFields(payload, resolved);
+  if (!payload.instructor) {
+    payload.instructor = req.body.instructor || 'Unassigned';
+  }
+  if (!payload.department) {
+    payload.department = req.body.department || 'N/A';
+  }
+  if (!payload.program) {
+    payload.program = req.body.program || 'N/A';
+  }
+  if (!payload.academicYear) {
+    payload.academicYear = req.body.academicYear || new Date().getFullYear().toString();
+  }
+
   const exam = new Exam({
-    ...req.body,
+    ...payload,
     createdBy: normalizeUserRef(req.user?.id)
   });
 
@@ -120,6 +200,18 @@ export const updateExam = handle(async (req, res) => {
       message: 'Exam not found',
       data: null
     });
+  }
+
+  if (req.body.offeringId) {
+    const resolved = await resolveOfferingAcademicFields(req.body.offeringId);
+    if (!resolved) {
+      return res.status(400).json({
+        success: false,
+        message: 'Course offering not found',
+        data: null
+      });
+    }
+    applyOfferingFields(exam, resolved);
   }
 
   const updateableFields = [

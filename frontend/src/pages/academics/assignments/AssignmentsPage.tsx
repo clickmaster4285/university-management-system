@@ -7,6 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { assignmentAPI, Assignment } from "@/features/assignment";
+import { offeringAPI, type CourseOffering } from "@/features/offerings";
+import { type Subject } from "@/features/subjects";
 import {
   ClipboardList,
   CheckCircle2,
@@ -36,14 +38,19 @@ export function AssignmentsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [offeringFilter, setOfferingFilter] = useState("");
+  const [offerings, setOfferings] = useState<CourseOffering[]>([]);
   const [stats, setStats] = useState<any>(null);
 
-  const fetchAssignments = async () => {
+  const fetchAssignments = async (offeringId?: string) => {
     try {
       setLoading(true);
       setError(null);
 
-      const response = await assignmentAPI.getAll({ limit: 100 });
+      const response = await assignmentAPI.getAll({
+        limit: 100,
+        ...(offeringId ? { offeringId } : {}),
+      });
 
       let data: Assignment[] = [];
 
@@ -136,9 +143,21 @@ export function AssignmentsPage() {
   };
 
   useEffect(() => {
-    fetchAssignments();
+    fetchAssignments(offeringFilter || undefined);
     fetchStats();
+    offeringAPI.getAll({ status: 'Active', limit: 500 }).then((res) => {
+      if (res?.success) setOfferings(res.data || []);
+    }).catch(() => {});
   }, []);
+
+  useEffect(() => {
+    fetchAssignments(offeringFilter || undefined);
+  }, [offeringFilter]);
+
+  const getOfferingLabel = (offering: CourseOffering) => {
+    const subject = typeof offering.subjectId === 'object' ? (offering.subjectId as Subject) : null;
+    return `${offering.offeringId || ''} — ${subject?.code || ''} ${subject?.name || ''}`.trim();
+  };
 
   const getStatusChartData = () => {
     if (!stats) return [];
@@ -504,7 +523,19 @@ export function AssignmentsPage() {
             className="pl-9"
           />
         </div>
-        {searchQuery && (
+        <select
+          value={offeringFilter}
+          onChange={(e) => setOfferingFilter(e.target.value)}
+          className="border rounded-lg px-3 py-2 text-sm bg-white min-w-[220px]"
+        >
+          <option value="">All offerings</option>
+          {offerings.map((o) => (
+            <option key={o._id} value={o._id}>
+              {getOfferingLabel(o)}
+            </option>
+          ))}
+        </select>
+        {(searchQuery || offeringFilter) && (
           <div className="text-sm text-muted-foreground">
             Found {filteredAssignments.length} of {assignments.length} assignments
           </div>
@@ -521,7 +552,7 @@ export function AssignmentsPage() {
               variant="outline"
               size="sm"
               className="mt-2"
-              onClick={fetchAssignments}
+              onClick={() => fetchAssignments(offeringFilter || undefined)}
             >
               <RefreshCw className="h-3 w-3 mr-2" /> Retry
             </Button>

@@ -272,7 +272,7 @@ export default function BatchesPage() {
             </p>
           </div>
           <Button size="sm" variant="outline" className="border-amber-300 bg-white" asChild>
-            <Link to="/academic-sessions">Go to Sessions</Link>
+            <Link to="/academic-sessions">Go to Academic Sessions</Link>
           </Button>
         </div>
       )}
@@ -305,7 +305,7 @@ export default function BatchesPage() {
       ) : (
         <DataTable
           title="All Batches"
-          description={`${filteredBatches.length} of ${batches.length} batch${batches.length === 1 ? "" : "es"} shown`}
+          description={`Intake cohorts (e.g. BSCS-2024). Students belong to a batch; offerings serve a batch. ${filteredBatches.length} of ${batches.length} shown`}
           data={filteredBatches}
           columns={cols}
           searchKeys={["code", "department", "program", "admissionSession"]}

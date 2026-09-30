@@ -5,6 +5,11 @@ export interface Assignment {
   assignmentId?: string;
   title: string;
   description: string;
+  offeringId?: string | null;
+  subjectId?: string | null;
+  programId?: string | null;
+  batchId?: string | null;
+  academicSessionId?: string | null;
   course: string;
   courseCode: string;
   department: string;
@@ -65,6 +70,11 @@ class AssignmentAPI {
     course?: string;
     status?: string;
     instructor?: string;
+    offeringId?: string;
+    subjectId?: string;
+    batchId?: string;
+    academicSessionId?: string;
+    programId?: string;
     search?: string;
     limit?: number;
     page?: number;

@@ -13,7 +13,6 @@ import { seedTestRoleUsers } from './scripts/seedTestRoleUsers.js';
 import { migrateUsersToPlatformRoleRef } from './utils/userPlatformRole.js';
 import { UPLOAD_ROOT } from './utils/uploadPaths.js';
 import apiRoutes from './routes/index.js';
-import './jobs/statusUpdate.js';
 
 dotenv.config();
 

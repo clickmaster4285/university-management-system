@@ -2,18 +2,6 @@
 import axios from 'axios';
 import { toast } from 'sonner';
 const API_URL = import.meta.env.VITE_API_URL;
-// const normalizeBaseURL = (value?: string) => {
-//   if (!value) {
-//     return 'http://localhost:4006/api';
-//   }
-
-//   const trimmed = value.trim();
-//   if (!trimmed) {
-//     return 'http://localhost:4006/api';
-//   }
-
-//   return trimmed.endsWith('/api') ? trimmed : `${trimmed.replace(/\/$/, '')}/api`;
-// };
 
 const api = axios.create({
   baseURL:API_URL,

@@ -7,6 +7,7 @@ import { seedAcademicStructure } from '../utils/seedAcademicStructure.js';
 import { printAcademicSeedReport } from '../utils/seedAcademicStructure.js';
 import { seedStaffAndStudents } from './seedStaffAndStudents.js';
 import { seedTestRoleUsers } from './seedTestRoleUsers.js';
+import { seedOfferingsAssessments, printOfferingsSeedReport } from './seedOfferingsAssessments.js';
 import { SEED_STRUCTURE } from './seedData/academicStructure.data.js';
 import { courseData } from './seedData/academicCatalog.data.js';
 
@@ -28,6 +29,14 @@ const steps = [
     },
   },
   { key: 'staffAndStudents', label: 'Staff & students', run: seedStaffAndStudents },
+  {
+    key: 'offeringsAssessments',
+    label: 'Offerings, enrollments & assessments',
+    run: async () => {
+      const stats = await seedOfferingsAssessments();
+      printOfferingsSeedReport(stats);
+    },
+  },
   { key: 'testUsers', label: 'Test role users', run: seedTestRoleUsers },
 ];
 

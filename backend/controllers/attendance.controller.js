@@ -1,14 +1,26 @@
 import mongoose from 'mongoose';
 import { handle } from "../utils/asyncHandler.js";
+import { Attendance, Student, Enrollment } from '../models/index.js';
+import { resolveOfferingAcademicFields } from '../utils/resolveOfferingAcademicFields.js';
+
+const dayRange = (dateInput) => {
+  const start = dateInput ? new Date(dateInput) : new Date();
+  start.setHours(0, 0, 0, 0);
+  const end = new Date(start);
+  end.setDate(end.getDate() + 1);
+  return { start, end };
+};
 
 // GET /api/attendance - Get attendance with filters
-import { Attendance, Student } from '../models/index.js';
 export const getAttendance = handle(async (req, res) => {
   const { 
     date, 
     program, 
     semester, 
-    departmentId, 
+    departmentId,
+    offeringId,
+    batchId,
+    academicSessionId,
     status,
     studentId,
     page = 1, 
@@ -17,15 +29,21 @@ export const getAttendance = handle(async (req, res) => {
   
   const filter = { isDeleted: { $ne: true } };
   if (date) {
-    const startDate = new Date(date);
-    startDate.setHours(0, 0, 0, 0);
-    const endDate = new Date(date);
-    endDate.setHours(23, 59, 59, 999);
-    filter.date = { $gte: startDate, $lte: endDate };
+    const { start, end } = dayRange(date);
+    filter.date = { $gte: start, $lt: end };
   }
   if (program) filter.program = program;
   if (semester) filter.semester = parseInt(semester);
   if (departmentId) filter.departmentId = departmentId;
+  if (offeringId && mongoose.Types.ObjectId.isValid(offeringId)) {
+    filter.offeringId = offeringId;
+  }
+  if (batchId && mongoose.Types.ObjectId.isValid(batchId)) {
+    filter.batchId = batchId;
+  }
+  if (academicSessionId && mongoose.Types.ObjectId.isValid(academicSessionId)) {
+    filter.academicSessionId = academicSessionId;
+  }
   if (status) filter.status = status;
   if (studentId) filter.studentId = studentId;
 
@@ -49,71 +67,86 @@ export const getAttendance = handle(async (req, res) => {
   });
 });
 
-// GET /api/attendance/students - Get students by program and semester
+// GET /api/attendance/students - Roster from Enrollments for an offering
 export const getStudentsForAttendance = handle(async (req, res) => {
-  const { program, semester, departmentId } = req.query;
-  
-  if (!program || !semester || !departmentId) {
+  const { offeringId, date } = req.query;
+
+  if (!offeringId || !mongoose.Types.ObjectId.isValid(offeringId)) {
     return res.status(400).json({
       success: false,
-      message: "Program, semester and departmentId are required"
+      message: "offeringId is required"
     });
   }
 
-  // Get students matching the criteria
-  const students = await Student.find({
-    program: program,
-    semester: parseInt(semester),
-    department: departmentId,
-    status: 'Active',
-    isDeleted: { $ne: true }
+  const resolved = await resolveOfferingAcademicFields(offeringId);
+  if (!resolved) {
+    return res.status(404).json({
+      success: false,
+      message: "Course offering not found"
+    });
+  }
+
+  const enrollments = await Enrollment.find({
+    offeringId,
+    status: 'Enrolled',
+    isDeleted: { $ne: true },
   })
-  .select('_id name email program semester department')
-  .sort({ name: 1 });
+    .populate('studentId', 'name email program semester department status')
+    .lean();
 
-  // Check if attendance already marked for today
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const tomorrow = new Date(today);
-  tomorrow.setDate(tomorrow.getDate() + 1);
+  const students = enrollments
+    .map((e) => e.studentId)
+    .filter((s) => s && s.status !== 'Inactive' && s.isDeleted !== true);
 
-  const studentIds = students.map(s => s._id);
+  const { start, end } = dayRange(date);
+  const markDate = start.toISOString().split('T')[0];
+
+  const studentIds = students.map((s) => s._id);
   const existingAttendance = await Attendance.find({
     studentId: { $in: studentIds },
-    date: { $gte: today, $lt: tomorrow },
-    isDeleted: { $ne: true }
+    offeringId,
+    date: { $gte: start, $lt: end },
+    isDeleted: { $ne: true },
   });
 
-  // Map existing attendance status
-  const attendanceMap = {};
-  existingAttendance.forEach(att => {
-    attendanceMap[att.studentId.toString()] = att.status;
+  const attendanceByStudent = {};
+  existingAttendance.forEach((att) => {
+    attendanceByStudent[att.studentId.toString()] = att;
   });
 
-  // Add attendance status to each student
-  const studentsWithStatus = students.map(student => ({
-    ...student.toObject(),
-    attendanceStatus: attendanceMap[student._id.toString()] || 'Not Marked',
-    attendanceId: existingAttendance.find(
-      att => att.studentId.toString() === student._id.toString()
-    )?._id || null
-  }));
+  const studentsWithStatus = students.map((student) => {
+    const existing = attendanceByStudent[student._id.toString()];
+    return {
+      _id: student._id,
+      name: student.name,
+      email: student.email,
+      program: student.program || resolved.program || '',
+      semester: student.semester || resolved.semester,
+      department: student.department || resolved.department || '',
+      attendanceStatus: existing?.status || 'Not Marked',
+      attendanceId: existing?._id || null,
+    };
+  }).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
 
-  // Get today's date for display
-  const todayDate = new Date().toISOString().split('T')[0];
-
-  // Get attendance statistics
-  const totalStudents = students.length;
-  const presentCount = existingAttendance.filter(a => a.status === 'Present').length;
-  const absentCount = existingAttendance.filter(a => a.status === 'Absent').length;
-  const lateCount = existingAttendance.filter(a => a.status === 'Late').length;
-  const leaveCount = existingAttendance.filter(a => a.status === 'Leave').length;
+  const totalStudents = studentsWithStatus.length;
+  const presentCount = existingAttendance.filter((a) => a.status === 'Present').length;
+  const absentCount = existingAttendance.filter((a) => a.status === 'Absent').length;
+  const lateCount = existingAttendance.filter((a) => a.status === 'Late').length;
+  const leaveCount = existingAttendance.filter((a) => a.status === 'Leave').length;
   const notMarkedCount = totalStudents - existingAttendance.length;
 
   res.json({
     success: true,
     data: {
       students: studentsWithStatus,
+      offering: {
+        _id: resolved.offeringId,
+        course: resolved.course,
+        courseCode: resolved.courseCode,
+        program: resolved.program,
+        semester: resolved.semester,
+        academicYear: resolved.academicYear,
+      },
       summary: {
         total: totalStudents,
         present: presentCount,
@@ -121,15 +154,15 @@ export const getStudentsForAttendance = handle(async (req, res) => {
         late: lateCount,
         leave: leaveCount,
         notMarked: notMarkedCount,
-        date: todayDate
+        date: markDate
       }
     }
   });
 });
 
-// POST /api/attendance/mark - Mark attendance for multiple students
+// POST /api/attendance/mark - Mark attendance for offering roster
 export const markAttendance = handle(async (req, res) => {
-  const { attendance, date, program, semester, departmentId, markedBy, course } = req.body;
+  const { attendance, date, offeringId, markedBy } = req.body;
   
   if (!attendance || !Array.isArray(attendance) || attendance.length === 0) {
     return res.status(400).json({
@@ -138,17 +171,24 @@ export const markAttendance = handle(async (req, res) => {
     });
   }
 
-  if (!program || !semester || !departmentId) {
+  if (!offeringId || !mongoose.Types.ObjectId.isValid(offeringId)) {
     return res.status(400).json({
       success: false,
-      message: "Program, semester and departmentId are required"
+      message: "offeringId is required"
     });
   }
 
-  const attendanceDate = date ? new Date(date) : new Date();
-  attendanceDate.setHours(0, 0, 0, 0);
+  const resolved = await resolveOfferingAcademicFields(offeringId);
+  if (!resolved) {
+    return res.status(400).json({
+      success: false,
+      message: "Course offering not found"
+    });
+  }
 
-  // Process each attendance record
+  const { start, end } = dayRange(date);
+  const attendanceDate = start;
+
   const results = [];
   const errors = [];
 
@@ -156,43 +196,64 @@ export const markAttendance = handle(async (req, res) => {
     try {
       const { studentId, status, remarks } = record;
       
-      // Check if student exists
       const student = await Student.findOne({ _id: studentId, isDeleted: { $ne: true } });
       if (!student) {
         errors.push({ studentId, error: 'Student not found' });
         continue;
       }
 
-      // Check if attendance already exists for this student today
+      const enrolled = await Enrollment.findOne({
+        studentId,
+        offeringId,
+        status: 'Enrolled',
+        isDeleted: { $ne: true },
+      });
+      if (!enrolled) {
+        errors.push({ studentId, error: 'Student is not enrolled in this offering' });
+        continue;
+      }
+
       const existing = await Attendance.findOne({
-        studentId: studentId,
-        date: { $gte: attendanceDate, $lt: new Date(attendanceDate.getTime() + 24 * 60 * 60 * 1000) },
-        isDeleted: { $ne: true }
+        studentId,
+        offeringId,
+        date: { $gte: start, $lt: end },
+        isDeleted: { $ne: true },
       });
 
       let attendanceRecord;
       if (existing) {
-        // Update existing attendance
         existing.status = status || 'Present';
         existing.remarks = remarks || existing.remarks;
         existing.markedBy = markedBy || existing.markedBy;
-        if (course) existing.course = course;
+        existing.course = resolved.course || existing.course;
+        existing.courseCode = resolved.courseCode || existing.courseCode;
+        existing.subjectId = resolved.subjectId;
+        existing.programId = resolved.programId;
+        existing.batchId = resolved.batchId;
+        existing.academicSessionId = resolved.academicSessionId;
+        existing.program = resolved.program || existing.program;
+        existing.semester = resolved.semester || existing.semester;
+        existing.department = resolved.department || existing.department;
         attendanceRecord = await existing.save();
       } else {
-        // Create new attendance record
         const newAttendance = new Attendance({
-          studentId: studentId,
+          studentId,
           studentName: student.name,
           studentEmail: student.email,
-          program: student.program,
-          semester: student.semester,
-          department: student.department,
-          departmentId: departmentId,
+          offeringId: resolved.offeringId,
+          subjectId: resolved.subjectId,
+          programId: resolved.programId,
+          batchId: resolved.batchId,
+          academicSessionId: resolved.academicSessionId,
+          courseCode: resolved.courseCode,
+          program: resolved.program || student.program || '',
+          semester: resolved.semester || student.semester,
+          department: resolved.department || student.department || '',
           date: attendanceDate,
           status: status || 'Present',
           remarks: remarks || '',
           markedBy: markedBy || 'Admin',
-          course: course || ''
+          course: resolved.course || '',
         });
         attendanceRecord = await newAttendance.save();
       }
@@ -203,21 +264,16 @@ export const markAttendance = handle(async (req, res) => {
     }
   }
 
-  // Get summary
-  const totalRecords = attendance.length;
-  const successful = results.length;
-  const failed = errors.length;
-
   res.status(201).json({
     success: true,
-    message: `Attendance marked: ${successful} successful, ${failed} failed`,
+    message: `Attendance marked: ${results.length} successful, ${errors.length} failed`,
     data: {
       successful: results,
-      errors: errors,
+      errors,
       summary: {
-        total: totalRecords,
-        successful: successful,
-        failed: failed
+        total: attendance.length,
+        successful: results.length,
+        failed: errors.length
       }
     }
   });
@@ -225,12 +281,17 @@ export const markAttendance = handle(async (req, res) => {
 
 // GET /api/attendance/stats - Get attendance statistics
 export const getAttendanceStats = handle(async (req, res) => {
-  const { program, semester, departmentId, startDate, endDate } = req.query;
+  const { program, semester, departmentId, offeringId, batchId, academicSessionId, startDate, endDate } = req.query;
   
   const filter = { isDeleted: { $ne: true } };
   if (program) filter.program = program;
   if (semester) filter.semester = parseInt(semester);
   if (departmentId) filter.departmentId = departmentId;
+  if (offeringId && mongoose.Types.ObjectId.isValid(offeringId)) filter.offeringId = new mongoose.Types.ObjectId(offeringId);
+  if (batchId && mongoose.Types.ObjectId.isValid(batchId)) filter.batchId = new mongoose.Types.ObjectId(batchId);
+  if (academicSessionId && mongoose.Types.ObjectId.isValid(academicSessionId)) {
+    filter.academicSessionId = new mongoose.Types.ObjectId(academicSessionId);
+  }
   
   if (startDate && endDate) {
     const start = new Date(startDate);
@@ -266,7 +327,6 @@ export const getAttendanceStats = handle(async (req, res) => {
     { $sort: { _id: 1 } }
   ]);
 
-  // Get overall summary
   const overall = await Attendance.aggregate([
     { $match: filter },
     {

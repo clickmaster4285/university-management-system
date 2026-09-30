@@ -18,17 +18,51 @@ const attendanceSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+  // Offering link (source of truth for class-level attendance)
+  offeringId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'CourseOffering',
+    default: null,
+  },
+  subjectId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Subject',
+    default: null,
+  },
+  programId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Program',
+    default: null,
+  },
+  batchId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Batch',
+    default: null,
+  },
+  academicSessionId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'AcademicSession',
+    default: null,
+  },
+  courseCode: {
+    type: String,
+    trim: true,
+    default: '',
+  },
+  // Legacy / denormalized display fields (optional during transition)
   program: {
     type: String,
-    required: true
+    trim: true,
+    default: '',
   },
   semester: {
     type: Number,
-    required: true
+    min: 1,
   },
   department: {
     type: String,
-    required: true
+    trim: true,
+    default: '',
   },
   departmentId: {
     type: mongoose.Schema.Types.ObjectId,
@@ -95,9 +129,15 @@ attendanceSchema.pre('save', async function(next) {
   next();
 });
 
-// Compound index for unique attendance per student per day
-attendanceSchema.index({ studentId: 1, date: 1 }, { unique: true });
+// Per-offering unique attendance (one mark per student per class per day)
+attendanceSchema.index(
+  { studentId: 1, date: 1, offeringId: 1 },
+  { unique: true, partialFilterExpression: { isDeleted: false } }
+);
+attendanceSchema.index({ offeringId: 1, date: 1 });
 attendanceSchema.index({ date: 1 });
+attendanceSchema.index({ batchId: 1 });
+attendanceSchema.index({ academicSessionId: 1 });
 attendanceSchema.index({ program: 1, semester: 1 });
 attendanceSchema.index({ department: 1 });
 

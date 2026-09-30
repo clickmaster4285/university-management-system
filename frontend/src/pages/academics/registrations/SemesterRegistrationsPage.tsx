@@ -39,6 +39,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { Link } from "react-router-dom";
+import { SetupContextBanner } from "@/components/setup/SetupContextBanner";
 
 const STUDENT_CATEGORIES: StudentCategory[] = [
   "Regular",
@@ -353,13 +354,14 @@ export default function SemesterRegistrationsPage() {
 
   return (
     <div className="space-y-6 p-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Semester Registrations</h1>
-          <p className="text-sm text-muted-foreground">
-            Register students for a semester package — fees locked from the active schedule
-          </p>
-        </div>
+      <SetupContextBanner
+        current="registrations"
+        title="Semester Registrations"
+        description="Register a student for a whole semester package (term bill + enroll into that semester’s offerings). Not the same as adding someone to one class — use Course Offerings → Enrollments for a single class. For thousands of students, use batch bulk/promote (coming next) instead of one-by-one."
+        nextOverride={{ label: "Teaching: Class Attendance", to: "/attendance" }}
+      />
+
+      <div className="flex justify-end">
         <Button onClick={openDialog}>
           <Plus className="mr-2 h-4 w-4" />
           Register student
@@ -435,6 +437,9 @@ export default function SemesterRegistrationsPage() {
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>Register for semester package</DialogTitle>
+            <p className="text-sm text-muted-foreground pt-1">
+              Locks the semester fee schedule and enrolls the student into Active offerings for that program semester.
+            </p>
           </DialogHeader>
 
           <div className="grid gap-4 py-2">

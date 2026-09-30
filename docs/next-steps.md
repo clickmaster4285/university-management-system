@@ -52,7 +52,7 @@
 2. **Enable for existing** — `POST /api/students/:id/portal-login` (staff) + UI on student profile.
 3. **Login** — Same `/login`; Student role → `/student`. Staff `AppLayout` redirects Students away.
 4. **Layout** — `StudentPortalLayout` + `/student`, `/student/registrations`, `/student/fees`, `/student/profile`.
-5. **APIs** — `GET /api/student-portal/me|registrations|challans` via `requireStudentPortal` (scoped to linked Student). Grades/attendance still wait on Phase 6.
+5. **APIs** — `GET /api/student-portal/me|registrations|challans` via `requireStudentPortal` (scoped to linked Student). Grades/attendance on the student portal remain a follow-up (staff Phase 6 is done).
 
 **Related (Sep 2026):** Full online apply form + shared `StudentDossierForm` reused by `/apply`, admission dossier, and directory **Add student**. Applications still reviewed (Shortlisted / Accepted / …) then promoted → dossier → complete.
 
@@ -109,22 +109,26 @@
 
 
 
-### ⬜ 4. Phase 6 — wire Assignment / Exam / Attendance to `offeringId` (decision: un-pause?)
+### ✅ 4. Phase 6 — wire Assignment / Exam / Attendance to `offeringId`
 
 **Why:** Records still store `courseCode` strings; offerings are the connective tissue of the system. This turns the system from "catalog + billing" into a real academic record system.
 
 **Backend:**
 
-- [ ] Add `offeringId` ref (nullable, for backward compat) to `Assignment`, `Exam`, `Attendance` models
-- [ ] Accept `offeringId` in create/update; denormalize `subjectId`, `programId`, `batchId`, `academicSessionId` from offering
-- [ ] Migrate/backfill existing rows where possible (match by courseCode + batch + session)
+- [x] Add `offeringId` ref (nullable, for backward compat) to `Assignment`, `Exam`, `Attendance` models
+- [x] Accept `offeringId` in create/update; denormalize `subjectId`, `programId`, `batchId`, `academicSessionId` from offering
+- [x] Migrate/backfill existing rows where possible (`npm run seed:backfill-offerings`)
+- [x] Attendance unique index is per `{ studentId, date, offeringId }` (`npm run seed:sync-attendance-indexes`)
+- [x] Attendance roster from Active enrollments for the selected offering
+- [x] Seed data: `npm run seed:offerings` (wired into `seed:all`) creates Active offerings, enrollments, sample assignments/exams/attendance
 
 **Frontend:**
 
-- [ ] Replace offering picker storing subject-code string with one that stores `offeringId`
-- [ ] Filters by offering/subject/batch on list pages
+- [x] Assignment/Exam forms submit Mongo `offeringId`; edit rehydrates by offering
+- [x] List filters by offering on Assignments / Exams pages
+- [x] AttendancePage is offering-first (load enrolled roster → mark Present/Absent/Late/Leave)
 
-**Done when:** New assignment/exam/attendance records carry `offeringId`, lists can filter by offering.
+**Done when:** New assignment/exam/attendance records carry `offeringId`, lists can filter by offering. ✅ Staff modules done (Sep 2026). Student portal grades/attendance still follow-up.
 
 ---
 
@@ -239,7 +243,8 @@ Left for a later decision.
 | Phase 7 — `BatchFeePolicy`                     | 📋 Future   | Continuing-student fee rules                              |
 | Campus-scoped roles (Issue 6)                  | 📋 Deferred | "Campus Admin" role template limited to one campus        |
 | Full finance integration                       | 📋 Future   | Enrollment snapshots → challans → payments reconciliation |
-| Attendance + gradebook per offering            | 📋 Future   | Depends on Phase 6                                        |
+| Student portal grades / attendance             | 📋 Future   | Staff Phase 6 done; portal views not built yet            |
+| Attendance + gradebook polish per offering     | 📋 Future   | Gradebook ObjectId cleanup still open                     |
 | Multi-campus reporting / accreditation exports | 📋 Future   |                                                           |
 
 

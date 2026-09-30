@@ -2,12 +2,8 @@
 import axios from 'axios';
 
 const normalizeApiBase = (value?: string) => {
-  const fallback = 'http://localhost:4006/api';
-  if (!value) return fallback;
-
-  const trimmed = value.trim();
-  if (!trimmed) return fallback;
-
+  const trimmed = value?.trim() ?? '';
+  if (!trimmed) return '';
   const withoutTrailingSlash = trimmed.replace(/\/+$/, '');
   return withoutTrailingSlash.endsWith('/api') ? withoutTrailingSlash : `${withoutTrailingSlash}/api`;
 };

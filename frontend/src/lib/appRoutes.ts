@@ -86,7 +86,9 @@ export type SidebarNavSectionConfig = {
   items: SidebarNavItemConfig[];
 };
 
-/** Single source of truth for sidebar links — icons are mapped in sidebar.tsx */
+/** Single source of truth for sidebar links — icons are mapped in sidebar.tsx.
+ *  Order mirrors real-life setup: Institution → Catalog → Term → Students → Teaching → …
+ */
 export const SIDEBAR_NAV: SidebarNavSectionConfig[] = [
   {
     label: "Overview",
@@ -97,9 +99,9 @@ export const SIDEBAR_NAV: SidebarNavSectionConfig[] = [
     ],
   },
   {
-    label: "Governance",
+    label: "Institution",
     items: [
-      { to: "/university", label: "University", module: "governance" },
+      { to: "/university", label: "University Profile", module: "governance" },
       { to: "/campuses", label: "Campuses", module: "governance" },
       { to: "/faculties", label: "Faculties", module: "governance" },
       { to: "/departments", label: "Departments", module: "governance" },
@@ -110,6 +112,32 @@ export const SIDEBAR_NAV: SidebarNavSectionConfig[] = [
     items: [
       { to: "/programs", label: "Programs", module: "academic_catalog" },
       { to: "/subjects", label: "Subjects", module: "academic_catalog" },
+    ],
+  },
+  {
+    label: "Term & Classes",
+    items: [
+      { to: "/academic-sessions", label: "Academic Sessions", module: "academic_ops" },
+      { to: "/batches", label: "Batches", module: "academic_ops" },
+      { to: "/offerings", label: "Course Offerings", module: "academic_ops" },
+      { to: "/semester-registrations", label: "Semester Registrations", module: "academic_ops" },
+    ],
+  },
+  {
+    label: "Students",
+    items: [
+      { to: "/admissions", label: "Visitor Applicants", module: "admissions", exact: true },
+      { to: "/admissions/online", label: "Online Applicants", module: "admissions" },
+      { to: "/students", label: "Student Directory", module: "students" },
+    ],
+  },
+  {
+    label: "Teaching",
+    items: [
+      { to: "/attendance", label: "Class Attendance", module: "assessments" },
+      { to: "/assignments", label: "Assignments", module: "assessments" },
+      { to: "/exams", label: "Exams & Grades", module: "assessments" },
+      { to: "/online-classes", label: "Online Classes", module: "assessments" },
     ],
   },
   {
@@ -125,29 +153,12 @@ export const SIDEBAR_NAV: SidebarNavSectionConfig[] = [
     ],
   },
   {
-    label: "Students",
+    label: "Finance",
     items: [
-      { to: "/admissions", label: "Visitor", module: "admissions", exact: true },
-      { to: "/admissions/online", label: "Online applicants", module: "admissions" },
-      { to: "/students", label: "Student Directory", module: "students" },
-    ],
-  },
-  {
-    label: "Academic Operations",
-    items: [
-      { to: "/academic-sessions", label: "Sessions", module: "academic_ops" },
-      { to: "/batches", label: "Batches", module: "academic_ops" },
-      { to: "/offerings", label: "Offerings", module: "academic_ops" },
-      { to: "/semester-registrations", label: "Registrations", module: "academic_ops" },
-    ],
-  },
-  {
-    label: "Assessments",
-    items: [
-      { to: "/attendance", label: "Attendance", module: "assessments" },
-      { to: "/assignments", label: "Assignments", module: "assessments" },
-      { to: "/exams", label: "Exam Grades", module: "assessments" },
-      { to: "/online-classes", label: "Online Classes", module: "assessments" },
+      { to: "/challans", label: "Challans", module: "finance" },
+      { to: "/payroll", label: "Payroll", module: "finance" },
+      { to: "/finance", label: "Finance", module: "finance" },
+      { to: "/reports", label: "Reports", module: "reports" },
     ],
   },
   {
@@ -161,16 +172,7 @@ export const SIDEBAR_NAV: SidebarNavSectionConfig[] = [
     ],
   },
   {
-    label: "Finance",
-    items: [
-      { to: "/payroll", label: "Payroll", module: "finance" },
-      { to: "/challans", label: "Challans", module: "finance" },
-      { to: "/finance", label: "Finance", module: "finance" },
-      { to: "/reports", label: "Reports", module: "reports" },
-    ],
-  },
-  {
-    label: "Settings & Configuration",
+    label: "Settings",
     items: SETTINGS_NAV.map((item) => ({
       to: item.path,
       label: item.sidebarLabel,

@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
+import { SetupContextBanner } from "@/components/setup/SetupContextBanner";
 import {
   offeringAPI,
   type CourseOffering,
@@ -383,10 +385,20 @@ export default function OfferingsPage() {
 
   return (
     <>
+      <SetupContextBanner
+        current="offerings"
+        title="Course Offerings"
+        description="A running class for one subject + batch + academic session. Enrollments (students in this class) open from each row. For a full-term package bill, use Semester Registrations."
+        nextOverride={{
+          label: "Semester Registrations (term package) or enroll on a row",
+          to: "/semester-registrations",
+        }}
+      />
+
       <div className="grid gap-4 md:grid-cols-4">
         <KpiCard label="Total Offerings" value={stats.total} icon={BookOpen} />
         <KpiCard label="Active" value={stats.active} icon={Layers} />
-        <KpiCard label="Enrollments" value={stats.totalEnrollments} icon={GraduationCap} />
+        <KpiCard label="Class enrollments" value={stats.totalEnrollments} icon={GraduationCap} />
         <KpiCard label="Completed" value={stats.completed} icon={Calendar} />
       </div>
       
@@ -592,6 +604,9 @@ export default function OfferingsPage() {
                   </option>
                 ))}
               </select>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Academic staff from Staff Directory (not a separate Teacher list).
+              </p>
             </div>
           </div>
           <DialogFooter>
@@ -611,6 +626,9 @@ export default function OfferingsPage() {
           <DialogHeader>
             <DialogTitle>
               Enrollments — {selectedOffering?.offeringId}{" "}
+              <span className="font-normal text-muted-foreground text-sm">
+                (students in this class only)
+              </span>
               {selectedOffering && resolveRefLabel(selectedOffering.subjectId)}
             </DialogTitle>
           </DialogHeader>

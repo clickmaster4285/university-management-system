@@ -43,6 +43,7 @@ const programs = [
 export type ExamFormData = {
   title: string;
   type: string;
+  offeringId: string;
   course: string;
   courseCode: string;
   department: string;
@@ -68,6 +69,7 @@ export type ExamFormData = {
 const emptyForm = (instructor = "", instructorEmail = ""): ExamFormData => ({
   title: "",
   type: "Midterm",
+  offeringId: "",
   course: "",
   courseCode: "",
   department: "",
@@ -93,6 +95,10 @@ const emptyForm = (instructor = "", instructorEmail = ""): ExamFormData => ({
 const toFormData = (exam: Exam): ExamFormData => ({
   title: exam.title || "",
   type: exam.type || "Midterm",
+  offeringId:
+    typeof exam.offeringId === "string"
+      ? exam.offeringId
+      : (exam.offeringId as { _id?: string } | null)?._id || "",
   course: exam.course || "",
   courseCode: exam.courseCode || "",
   department: exam.department || "",
@@ -143,9 +149,29 @@ export function ExamForm({ mode, exam }: ExamFormProps) {
       try {
         setOfferingsLoading(true);
         const response = await offeringAPI.getAll({ status: "Active", limit: 500 });
+        let list: CourseOffering[] = [];
         if (response && response.success) {
-          setOfferings(response.data || []);
+          list = response.data || [];
         }
+
+        const linkedId =
+          mode === "edit" && exam?.offeringId
+            ? typeof exam.offeringId === "string"
+              ? exam.offeringId
+              : (exam.offeringId as { _id?: string })?._id
+            : "";
+        if (linkedId && !list.some((o) => o._id === linkedId)) {
+          try {
+            const one = await offeringAPI.getById(linkedId);
+            if (one?.success && one.data) {
+              list = [one.data, ...list];
+            }
+          } catch {
+            // ignore
+          }
+        }
+
+        setOfferings(list);
       } catch (error) {
         console.error("Failed to fetch offerings:", error);
         toast.error("Failed to load offerings");
@@ -154,7 +180,7 @@ export function ExamForm({ mode, exam }: ExamFormProps) {
       }
     };
     fetchOfferings();
-  }, []);
+  }, [mode, exam?.offeringId]);
 
   useEffect(() => {
     if (mode === "edit" && exam) {
@@ -207,6 +233,7 @@ export function ExamForm({ mode, exam }: ExamFormProps) {
 
       setFormData((prev) => ({
         ...prev,
+        offeringId: selected._id || "",
         course: subject?.name || "",
         courseCode: subject?.code || "",
         department: dept?.name || prev.department,
@@ -218,6 +245,7 @@ export function ExamForm({ mode, exam }: ExamFormProps) {
     } else {
       setFormData((prev) => ({
         ...prev,
+        offeringId: "",
         course: "",
         courseCode: "",
       }));
@@ -232,12 +260,7 @@ export function ExamForm({ mode, exam }: ExamFormProps) {
       const requiredFields = [
         "title",
         "type",
-        "course",
-        "courseCode",
-        "department",
-        "program",
-        "semester",
-        "instructor",
+        "offeringId",
         "examDate",
         "startTime",
         "endTime",
@@ -257,6 +280,7 @@ export function ExamForm({ mode, exam }: ExamFormProps) {
       }
 
       const examData = {
+        offeringId: formData.offeringId,
         title: formData.title.trim(),
         type: formData.type,
         course: formData.course.trim(),
@@ -410,12 +434,7 @@ export function ExamForm({ mode, exam }: ExamFormProps) {
                 name="courseSelect"
                 onChange={handleOfferingSelect}
                 className="w-full border rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary"
-                value={
-                  formData.courseCode
-                    ? offerings.find((o) => getOfferingSubject(o)?.code === formData.courseCode)
-                        ?._id || ""
-                    : ""
-                }
+                value={formData.offeringId}
                 required
               >
                 <option value="">Select an offering</option>

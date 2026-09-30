@@ -18,6 +18,31 @@ const examSchema = new mongoose.Schema({
   },
   
   // Course Information
+  offeringId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'CourseOffering',
+    default: null,
+  },
+  subjectId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Subject',
+    default: null,
+  },
+  programId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Program',
+    default: null,
+  },
+  batchId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Batch',
+    default: null,
+  },
+  academicSessionId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'AcademicSession',
+    default: null,
+  },
   course: {
     type: String,
     required: [true, 'Course name is required'],
@@ -234,6 +259,11 @@ examSchema.index({ courseCode: 1 });
 examSchema.index({ examDate: 1 });
 examSchema.index({ status: 1 });
 examSchema.index({ instructor: 1 });
+examSchema.index({ offeringId: 1 });
+examSchema.index({ subjectId: 1 });
+examSchema.index({ batchId: 1 });
+examSchema.index({ academicSessionId: 1 });
+examSchema.index({ programId: 1 });
 
 // Pre-save middleware to generate exam ID
 examSchema.pre('save', async function(next) {
