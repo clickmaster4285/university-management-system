@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import {
+  getPublicCatalog,
   getPublicCampuses,
   getPublicPrograms,
   getPublicSessions,
@@ -17,6 +18,7 @@ import { publicApplyLimiter, publicTrackLimiter } from '../middleware/rateLimit.
 
 const router = Router();
 
+router.get('/catalog', getPublicCatalog);
 router.get('/catalog/programs', getPublicPrograms);
 router.get('/catalog/campuses', getPublicCampuses);
 router.get('/catalog/sessions', getPublicSessions);

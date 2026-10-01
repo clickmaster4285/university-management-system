@@ -45,7 +45,7 @@
 **Plan:** `docs/public-admissions-catalog.md`
 
 - [x] **Step 1** — `Program.admissionOpensAt` / `admissionClosesAt` + staff Programs UI
-- [ ] **Step 2** — Public catalog tree API
+- [x] **Step 2** — Public catalog tree API (`GET /api/public/catalog`)
 - [ ] **Step 3** — Public browse UI
 - [ ] **Step 4** — Stepped apply + reject closed on submit
 

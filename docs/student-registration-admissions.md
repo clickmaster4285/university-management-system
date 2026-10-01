@@ -262,6 +262,8 @@ Full plan and rules: [`docs/public-admissions-catalog.md`](./public-admissions-c
 
 **Step 1 (done):** `Program.admissionOpensAt` / `admissionClosesAt` on the model, create/update API, Programs staff form + list “Admissions” column. Active with no dates = not open for public apply.
 
+**Step 2 (done):** `GET /api/public/catalog` returns university + Active campuses → programs (via department `campusIds`) grouped by category, each with `admissionOpen` / `admissionLabel`. Flat `/catalog/programs|campuses` still available for the current apply form.
+
 ---
 
 *Document written to capture the student registration / admissions work completed around 2026-09-26.*

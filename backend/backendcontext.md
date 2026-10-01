@@ -440,8 +440,9 @@ Creates idempotently:
 
 | Method | Route | Purpose |
 |--------|-------|---------|
-| GET | `/public/catalog/programs` | Active programs for apply form |
-| GET | `/public/catalog/campuses` | Campus list |
+| GET | `/public/catalog` | University → campuses → categories → programs (+ open/closed) |
+| GET | `/public/catalog/programs` | Active programs (flat; includes admission window flags) |
+| GET | `/public/catalog/campuses` | Active campuses |
 | GET | `/public/catalog/sessions` | Open intake sessions |
 | POST | `/public/applications` | Submit application (rate-limited) |
 | GET | `/public/applications/track` | Track by `applicationId` + `cnic` |

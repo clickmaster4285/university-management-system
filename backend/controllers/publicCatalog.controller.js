@@ -2,16 +2,50 @@ import { handle } from '../utils/asyncHandler.js';
 import {
   AcademicSession,
   Campus,
+  Department,
   Program,
   StudentApplication,
   StudentDocument,
+  University,
 } from '../models/index.js';
 import { generateApplicationId } from '../utils/generateStudentId.js';
 import { parseApplicationExtendedFields } from '../utils/applicationFields.js';
+import {
+  formatAdmissionWindowLabel,
+  groupProgramsByCategory,
+  isProgramAdmissionOpen,
+} from '../utils/programAdmission.js';
 
 const notDeleted = { $ne: true };
 
 const normalizeCnic = (value) => String(value || '').replace(/\D/g, '');
+
+function serializePublicProgram(program, now = new Date()) {
+  const dept =
+    program.departmentId && typeof program.departmentId === 'object'
+      ? {
+          _id: program.departmentId._id,
+          name: program.departmentId.name,
+          code: program.departmentId.code,
+        }
+      : null;
+  const { label, open } = formatAdmissionWindowLabel(program, now);
+
+  return {
+    _id: program._id,
+    name: program.name,
+    code: program.code,
+    degreeLevel: program.degreeLevel,
+    duration: program.duration,
+    totalCredits: program.totalCredits ?? 0,
+    description: program.description || '',
+    department: dept,
+    admissionOpensAt: program.admissionOpensAt || null,
+    admissionClosesAt: program.admissionClosesAt || null,
+    admissionOpen: open,
+    admissionLabel: label,
+  };
+}
 
 async function findPublicApplicationByIdAndCnic(applicationId, cnic) {
   const application = await StudentApplication.findOne({
@@ -66,20 +100,38 @@ function serializeTrackApplication(application, documents) {
 }
 
 export const getPublicPrograms = handle(async (_req, res) => {
+  const now = new Date();
   const programs = await Program.find({ isDeleted: notDeleted, status: 'Active' })
     .populate('departmentId', 'name code')
-    .select('name code degreeLevel duration totalCredits departmentId')
+    .select(
+      'name code degreeLevel duration totalCredits description departmentId admissionOpensAt admissionClosesAt status'
+    )
     .sort({ name: 1 });
 
-  res.json({ success: true, data: programs });
+  res.json({
+    success: true,
+    data: programs.map((p) => serializePublicProgram(p, now)),
+  });
 });
 
 export const getPublicCampuses = handle(async (_req, res) => {
-  const campuses = await Campus.find({ isDeleted: notDeleted })
-    .select('name campusCode city province isMainCampus')
-    .sort({ name: 1 });
+  const campuses = await Campus.find({ isDeleted: notDeleted, status: 'Active' })
+    .select('name campusCode type isMainCampus address')
+    .sort({ isMainCampus: -1, name: 1 });
 
-  res.json({ success: true, data: campuses });
+  res.json({
+    success: true,
+    data: campuses.map((c) => ({
+      _id: c._id,
+      name: c.name,
+      campusCode: c.campusCode,
+      type: c.type,
+      isMainCampus: c.isMainCampus,
+      city: c.address?.city || '',
+      province: c.address?.province || '',
+      address: c.address || null,
+    })),
+  });
 });
 
 export const getPublicSessions = handle(async (_req, res) => {
@@ -91,6 +143,110 @@ export const getPublicSessions = handle(async (_req, res) => {
     .sort({ startDate: -1 });
 
   res.json({ success: true, data: sessions });
+});
+
+/**
+ * Structured catalog for public browse:
+ * university → Active campuses → programs (via department campusIds) → categories.
+ */
+export const getPublicCatalog = handle(async (_req, res) => {
+  const now = new Date();
+
+  const [university, campuses, departments, programs] = await Promise.all([
+    University.findOne({ isDeleted: notDeleted, status: 'Active' })
+      .select(
+        'universityName shortName universityCode universityType website officialEmail phoneNumber address'
+      )
+      .lean(),
+    Campus.find({ isDeleted: notDeleted, status: 'Active' })
+      .select('name campusCode type isMainCampus address description')
+      .sort({ isMainCampus: -1, name: 1 })
+      .lean(),
+    Department.find({ isDeleted: notDeleted })
+      .select('_id name code campusIds')
+      .lean(),
+    Program.find({ isDeleted: notDeleted, status: 'Active' })
+      .populate('departmentId', 'name code campusIds')
+      .select(
+        'name code degreeLevel duration totalCredits description departmentId admissionOpensAt admissionClosesAt status'
+      )
+      .sort({ name: 1 })
+      .lean(),
+  ]);
+
+  const campusIdSet = new Set(campuses.map((c) => String(c._id)));
+
+  // Fallback map: departmentId → campusIds (if populate missing campusIds on nested dept)
+  const deptCampusMap = new Map(
+    departments.map((d) => [String(d._id), (d.campusIds || []).map((id) => String(id))])
+  );
+
+  const programsByCampus = new Map(campuses.map((c) => [String(c._id), []]));
+
+  for (const program of programs) {
+    const dept = program.departmentId;
+    const deptId = dept && typeof dept === 'object' ? String(dept._id) : String(dept || '');
+    const fromDept =
+      dept && typeof dept === 'object' && Array.isArray(dept.campusIds)
+        ? dept.campusIds.map((id) => String(id))
+        : deptCampusMap.get(deptId) || [];
+
+    const campusIds = fromDept.filter((id) => campusIdSet.has(id));
+    for (const campusId of campusIds) {
+      programsByCampus.get(campusId)?.push(program);
+    }
+  }
+
+  let totalPrograms = 0;
+  let totalOpen = 0;
+
+  const campusPayload = campuses.map((campus) => {
+    const campusPrograms = programsByCampus.get(String(campus._id)) || [];
+    const openCount = campusPrograms.filter((p) => isProgramAdmissionOpen(p, now)).length;
+    totalPrograms += campusPrograms.length;
+    totalOpen += openCount;
+
+    return {
+      _id: campus._id,
+      name: campus.name,
+      campusCode: campus.campusCode,
+      type: campus.type,
+      isMainCampus: !!campus.isMainCampus,
+      description: campus.description || '',
+      city: campus.address?.city || '',
+      province: campus.address?.province || '',
+      address: campus.address || null,
+      programCount: campusPrograms.length,
+      openProgramCount: openCount,
+      categories: groupProgramsByCategory(campusPrograms, (p) => serializePublicProgram(p, now)),
+    };
+  });
+
+  res.json({
+    success: true,
+    data: {
+      university: university
+        ? {
+            _id: university._id,
+            universityName: university.universityName,
+            shortName: university.shortName,
+            universityCode: university.universityCode,
+            universityType: university.universityType,
+            website: university.website || '',
+            officialEmail: university.officialEmail || '',
+            phoneNumber: university.phoneNumber || '',
+            address: university.address || null,
+          }
+        : null,
+      campuses: campusPayload,
+      summary: {
+        campusCount: campusPayload.length,
+        programCount: totalPrograms,
+        openProgramCount: totalOpen,
+        generatedAt: now.toISOString(),
+      },
+    },
+  });
 });
 
 export const submitPublicApplication = handle(async (req, res) => {

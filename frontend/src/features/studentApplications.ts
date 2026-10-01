@@ -101,15 +101,35 @@ export interface PublicCatalogProgram {
   code: string;
   degreeLevel?: string;
   duration?: number;
+  totalCredits?: number;
+  description?: string;
   departmentId?: RefSummary;
+  department?: RefSummary | null;
+  admissionOpensAt?: string | null;
+  admissionClosesAt?: string | null;
+  admissionOpen?: boolean;
+  admissionLabel?: string;
 }
 
 export interface PublicCatalogCampus {
   _id: string;
   name: string;
   campusCode?: string;
+  type?: string;
+  isMainCampus?: boolean;
   city?: string;
   province?: string;
+  address?: {
+    street?: string;
+    city?: string;
+    province?: string;
+    country?: string;
+    postalCode?: string;
+  } | null;
+  description?: string;
+  programCount?: number;
+  openProgramCount?: number;
+  categories?: PublicCatalogCategory[];
 }
 
 export interface PublicCatalogSession {
@@ -117,6 +137,41 @@ export interface PublicCatalogSession {
   name: string;
   code?: string;
   status?: string;
+}
+
+export interface PublicCatalogCategory {
+  key: string;
+  label: string;
+  programs: PublicCatalogProgram[];
+}
+
+export interface PublicCatalogUniversity {
+  _id: string;
+  universityName: string;
+  shortName?: string;
+  universityCode?: string;
+  universityType?: string;
+  website?: string;
+  officialEmail?: string;
+  phoneNumber?: string;
+  address?: {
+    street?: string;
+    city?: string;
+    province?: string;
+    country?: string;
+    postalCode?: string;
+  } | null;
+}
+
+export interface PublicCatalogTree {
+  university: PublicCatalogUniversity | null;
+  campuses: PublicCatalogCampus[];
+  summary: {
+    campusCount: number;
+    programCount: number;
+    openProgramCount: number;
+    generatedAt: string;
+  };
 }
 
 export const studentApplicationsAPI = {
@@ -177,6 +232,16 @@ export const studentApplicationsAPI = {
   getPublicSessions: async () => {
     const response = await publicApi.get('/public/catalog/sessions');
     return (response.data?.data || []) as PublicCatalogSession[];
+  },
+
+  /** University → campuses → categories → programs (open/closed). */
+  getPublicCatalog: async () => {
+    const response = await publicApi.get('/public/catalog');
+    return (response.data?.data || {
+      university: null,
+      campuses: [],
+      summary: { campusCount: 0, programCount: 0, openProgramCount: 0, generatedAt: '' },
+    }) as PublicCatalogTree;
   },
 
   submitPublicApplication: async (payload: Record<string, unknown>) => {
