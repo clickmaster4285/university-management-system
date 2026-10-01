@@ -19,7 +19,6 @@ import {
 
 const SIDEBAR_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   "/dashboard": LayoutDashboard,
-  "/setup": BookMarked,
   "/notifications": Bell,
   "/ai": Sparkles,
   "/university": University,

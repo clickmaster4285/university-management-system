@@ -6,6 +6,24 @@ import { generateProgramId } from "../utils/generateProgramId.js";
 const DEGREE_LEVELS = ['BS', 'MS', 'PhD', 'BBA', 'MBA', 'LLB', 'Other'];
 const notDeleted = { $ne: true };
 
+/** Parse optional date from body. `undefined` = omit; `null`/'' = clear; invalid → error message string. */
+function parseOptionalAdmissionDate(value, fieldName) {
+  if (value === undefined) return { skip: true };
+  if (value === null || value === '') return { value: null };
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return { error: `${fieldName} must be a valid date` };
+  }
+  return { value: date };
+}
+
+function validateAdmissionWindow(opensAt, closesAt) {
+  if (opensAt && closesAt && opensAt.getTime() > closesAt.getTime()) {
+    return 'admissionOpensAt must be on or before admissionClosesAt';
+  }
+  return null;
+}
+
 async function findProgramByIdentifier(identifier) {
   const query = [{ programId: identifier }];
   if (mongoose.Types.ObjectId.isValid(identifier)) {
@@ -116,6 +134,8 @@ export const createProgram = handle(async (req, res) => {
     totalCredits,
     description,
     status,
+    admissionOpensAt,
+    admissionClosesAt,
   } = req.body;
 
   if (!name || !code || !departmentId || !degreeLevel) {
@@ -130,6 +150,21 @@ export const createProgram = handle(async (req, res) => {
       success: false,
       message: `degreeLevel must be one of: ${DEGREE_LEVELS.join(', ')}`,
     });
+  }
+
+  const opensParsed = parseOptionalAdmissionDate(admissionOpensAt, 'admissionOpensAt');
+  if (opensParsed.error) {
+    return res.status(400).json({ success: false, message: opensParsed.error });
+  }
+  const closesParsed = parseOptionalAdmissionDate(admissionClosesAt, 'admissionClosesAt');
+  if (closesParsed.error) {
+    return res.status(400).json({ success: false, message: closesParsed.error });
+  }
+  const resolvedOpens = opensParsed.skip ? null : opensParsed.value;
+  const resolvedCloses = closesParsed.skip ? null : closesParsed.value;
+  const windowError = validateAdmissionWindow(resolvedOpens, resolvedCloses);
+  if (windowError) {
+    return res.status(400).json({ success: false, message: windowError });
   }
 
   const dept = await Department.findOne({ _id: departmentId, isDeleted: notDeleted });
@@ -161,6 +196,8 @@ export const createProgram = handle(async (req, res) => {
     totalCredits: totalCredits ? Number(totalCredits) : 0,
     description: description || '',
     status: status || 'Active',
+    admissionOpensAt: resolvedOpens,
+    admissionClosesAt: resolvedCloses,
   });
 
   await program.save();

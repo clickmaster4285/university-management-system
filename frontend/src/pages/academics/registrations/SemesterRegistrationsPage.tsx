@@ -39,7 +39,6 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { Link } from "react-router-dom";
-import { SetupContextBanner } from "@/components/setup/SetupContextBanner";
 
 const STUDENT_CATEGORIES: StudentCategory[] = [
   "Regular",
@@ -354,14 +353,18 @@ export default function SemesterRegistrationsPage() {
 
   return (
     <div className="space-y-6 p-6">
-      <SetupContextBanner
-        current="registrations"
-        title="Semester Registrations"
-        description="Register a student for a whole semester package (term bill + enroll into that semester’s offerings). Not the same as adding someone to one class — use Course Offerings → Enrollments for a single class. For thousands of students, use batch bulk/promote (coming next) instead of one-by-one."
-        nextOverride={{ label: "Teaching: Class Attendance", to: "/attendance" }}
-      />
-
-      <div className="flex justify-end">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Semester Registrations</h1>
+          <p className="text-sm text-muted-foreground max-w-2xl">
+            Register a student for a whole semester package (term bill + enroll into that semester’s
+            offerings). For a single class only, use{" "}
+            <Link to="/offerings" className="underline underline-offset-2 hover:text-foreground">
+              Course Offerings → Enrollments
+            </Link>
+            .
+          </p>
+        </div>
         <Button onClick={openDialog}>
           <Plus className="mr-2 h-4 w-4" />
           Register student

@@ -21,7 +21,6 @@ import {
   XCircle,
 } from "lucide-react";
 import { toast } from "sonner";
-import { SetupContextBanner } from "@/components/setup/SetupContextBanner";
 
 const statusOptions = ["Active", "Upcoming", "Completed", "Inactive"];
 
@@ -223,11 +222,12 @@ export default function AcademicSessionsPage() {
 
   return (
     <>
-      <SetupContextBanner
-        current="sessions"
-        title="Academic Sessions"
-        description="Calendar terms (e.g. Fall 2025). Mark one session as current — offerings and batches use it. This is when classes run, not the student’s intake year."
-      />
+      <div className="mb-6">
+        <h1 className="text-2xl font-semibold tracking-tight">Academic Sessions</h1>
+        <p className="text-sm text-muted-foreground max-w-2xl">
+          Calendar terms (e.g. Fall 2025). Mark one session as current — offerings and batches use it.
+        </p>
+      </div>
 
       <div className="grid gap-4 md:grid-cols-4">
         <KpiCard label="Total Sessions" value={stats?.total ?? totalSessions} icon={Calendar} />

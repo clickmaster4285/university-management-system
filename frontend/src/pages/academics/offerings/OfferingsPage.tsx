@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { SetupContextBanner } from "@/components/setup/SetupContextBanner";
 import {
   offeringAPI,
   type CourseOffering,
@@ -385,15 +384,17 @@ export default function OfferingsPage() {
 
   return (
     <>
-      <SetupContextBanner
-        current="offerings"
-        title="Course Offerings"
-        description="A running class for one subject + batch + academic session. Enrollments (students in this class) open from each row. For a full-term package bill, use Semester Registrations."
-        nextOverride={{
-          label: "Semester Registrations (term package) or enroll on a row",
-          to: "/semester-registrations",
-        }}
-      />
+      <div className="mb-6">
+        <h1 className="text-2xl font-semibold tracking-tight">Course Offerings</h1>
+        <p className="text-sm text-muted-foreground max-w-2xl">
+          A running class for one subject + batch + academic session. Enroll students from each row.
+          For a full-term package bill, use{" "}
+          <Link to="/semester-registrations" className="underline underline-offset-2 hover:text-foreground">
+            Semester Registrations
+          </Link>
+          .
+        </p>
+      </div>
 
       <div className="grid gap-4 md:grid-cols-4">
         <KpiCard label="Total Offerings" value={stats.total} icon={BookOpen} />

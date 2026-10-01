@@ -47,6 +47,15 @@ const programSchema = new mongoose.Schema({
     enum: ['Active', 'Inactive'],
     default: 'Active'
   },
+  /** Public apply window — both null means Active but not open for applications yet. */
+  admissionOpensAt: {
+    type: Date,
+    default: null,
+  },
+  admissionClosesAt: {
+    type: Date,
+    default: null,
+  },
   isDeleted: {
     type: Boolean,
     default: false,
@@ -65,6 +74,7 @@ const programSchema = new mongoose.Schema({
 });
 
 programSchema.index({ departmentId: 1 });
+programSchema.index({ status: 1, admissionOpensAt: 1, admissionClosesAt: 1 });
 programSchema.index({ name: 'text', code: 'text' });
 
 const Program = mongoose.model('Program', programSchema);
