@@ -324,7 +324,7 @@ export default function AdmissionFeeChallanForm({
 
   const handlePrint = () => {
     const html = buildPrintHtml(challan, copies);
-    const win = window.open("", "_blank", "noopener,noreferrer,width=1200,height=850");
+    const win = window.open("", );
     if (!win) {
       // Popup blocked — fallback to same-tab blob print
       const blob = new Blob([html], { type: "text/html" });
