@@ -265,6 +265,37 @@ export function getMissingDossierFields(value: StudentDossierFormValue, mode: Do
   return DOSSIER_REQUIRED_CHECKS.filter((f) => f.modes.includes(mode) && !f.check(value));
 }
 
+export type DossierFormSection =
+  | "personal"
+  | "assignment"
+  | "guardian"
+  | "address"
+  | "education"
+  | "documents";
+
+const SECTION_REQUIRED_KEYS: Record<Exclude<DossierFormSection, "documents" | "education">, DossierFieldKey[]> = {
+  personal: ["firstName", "lastName", "email", "phone", "cnic", "dateOfBirth", "gender"],
+  assignment: ["programId", "campusId"],
+  guardian: ["fatherName"],
+  address: ["city"],
+};
+
+/** Required fields for wizard steps (subset of apply mode). */
+export function getMissingDossierFieldsForSections(
+  value: StudentDossierFormValue,
+  mode: DossierFormMode,
+  sections: DossierFormSection[]
+) {
+  const keys = new Set<DossierFieldKey>();
+  for (const section of sections) {
+    if (section === "documents" || section === "education") continue;
+    for (const key of SECTION_REQUIRED_KEYS[section]) keys.add(key);
+  }
+  return DOSSIER_REQUIRED_CHECKS.filter(
+    (f) => f.modes.includes(mode) && keys.has(f.key) && !f.check(value)
+  );
+}
+
 const selectClassName =
   "w-full h-10 rounded-md border border-input bg-background px-3 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
@@ -321,6 +352,8 @@ interface StudentDossierFormProps {
   /** Existing server documents (track page) shown alongside staged uploads */
   documents?: StudentDocument[];
   documentsDescription?: string;
+  /** When set, only these form sections render (wizard steps). */
+  sections?: DossierFormSection[];
 }
 
 export function StudentDossierForm({
@@ -342,7 +375,9 @@ export function StudentDossierForm({
   onStagedDocumentsChange,
   documents = [],
   documentsDescription = "Upload supporting documents (PDF, images, or Word). Same slots as the admission dossier.",
+  sections,
 }: StudentDossierFormProps) {
+  const showSection = (key: DossierFormSection) => !sections || sections.includes(key);
   const patch = (partial: Partial<StudentDossierFormValue>) => onChange({ ...value, ...partial });
   const patchGuardian = (key: keyof StudentDossierFormValue["guardian"], v: string) =>
     onChange({ ...value, guardian: { ...value.guardian, [key]: v } });
@@ -368,6 +403,7 @@ export function StudentDossierForm({
 
   return (
     <div className={cn("space-y-4", className)}>
+      {showSection("personal") ? (
       <section className="space-y-3 border rounded-lg p-4 md:p-5">
         <h3 className="font-semibold">Personal</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-4 gap-y-3">
@@ -469,7 +505,9 @@ export function StudentDossierForm({
           ) : null}
         </div>
       </section>
+      ) : null}
 
+      {showSection("assignment") ? (
       <section className="space-y-3 border rounded-lg p-4 md:p-5">
         <h3 className="font-semibold">Program assignment</h3>
         <div className={cn("grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3", assignmentCols)}>
@@ -568,7 +606,9 @@ export function StudentDossierForm({
           </Field>
         ) : null}
       </section>
+      ) : null}
 
+      {showSection("guardian") ? (
       <section className="space-y-3 border rounded-lg p-4 md:p-5">
         <h3 className="font-semibold">Guardian</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-x-4 gap-y-3">
@@ -611,7 +651,9 @@ export function StudentDossierForm({
           </Field>
         </div>
       </section>
+      ) : null}
 
+      {showSection("address") ? (
       <section className="space-y-3 border rounded-lg p-4 md:p-5">
         <h3 className="font-semibold">Address</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-4 gap-y-3">
@@ -657,7 +699,9 @@ export function StudentDossierForm({
           </Field>
         </div>
       </section>
+      ) : null}
 
+      {showSection("education") ? (
       <section className="space-y-3 border rounded-lg p-4 md:p-5">
         <h3 className="font-semibold">Previous education</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-4 gap-y-3">
@@ -695,8 +739,9 @@ export function StudentDossierForm({
           </Field>
         </div>
       </section>
+      ) : null}
 
-      {showDocuments && onStagedDocumentsChange ? (
+      {showSection("documents") && showDocuments && onStagedDocumentsChange ? (
         <StudentDocumentSlots
           documents={documents}
           stagedFiles={stagedDocuments}

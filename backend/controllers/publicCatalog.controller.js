@@ -11,6 +11,7 @@ import {
 import { generateApplicationId } from '../utils/generateStudentId.js';
 import { parseApplicationExtendedFields } from '../utils/applicationFields.js';
 import {
+  assertPublicApplyEligibility,
   formatAdmissionWindowLabel,
   groupProgramsByCategory,
   isProgramAdmissionOpen,
@@ -282,14 +283,18 @@ export const submitPublicApplication = handle(async (req, res) => {
     return res.status(400).json({ success: false, message: 'address.city is required' });
   }
 
-  const program = await Program.findOne({ _id: programId, isDeleted: notDeleted });
-  if (!program) {
-    return res.status(400).json({ success: false, message: 'Invalid program selected' });
-  }
-
-  const campus = await Campus.findOne({ _id: campusId, isDeleted: notDeleted });
-  if (!campus) {
-    return res.status(400).json({ success: false, message: 'Invalid campus selected' });
+  const eligibility = await assertPublicApplyEligibility({
+    Program,
+    Campus,
+    Department,
+    programId,
+    campusId,
+  });
+  if (!eligibility.ok) {
+    return res.status(eligibility.status).json({
+      success: false,
+      message: eligibility.message,
+    });
   }
 
   const normalizedEmail = email.toLowerCase().trim();
@@ -421,13 +426,31 @@ export const updatePublicApplication = handle(async (req, res) => {
     return res.status(400).json({ success: false, message: 'address.city is required' });
   }
 
-  const program = await Program.findOne({ _id: programId, isDeleted: notDeleted });
-  if (!program) {
-    return res.status(400).json({ success: false, message: 'Invalid program selected' });
-  }
-  const campus = await Campus.findOne({ _id: campusId, isDeleted: notDeleted });
-  if (!campus) {
-    return res.status(400).json({ success: false, message: 'Invalid campus selected' });
+  const programChanged = String(application.programId) !== String(programId);
+  const campusChanged = String(application.campusId) !== String(campusId);
+  if (programChanged || campusChanged) {
+    const eligibility = await assertPublicApplyEligibility({
+      Program,
+      Campus,
+      Department,
+      programId,
+      campusId,
+    });
+    if (!eligibility.ok) {
+      return res.status(eligibility.status).json({
+        success: false,
+        message: eligibility.message,
+      });
+    }
+  } else {
+    const program = await Program.findOne({ _id: programId, isDeleted: notDeleted });
+    if (!program) {
+      return res.status(400).json({ success: false, message: 'Invalid program selected' });
+    }
+    const campus = await Campus.findOne({ _id: campusId, isDeleted: notDeleted });
+    if (!campus) {
+      return res.status(400).json({ success: false, message: 'Invalid campus selected' });
+    }
   }
 
   application.firstName = String(firstName).trim();

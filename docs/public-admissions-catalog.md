@@ -28,7 +28,7 @@
 | Admission open/close dates on Program | ✅ Step 1 |
 | Public catalog tree API | ✅ Step 2 |
 | Public browse UI | ✅ Step 3 |
-| Stepped apply shell | ⬜ Step 4 |
+| Stepped apply shell | ✅ Step 4 |
 
 ---
 
@@ -61,7 +61,7 @@ Validation: if both dates are set, `admissionOpensAt` must be ≤ `admissionClos
 | **1** | Program model + staff create/edit/list for admission dates | ✅ Done |
 | **2** | Extend `/api/public/catalog` → university + campuses → categories → programs + open/closed | ✅ Done |
 | **3** | Public browse UI (home / programs page) | ✅ Done |
-| **4** | Stepped apply form; prefill campus/program; reject closed on submit | ⬜ |
+| **4** | Stepped apply form; prefill campus/program; reject closed on submit | ✅ Done |
 | **5** | Staff data hygiene (campus–department links, degree levels, dates) | ⬜ |
 
 **Not yet:** full `AdmissionIntake` module, seats/waitlists, auto-batch on apply, per-campus date overrides (add later only if Main vs Branch windows differ).

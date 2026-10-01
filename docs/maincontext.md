@@ -391,7 +391,7 @@ Public layout: `PublicSiteLayout` — nav links + footer; admission CTA prominen
 
 | Priority | Work | Why |
 |----------|------|-----|
-| **In progress** | Public admissions catalog (browse → open/closed → stepped apply) | Plan: `docs/public-admissions-catalog.md` — Steps 1–3 ✅ |
+| **Done** | Public admissions catalog (browse → open/closed → stepped apply) | Plan: `docs/public-admissions-catalog.md` — Steps 1–4 ✅ |
 | **Done** | ~~Student portal login (`Student.userId`)~~ | ✅ Sep 2026 — `/student` + `/api/student-portal/*` |
 | **Done** | ~~Leave balance admin UI~~ | ✅ Sep 2026 — `WorkforceLeavePage` quotas + staff deep-link |
 | **Done** | ~~Recruitment resume uploads~~ | ✅ Sep 2026 — `cvPath` + multer under `uploads/hr/recruitment/` |

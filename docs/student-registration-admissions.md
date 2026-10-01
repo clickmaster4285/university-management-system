@@ -266,6 +266,8 @@ Full plan and rules: [`docs/public-admissions-catalog.md`](./public-admissions-c
 
 **Step 3 (done):** Public `/programs` browse (campus sidebar → categories → Open/Closed). Home + nav use live university name. Open programs link to `/apply?campusId=&programId=` (locked selection).
 
+**Step 4 (done):** Stepped public apply (Program → Personal → Background → Documents → Review). Submit rejects closed / undated / wrong-campus programs via `assertPublicApplyEligibility`. Track updates only re-check when program/campus changes.
+
 ---
 
 *Document written to capture the student registration / admissions work completed around 2026-09-26.*
