@@ -46,7 +46,7 @@
 
 - [x] **Step 1** — `Program.admissionOpensAt` / `admissionClosesAt` + staff Programs UI
 - [x] **Step 2** — Public catalog tree API (`GET /api/public/catalog`)
-- [ ] **Step 3** — Public browse UI
+- [x] **Step 3** — Public browse UI (`/programs` + live home/nav)
 - [ ] **Step 4** — Stepped apply + reject closed on submit
 
 ---

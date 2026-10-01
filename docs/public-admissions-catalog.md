@@ -27,7 +27,7 @@
 | University profile (staff) | ✅ (public home still partly hardcoded) |
 | Admission open/close dates on Program | ✅ Step 1 |
 | Public catalog tree API | ✅ Step 2 |
-| Public browse UI | ⬜ Step 3 |
+| Public browse UI | ✅ Step 3 |
 | Stepped apply shell | ⬜ Step 4 |
 
 ---
@@ -60,7 +60,7 @@ Validation: if both dates are set, `admissionOpensAt` must be ≤ `admissionClos
 |------|------|--------|
 | **1** | Program model + staff create/edit/list for admission dates | ✅ Done |
 | **2** | Extend `/api/public/catalog` → university + campuses → categories → programs + open/closed | ✅ Done |
-| **3** | Public browse UI (home / programs page) | ⬜ |
+| **3** | Public browse UI (home / programs page) | ✅ Done |
 | **4** | Stepped apply form; prefill campus/program; reject closed on submit | ⬜ |
 | **5** | Staff data hygiene (campus–department links, degree levels, dates) | ⬜ |
 
@@ -88,4 +88,5 @@ Validation: if both dates are set, `admissionOpensAt` must be ≤ `admissionClos
   - `GET /api/public/catalog/programs|campuses|sessions` — flat lists (apply form)
 - Staff UI: `frontend/src/pages/academics/programs/ProgramForm.tsx`, `ProgramsPage.tsx`
 - Types / client: `frontend/src/features/programs.ts`, `frontend/src/features/studentApplications.ts`
+- Public browse: `frontend/src/pages/public/ProgramsCatalogPage.tsx`, `HomePage.tsx`, `hooks/usePublicCatalog.ts`
 - Pipeline doc: `docs/student-registration-admissions.md`

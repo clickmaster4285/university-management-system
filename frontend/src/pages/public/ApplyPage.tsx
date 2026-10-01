@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { CheckCircle2, GraduationCap, Loader2, Send } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,11 @@ import {
 import { studentApplicationsAPI } from "@/features/studentApplications";
 
 export default function ApplyPage() {
+  const [searchParams] = useSearchParams();
+  const prefillCampusId = searchParams.get("campusId") || "";
+  const prefillProgramId = searchParams.get("programId") || "";
+  const lockSelection = Boolean(prefillCampusId && prefillProgramId);
+
   const [programs, setPrograms] = useState<Array<{ value: string; label: string }>>([]);
   const [campuses, setCampuses] = useState<Array<{ value: string; label: string }>>([]);
   const [sessions, setSessions] = useState<Array<{ value: string; label: string }>>([]);
@@ -40,6 +45,21 @@ export default function ApplyPage() {
         );
         setCampuses(campusList.map((c) => ({ value: c._id, label: c.name })));
         setSessions(sessionList.map((s) => ({ value: s._id, label: s.name })));
+
+        if (prefillCampusId || prefillProgramId) {
+          const campusOk = !prefillCampusId || campusList.some((c) => c._id === prefillCampusId);
+          const programOk =
+            !prefillProgramId || programList.some((p) => p._id === prefillProgramId);
+          if (campusOk && programOk) {
+            setForm((prev) => ({
+              ...prev,
+              campusId: prefillCampusId || prev.campusId,
+              programId: prefillProgramId || prev.programId,
+            }));
+          } else {
+            toast.error("Selected program or campus is no longer available");
+          }
+        }
       } catch {
         toast.error("Failed to load application form options");
       } finally {
@@ -47,7 +67,7 @@ export default function ApplyPage() {
       }
     };
     load();
-  }, []);
+  }, [prefillCampusId, prefillProgramId]);
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -95,6 +115,9 @@ export default function ApplyPage() {
     );
   }
 
+  const selectedProgram = programs.find((p) => p.value === form.programId);
+  const selectedCampus = campuses.find((c) => c.value === form.campusId);
+
   return (
     <div className="max-w-[80vw] mx-auto px-6 py-12">
       <div className="text-center mb-8">
@@ -105,6 +128,25 @@ export default function ApplyPage() {
         <p className="text-muted-foreground mt-2">
           Same dossier details and document slots used by admissions staff. No login required.
         </p>
+        {lockSelection && selectedProgram && selectedCampus && (
+          <p className="mt-3 text-sm">
+            Applying to <span className="font-medium text-foreground">{selectedProgram.label}</span>
+            {" at "}
+            <span className="font-medium text-foreground">{selectedCampus.label}</span>
+            {" · "}
+            <Link to="/programs" className="text-primary underline underline-offset-2">
+              Change program
+            </Link>
+          </p>
+        )}
+        {!lockSelection && (
+          <p className="mt-3 text-sm text-muted-foreground">
+            Prefer to browse first?{" "}
+            <Link to="/programs" className="text-primary underline underline-offset-2">
+              View programs by campus
+            </Link>
+          </p>
+        )}
       </div>
 
       {submittedId ? (
@@ -129,6 +171,7 @@ export default function ApplyPage() {
             showDocuments
             stagedDocuments={stagedDocuments}
             onStagedDocumentsChange={setStagedDocuments}
+            lockProgramCampus={lockSelection}
           />
           <Button type="submit" className="w-full gradient-brand text-white border-0" disabled={submitting}>
             {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}

@@ -11,6 +11,7 @@ const PublicSiteLayout = lazy(() => import("./layouts/PublicSiteLayout"));
 const HomePage = lazy(() => import("./pages/public/HomePage"));
 const AboutPage = lazy(() => import("./pages/public/AboutPage"));
 const ContactPage = lazy(() => import("./pages/public/ContactPage"));
+const ProgramsCatalogPage = lazy(() => import("./pages/public/ProgramsCatalogPage"));
 const ApplyPage = lazy(() => import("./pages/public/ApplyPage"));
 const ApplicationTrackPage = lazy(() => import("./pages/public/ApplicationTrackPage"));
 const LoginPage = lazy(() => import("./pages/auth/LoginPage"));
@@ -148,6 +149,7 @@ export const App = () => (
               {/* Public website */}
               <Route path="/" element={<PublicSiteLayout />}>
                 <Route index element={<HomePage />} />
+                <Route path="programs" element={<ProgramsCatalogPage />} />
                 <Route path="about" element={<AboutPage />} />
                 <Route path="contact" element={<ContactPage />} />
                 <Route path="apply" element={<ApplyPage />} />

@@ -264,6 +264,8 @@ Full plan and rules: [`docs/public-admissions-catalog.md`](./public-admissions-c
 
 **Step 2 (done):** `GET /api/public/catalog` returns university + Active campuses → programs (via department `campusIds`) grouped by category, each with `admissionOpen` / `admissionLabel`. Flat `/catalog/programs|campuses` still available for the current apply form.
 
+**Step 3 (done):** Public `/programs` browse (campus sidebar → categories → Open/Closed). Home + nav use live university name. Open programs link to `/apply?campusId=&programId=` (locked selection).
+
 ---
 
 *Document written to capture the student registration / admissions work completed around 2026-09-26.*
