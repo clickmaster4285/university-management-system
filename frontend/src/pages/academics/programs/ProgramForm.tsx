@@ -21,6 +21,7 @@ export type ProgramFormData = {
   status: "Active" | "Inactive";
   admissionOpensAt: string;
   admissionClosesAt: string;
+  admissionFee: number;
 };
 
 export const DEGREE_LEVELS: Program["degreeLevel"][] = ["BS", "MS", "PhD", "BBA", "MBA", "LLB", "Other"];
@@ -37,6 +38,7 @@ export const EMPTY_FORM: ProgramFormData = {
   status: "Active",
   admissionOpensAt: "",
   admissionClosesAt: "",
+  admissionFee: 0,
 };
 
 const resolveRefId = (value: string | { _id: string } | null | undefined) => {
@@ -63,6 +65,7 @@ const toFormData = (program: Program): ProgramFormData => ({
   status: program.status || "Active",
   admissionOpensAt: toDateInput(program.admissionOpensAt),
   admissionClosesAt: toDateInput(program.admissionClosesAt),
+  admissionFee: program.admissionFee ?? 0,
 });
 
 const toApiPayload = (formData: ProgramFormData) => ({
@@ -76,6 +79,7 @@ const toApiPayload = (formData: ProgramFormData) => ({
   status: formData.status,
   admissionOpensAt: formData.admissionOpensAt.trim() || null,
   admissionClosesAt: formData.admissionClosesAt.trim() || null,
+  admissionFee: Number(formData.admissionFee) || 0,
 });
 
 interface ProgramFormProps {
@@ -117,7 +121,10 @@ export function ProgramForm({ mode, program }: ProgramFormProps) {
     const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
-      [name]: name === "duration" || name === "totalCredits" ? Number(value) : value,
+      [name]:
+        name === "duration" || name === "totalCredits" || name === "admissionFee"
+          ? Number(value)
+          : value,
     }));
   };
 
@@ -295,6 +302,23 @@ export function ProgramForm({ mode, program }: ProgramFormProps) {
                   value={formData.admissionClosesAt}
                   onChange={handleChange}
                 />
+              </div>
+              <div className="space-y-2 md:col-span-2">
+                <Label htmlFor="admissionFee">Admission fee (PKR)</Label>
+                <Input
+                  id="admissionFee"
+                  name="admissionFee"
+                  type="number"
+                  min={0}
+                  value={formData.admissionFee}
+                  onChange={handleChange}
+                  placeholder="0"
+                />
+                <p className="text-xs text-muted-foreground">
+                  One-time seat fee per program (Accept → challan on Fee &amp; Enrollment). Keep this
+                  separate from semester tuition packages — do not put admission into Semester 1.
+                  Use 0 only if the program has no seat fee.
+                </p>
               </div>
             </div>
           </div>

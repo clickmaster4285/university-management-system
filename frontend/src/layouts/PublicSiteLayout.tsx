@@ -6,7 +6,8 @@ import { usePublicCatalog, universityDisplayName } from "@/hooks/usePublicCatalo
 
 const navLinks = [
   { to: "/", label: "Home", end: true },
-  { to: "/programs", label: "Programs" },
+  { to: "/catalog", label: "Programs" },
+  { to: "/catalog/directory", label: "Directory" },
   { to: "/about", label: "About" },
   { to: "/contact", label: "Contact" },
 ];
@@ -26,7 +27,7 @@ export function PublicSiteLayout() {
     .join(", ");
 
   const isActive = (to: string, end?: boolean) => {
-    if (end) return location.pathname === to;
+    if (end || to === "/catalog") return location.pathname === to;
     return location.pathname === to || location.pathname.startsWith(`${to}/`);
   };
 
@@ -70,7 +71,7 @@ export function PublicSiteLayout() {
               <Link to="/apply/status">Track application</Link>
             </Button>
             <Button asChild size="sm" className="gradient-brand text-white border-0">
-              <Link to="/programs">Browse programs</Link>
+              <Link to="/catalog">Browse programs</Link>
             </Button>
             <Button asChild variant="outline" size="sm">
               <Link to="/login">Staff portal</Link>
@@ -101,7 +102,7 @@ export function PublicSiteLayout() {
                 {link.label}
               </Link>
             ))}
-            <Link to="/programs" onClick={() => setMenuOpen(false)} className="block px-3 py-2 text-sm font-medium text-primary">
+            <Link to="/catalog" onClick={() => setMenuOpen(false)} className="block px-3 py-2 text-sm font-medium text-primary">
               Browse programs
             </Link>
             <Link to="/apply/status" onClick={() => setMenuOpen(false)} className="block px-3 py-2 text-sm">
@@ -129,7 +130,7 @@ export function PublicSiteLayout() {
           <div>
             <p className="font-semibold mb-2">Quick links</p>
             <div className="flex flex-col gap-1 text-muted-foreground">
-              <Link to="/programs" className="hover:text-foreground">Programs &amp; campuses</Link>
+              <Link to="/catalog" className="hover:text-foreground">Programs &amp; campuses</Link>
               <Link to="/about" className="hover:text-foreground">About us</Link>
               <Link to="/apply/status" className="hover:text-foreground">Track application</Link>
               <Link to="/contact" className="hover:text-foreground">Contact</Link>

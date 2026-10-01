@@ -3,6 +3,72 @@ import type { RefSummary } from './studentApplications';
 
 export type DossierStatus = 'In Progress' | 'Documents Pending' | 'Complete' | 'Enrolled';
 
+export interface AdmissionFeeRecord {
+  _id?: string;
+  feeId?: string;
+  amount: number;
+  paidAmount?: number;
+  remainingAmount?: number;
+  dueDate?: string;
+  paymentStatus?: string;
+  proofStatus?: 'None' | 'Submitted' | 'Verified' | 'Rejected';
+  proofNotes?: string;
+  description?: string;
+  transactionId?: string;
+  paymentMethod?: string;
+}
+
+/** Printable admission challan payload returned by admission-fee APIs */
+export interface AdmissionChallanPrint {
+  feeId?: string;
+  feeType?: string;
+  amount?: number;
+  amountInWords?: string;
+  paymentStatus?: string;
+  proofStatus?: string;
+  dueDate?: string | null;
+  issuedAt?: string | null;
+  description?: string;
+  university?: {
+    name?: string;
+    shortName?: string;
+    code?: string;
+    email?: string;
+    phone?: string;
+    website?: string;
+    city?: string;
+    address?: string;
+  };
+  applicant?: {
+    applicationId?: string;
+    fullName?: string;
+    fatherName?: string;
+    cnic?: string;
+    email?: string;
+    phone?: string;
+  };
+  program?: {
+    name?: string;
+    code?: string;
+    degreeLevel?: string;
+  };
+  campus?: {
+    name?: string;
+    code?: string;
+    city?: string;
+  };
+  department?: string;
+  bank?: {
+    bankName?: string;
+    accountTitle?: string;
+    accountNumber?: string;
+    branch?: string;
+  };
+  lineItems?: Array<{ label: string; amount: number }>;
+  copies?: string[];
+  instructions?: string[];
+}
+
 export interface GuardianInfo {
   fatherName?: string;
   motherName?: string;
@@ -67,6 +133,7 @@ export type StudentDocumentType =
   | 'domicile'
   | 'character_certificate'
   | 'migration'
+  | 'fee_payment_proof'
   | 'other';
 
 export const STUDENT_DOCUMENT_TYPE_LABELS: Record<StudentDocumentType, string> = {
@@ -78,6 +145,7 @@ export const STUDENT_DOCUMENT_TYPE_LABELS: Record<StudentDocumentType, string> =
   domicile: 'Domicile',
   character_certificate: 'Character certificate',
   migration: 'Migration certificate',
+  fee_payment_proof: 'Admission fee payment proof',
   other: 'Other',
 };
 
@@ -133,8 +201,20 @@ export const serializeDossierPayload = (dossier: Partial<StudentAdmissionDossier
 
 export const getAdmissionApiError = (err: unknown) => {
   const axiosErr = err as {
-    response?: { data?: { message?: string; missingFields?: string[]; missingDocuments?: string[] } };
-    responseData?: { message?: string; missingFields?: string[]; missingDocuments?: string[] };
+    response?: {
+      data?: {
+        message?: string;
+        missingFields?: string[];
+        missingDocuments?: string[];
+        admissionFee?: AdmissionFeeRecord | null;
+      };
+    };
+    responseData?: {
+      message?: string;
+      missingFields?: string[];
+      missingDocuments?: string[];
+      admissionFee?: AdmissionFeeRecord | null;
+    };
     message?: string;
   };
   return axiosErr.response?.data || axiosErr.responseData || { message: axiosErr.message };
@@ -159,6 +239,30 @@ export const studentAdmissionsAPI = {
   completeAdmission: async (id: string) => {
     const response = await api.post(`/admissions/dossiers/${id}/complete`);
     return response.data;
+  },
+
+  getAdmissionFee: async (id: string) => {
+    const response = await api.get(`/admissions/dossiers/${id}/admission-fee`);
+    return response.data as {
+      data: AdmissionFeeRecord | null;
+      programAdmissionFee?: number;
+      satisfied?: boolean;
+      printChallan?: AdmissionChallanPrint | null;
+    };
+  },
+
+  verifyAdmissionFee: async (
+    id: string,
+    payload?: {
+      markPaid?: boolean;
+      transactionId?: string;
+      notes?: string;
+      proofStatus?: string;
+      paymentMethod?: string;
+    }
+  ) => {
+    const response = await api.post(`/admissions/dossiers/${id}/admission-fee/verify`, payload || {});
+    return response.data as { data: AdmissionFeeRecord | null; message?: string; satisfied?: boolean };
   },
 
   getDocumentTypes: async () => {

@@ -8,6 +8,12 @@ import {
 } from '../models/index.js';
 import { generateApplicationId, generateAdmissionDossierId } from '../utils/generateStudentId.js';
 import { parseApplicationExtendedFields } from '../utils/applicationFields.js';
+import {
+  ensureAdmissionFeeChallan,
+  getAdmissionFeeForApplication,
+  buildAdmissionChallanPrintView,
+} from '../utils/admissionFeeChallan.js';
+import { Fee } from '../models/index.js';
 
 const notDeleted = { $ne: true };
 
@@ -175,8 +181,31 @@ export const updateApplicationStatus = handle(async (req, res) => {
   application.reviewedBy = req.user?._id || null;
   await application.save();
 
+  let admissionFee = null;
+  if (status === 'Accepted') {
+    try {
+      const result = await ensureAdmissionFeeChallan(application);
+      admissionFee = result.fee;
+    } catch (err) {
+      return res.status(err.status || 500).json({
+        success: false,
+        message: err.message || 'Failed to create admission fee challan',
+      });
+    }
+  }
+
   const populated = await populateApplication(StudentApplication.findById(application._id));
-  res.json({ success: true, data: populated });
+  res.json({
+    success: true,
+    data: populated,
+    admissionFee,
+    message:
+      status === 'Accepted' && admissionFee
+        ? `Accepted. Admission fee challan ${admissionFee.feeId} generated (PKR ${admissionFee.amount}).`
+        : status === 'Accepted'
+          ? 'Accepted. No admission fee configured on this program (amount 0).'
+          : undefined,
+  });
 });
 
 export const promoteApplication = handle(async (req, res) => {
@@ -246,7 +275,82 @@ export const promoteApplication = handle(async (req, res) => {
     { $set: { studentAdmission: dossier._id } }
   );
 
-  res.status(201).json({ success: true, data: dossier });
+  // Ensure admission fee challan exists and link to dossier
+  let admissionFee = null;
+  try {
+    const result = await ensureAdmissionFeeChallan(application, { dossierId: dossier._id });
+    admissionFee = result.fee;
+  } catch {
+    /* non-fatal if fee already handled */
+  }
+
+  res.status(201).json({
+    success: true,
+    data: dossier,
+    admissionFee,
+    message: admissionFee
+      ? `Promoted to Fee & Enrollment. Challan ${admissionFee.feeId} — PKR ${admissionFee.amount}.`
+      : 'Promoted to Fee & Enrollment.',
+  });
+});
+
+export const getApplicationAdmissionFee = handle(async (req, res) => {
+  const query = [{ applicationId: req.params.id }];
+  if (mongoose.Types.ObjectId.isValid(req.params.id)) {
+    query.unshift({ _id: req.params.id });
+  }
+  const application = await StudentApplication.findOne({ $or: query, isDeleted: notDeleted });
+  if (!application) {
+    return res.status(404).json({ success: false, message: 'Application not found' });
+  }
+  const fee = await getAdmissionFeeForApplication(application._id);
+  const printChallan = fee
+    ? await buildAdmissionChallanPrintView(fee, application)
+    : null;
+  res.json({ success: true, data: fee, printChallan });
+});
+
+export const verifyApplicationAdmissionFee = handle(async (req, res) => {
+  const query = [{ applicationId: req.params.id }];
+  if (mongoose.Types.ObjectId.isValid(req.params.id)) {
+    query.unshift({ _id: req.params.id });
+  }
+  const application = await StudentApplication.findOne({ $or: query, isDeleted: notDeleted });
+  if (!application) {
+    return res.status(404).json({ success: false, message: 'Application not found' });
+  }
+
+  let fee = await getAdmissionFeeForApplication(application._id);
+  if (!fee) {
+    const created = await ensureAdmissionFeeChallan(application);
+    fee = created.fee;
+  }
+  if (!fee) {
+    return res.status(400).json({
+      success: false,
+      message: 'No admission fee on this program',
+    });
+  }
+
+  const { markPaid = true, transactionId, notes, proofStatus } = req.body;
+  if (proofStatus) fee.proofStatus = proofStatus;
+  else fee.proofStatus = 'Verified';
+  if (notes !== undefined) fee.proofNotes = notes;
+  if (transactionId) fee.transactionId = transactionId;
+  if (markPaid) {
+    fee.paidAmount = fee.amount;
+    fee.remainingAmount = 0;
+    fee.paymentStatus = 'Paid';
+    fee.paidDate = new Date();
+    fee.paymentMethod = req.body.paymentMethod || 'Bank Transfer';
+  }
+  await fee.save();
+
+  res.json({
+    success: true,
+    data: fee,
+    message: `Admission fee ${fee.feeId} verified${markPaid ? ' and marked paid' : ''}.`,
+  });
 });
 
 export const deleteApplication = handle(async (req, res) => {

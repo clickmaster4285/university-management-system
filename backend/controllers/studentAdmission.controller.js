@@ -13,6 +13,12 @@ import {
 import { generateStudentId } from '../utils/generateStudentId.js';
 import { ensureStudentPortalAccount } from '../utils/studentPortalAccount.js';
 import { STUDENT_DOCUMENT_TYPES } from '../utils/uploadPaths.js';
+import {
+  ensureAdmissionFeeChallan,
+  getAdmissionFeeForDossier,
+  isAdmissionFeeSatisfied,
+  buildAdmissionChallanPrintView,
+} from '../utils/admissionFeeChallan.js';
 
 const notDeleted = { $ne: true };
 
@@ -212,6 +218,26 @@ export const completeAdmission = handle(async (req, res) => {
     dossier.batchId ? Batch.findById(dossier.batchId) : null,
   ]);
 
+  const admissionFee = await getAdmissionFeeForDossier(
+    dossier._id,
+    dossier.applicationId || null
+  );
+  if (!isAdmissionFeeSatisfied(admissionFee, program?.admissionFee)) {
+    return res.status(400).json({
+      success: false,
+      message:
+        'Admission fee must be verified (or waived) before creating the student record',
+      admissionFee: admissionFee
+        ? {
+            feeId: admissionFee.feeId,
+            amount: admissionFee.amount,
+            paymentStatus: admissionFee.paymentStatus,
+            proofStatus: admissionFee.proofStatus,
+          }
+        : null,
+    });
+  }
+
   const studentId = await generateStudentId();
   const student = await Student.create({
     studentId,
@@ -237,6 +263,14 @@ export const completeAdmission = handle(async (req, res) => {
     currentSemester: 1,
     semester: 1,
   });
+
+  // Link admission fee challan to the new student when present
+  if (admissionFee) {
+    admissionFee.studentId = student.studentId;
+    admissionFee.studentName = student.name;
+    admissionFee.studentEmail = student.email;
+    await admissionFee.save();
+  }
 
   dossier.studentId = student._id;
   dossier.status = 'Enrolled';
@@ -283,5 +317,90 @@ export const getDossierDocumentTypes = handle(async (_req, res) => {
       all: STUDENT_DOCUMENT_TYPES,
       required: REQUIRED_DOCUMENT_TYPES,
     },
+  });
+});
+
+export const getDossierAdmissionFee = handle(async (req, res) => {
+  const dossier = await findDossier(req.params.id);
+  if (!dossier) {
+    return res.status(404).json({ success: false, message: 'Admission dossier not found' });
+  }
+  const fee = await getAdmissionFeeForDossier(dossier._id, dossier.applicationId || null);
+  const program = await Program.findById(dossier.programId).select('admissionFee name code');
+  let printChallan = null;
+  if (fee && dossier.applicationId) {
+    const application =
+      (await StudentApplication.findById(dossier.applicationId)) ||
+      ({
+        applicationId: dossier.admissionId,
+        firstName: dossier.firstName,
+        lastName: dossier.lastName,
+        email: dossier.email,
+        phone: dossier.phone,
+        cnic: dossier.cnic,
+        guardian: dossier.guardian,
+        programId: dossier.programId,
+        campusId: dossier.campusId,
+      });
+    printChallan = await buildAdmissionChallanPrintView(fee, application);
+  }
+  res.json({
+    success: true,
+    data: fee,
+    printChallan,
+    programAdmissionFee: program?.admissionFee ?? 0,
+    satisfied: isAdmissionFeeSatisfied(fee, program?.admissionFee),
+  });
+});
+
+export const verifyDossierAdmissionFee = handle(async (req, res) => {
+  const dossier = await findDossier(req.params.id);
+  if (!dossier) {
+    return res.status(404).json({ success: false, message: 'Admission dossier not found' });
+  }
+
+  let fee = await getAdmissionFeeForDossier(dossier._id, dossier.applicationId || null);
+  if (!fee && dossier.applicationId) {
+    const application = await StudentApplication.findById(dossier.applicationId);
+    if (application) {
+      const created = await ensureAdmissionFeeChallan(application, { dossierId: dossier._id });
+      fee = created.fee;
+    }
+  }
+  if (!fee) {
+    const program = await Program.findById(dossier.programId).select('admissionFee');
+    if (program && Number(program.admissionFee) <= 0) {
+      return res.json({
+        success: true,
+        data: null,
+        message: 'No admission fee configured on this program',
+        satisfied: true,
+      });
+    }
+    return res.status(400).json({
+      success: false,
+      message: 'No admission fee challan found — accept/promote the application first',
+    });
+  }
+
+  const { markPaid = true, transactionId, notes, proofStatus, paymentMethod } = req.body;
+  fee.proofStatus = proofStatus || 'Verified';
+  if (notes !== undefined) fee.proofNotes = notes;
+  if (transactionId) fee.transactionId = transactionId;
+  if (markPaid) {
+    fee.paidAmount = fee.amount;
+    fee.remainingAmount = 0;
+    fee.paymentStatus = 'Paid';
+    fee.paidDate = new Date();
+    fee.paymentMethod = paymentMethod || 'Bank Transfer';
+  }
+  if (!fee.studentAdmissionId) fee.studentAdmissionId = dossier._id;
+  await fee.save();
+
+  res.json({
+    success: true,
+    data: fee,
+    satisfied: true,
+    message: `Admission fee ${fee.feeId} verified${markPaid ? ' and marked paid' : ''}.`,
   });
 });

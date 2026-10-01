@@ -2,6 +2,7 @@ import fs from 'fs';
 import mongoose from 'mongoose';
 import { handle } from '../utils/asyncHandler.js';
 import {
+  Fee,
   Student,
   StudentAdmission,
   StudentApplication,
@@ -371,6 +372,23 @@ export const uploadApplicationDocument = handle(async (req, res) => {
       application.status = 'Under Review';
       await application.save();
     }
+  }
+
+  if (documentType === 'fee_payment_proof') {
+    await Fee.findOneAndUpdate(
+      {
+        studentApplicationId: application._id,
+        source: 'admission',
+        isDeleted: notDeleted,
+        proofStatus: { $in: ['None', 'Rejected', 'Submitted'] },
+      },
+      {
+        $set: {
+          proofStatus: 'Submitted',
+          proofNotes: req.body.notes || '',
+        },
+      }
+    );
   }
 
   res.status(201).json({ success: true, data: document });

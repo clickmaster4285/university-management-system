@@ -62,8 +62,30 @@ const feeSchema = new mongoose.Schema({
   },
   source: {
     type: String,
-    enum: ['semester_package', 'manual', 'legacy'],
+    enum: ['semester_package', 'manual', 'legacy', 'admission'],
     default: 'manual',
+  },
+  studentApplicationId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'StudentApplication',
+    default: null,
+    index: true,
+  },
+  studentAdmissionId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'StudentAdmission',
+    default: null,
+  },
+  /** Admission fee payment proof review */
+  proofStatus: {
+    type: String,
+    enum: ['None', 'Submitted', 'Verified', 'Rejected'],
+    default: 'None',
+  },
+  proofNotes: {
+    type: String,
+    trim: true,
+    default: '',
   },
   challanSnapshot: {
     type: mongoose.Schema.Types.Mixed,

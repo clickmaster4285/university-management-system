@@ -37,6 +37,7 @@ const DOCUMENT_SLOTS: StudentDocumentType[] = [
   "domicile",
   "character_certificate",
   "migration",
+  "fee_payment_proof",
   "other",
 ];
 

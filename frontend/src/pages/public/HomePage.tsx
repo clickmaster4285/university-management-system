@@ -58,7 +58,7 @@ export default function HomePage() {
         </p>
         <div className="mt-8 flex flex-wrap gap-3 justify-center">
           <Button asChild size="lg" className="gradient-brand text-white border-0 h-12 px-6">
-            <Link to="/programs">
+            <Link to="/catalog">
               Browse programs <ArrowRight className="h-4 w-4" />
             </Link>
           </Button>
@@ -106,7 +106,7 @@ export default function HomePage() {
               </p>
             </div>
             <Button asChild variant="ghost" size="sm" className="hidden sm:inline-flex">
-              <Link to="/programs">
+              <Link to="/catalog">
                 View all <ArrowRight className="h-3.5 w-3.5" />
               </Link>
             </Button>
@@ -115,7 +115,7 @@ export default function HomePage() {
             {catalog!.campuses.slice(0, 6).map((campus) => (
               <Link
                 key={campus._id}
-                to={`/programs#campus-${campus._id}`}
+                to={`/catalog#campus-${campus._id}`}
                 className="glass rounded-2xl p-5 hover:border-primary/30 border border-transparent transition-colors text-left"
               >
                 <div className="flex items-start gap-3">
@@ -167,7 +167,7 @@ export default function HomePage() {
             </div>
           </div>
           <Button asChild size="lg" className="gradient-brand text-white border-0 shrink-0">
-            <Link to="/programs">Browse programs</Link>
+            <Link to="/catalog">Browse programs</Link>
           </Button>
         </div>
       </section>

@@ -4,6 +4,7 @@ import {
   Campus,
   Department,
   Program,
+  ProgramSemesterFeeSchedule,
   StudentApplication,
   StudentDocument,
   University,
@@ -16,12 +17,81 @@ import {
   groupProgramsByCategory,
   isProgramAdmissionOpen,
 } from '../utils/programAdmission.js';
+import {
+  getAdmissionFeeForApplication,
+  isAdmissionFeeSatisfied,
+  buildAdmissionChallanPrintView,
+} from '../utils/admissionFeeChallan.js';
 
 const notDeleted = { $ne: true };
 
 const normalizeCnic = (value) => String(value || '').replace(/\D/g, '');
 
-function serializePublicProgram(program, now = new Date()) {
+async function loadActiveFeeSummariesByProgram(programIds) {
+  if (!programIds?.length) return new Map();
+  const schedules = await ProgramSemesterFeeSchedule.find({
+    programId: { $in: programIds },
+    status: 'Active',
+    isDeleted: notDeleted,
+  })
+    .populate('academicSessionId', 'name code')
+    .select(
+      'programId semester netPayable grossTotal studentCategory academicSessionId additionalFees'
+    )
+    .sort({ semester: 1 })
+    .lean();
+
+  const map = new Map();
+  for (const s of schedules) {
+    const key = String(s.programId);
+    if (!map.has(key)) map.set(key, []);
+    map.get(key).push({
+      semester: s.semester,
+      netPayable: s.netPayable ?? 0,
+      grossTotal: s.grossTotal ?? 0,
+      studentCategory: s.studentCategory,
+      sessionName:
+        s.academicSessionId && typeof s.academicSessionId === 'object'
+          ? s.academicSessionId.name
+          : null,
+      additionalFees: (s.additionalFees || []).map((a) => ({
+        name: a.name,
+        amount: a.amount ?? 0,
+        type: a.type,
+      })),
+    });
+  }
+  return map;
+}
+
+function pickPublicFeeSchedules(feeSchedules = []) {
+  if (!feeSchedules.length) return [];
+
+  const byCategory = new Map();
+  for (const row of feeSchedules) {
+    const cat = row.studentCategory || 'Regular';
+    if (!byCategory.has(cat)) byCategory.set(cat, []);
+    byCategory.get(cat).push(row);
+  }
+
+  const preferred =
+    byCategory.get('Regular') ||
+    Array.from(byCategory.values())[0] ||
+    feeSchedules;
+
+  // One row per semester (first wins — typically one active package)
+  const bySemester = new Map();
+  for (const row of preferred) {
+    const sem = Number(row.semester);
+    if (!bySemester.has(sem)) bySemester.set(sem, row);
+  }
+
+  return Array.from(bySemester.entries())
+    .sort((a, b) => a[0] - b[0])
+    .map(([, row]) => row);
+}
+
+function serializePublicProgram(program, now = new Date(), feeSchedules = []) {
   const dept =
     program.departmentId && typeof program.departmentId === 'object'
       ? {
@@ -31,6 +101,11 @@ function serializePublicProgram(program, now = new Date()) {
         }
       : null;
   const { label, open } = formatAdmissionWindowLabel(program, now);
+  const schedules = pickPublicFeeSchedules(feeSchedules);
+  const sampleSemester = schedules[0] || null;
+  const tuitionTotal = schedules.reduce((sum, s) => sum + (Number(s.netPayable) || 0), 0);
+  const admissionFee = Number(program.admissionFee) || 0;
+  const studentCategory = schedules[0]?.studentCategory || 'Regular';
 
   return {
     _id: program._id,
@@ -45,6 +120,17 @@ function serializePublicProgram(program, now = new Date()) {
     admissionClosesAt: program.admissionClosesAt || null,
     admissionOpen: open,
     admissionLabel: label,
+    admissionFee,
+    feeSummary: {
+      admissionFee,
+      studentCategory,
+      semesterCount: schedules.length,
+      sampleNetPayable: sampleSemester?.netPayable ?? null,
+      sampleSemester: sampleSemester?.semester ?? null,
+      tuitionTotal,
+      programTotal: tuitionTotal + admissionFee,
+      schedules,
+    },
   };
 }
 
@@ -59,7 +145,7 @@ async function findPublicApplicationByIdAndCnic(applicationId, cnic) {
   return application;
 }
 
-function serializeTrackApplication(application, documents) {
+function serializeTrackApplication(application, documents, admissionFee = null, admissionChallan = null) {
   const latestByType = new Map();
   for (const doc of documents) {
     if (!latestByType.has(doc.documentType)) {
@@ -68,6 +154,11 @@ function serializeTrackApplication(application, documents) {
   }
 
   const canEdit = ['Action Required', 'Submitted', 'Under Review'].includes(application.status);
+  const programAdmissionFee =
+    application.programId && typeof application.programId === 'object'
+      ? Number(application.programId.admissionFee) || 0
+      : null;
+  const canUploadFeeProof = ['Accepted', 'Promoted', 'Shortlisted'].includes(application.status);
 
   return {
     _id: application._id,
@@ -77,6 +168,7 @@ function serializeTrackApplication(application, documents) {
     applicantMessage: application.applicantMessage || '',
     applicantReply: application.applicantReply || '',
     canEdit,
+    canUploadFeeProof,
     firstName: application.firstName,
     lastName: application.lastName,
     email: application.email,
@@ -97,6 +189,19 @@ function serializeTrackApplication(application, documents) {
     submittedAt: application.submittedAt,
     updatedAt: application.updatedAt,
     documents: Array.from(latestByType.values()),
+    admissionFee: admissionFee
+      ? {
+          feeId: admissionFee.feeId,
+          amount: admissionFee.amount,
+          dueDate: admissionFee.dueDate,
+          paymentStatus: admissionFee.paymentStatus,
+          proofStatus: admissionFee.proofStatus,
+          proofNotes: admissionFee.proofNotes || '',
+          description: admissionFee.description || '',
+        }
+      : null,
+    admissionChallan,
+    feeSatisfied: isAdmissionFeeSatisfied(admissionFee, programAdmissionFee),
   };
 }
 
@@ -105,13 +210,17 @@ export const getPublicPrograms = handle(async (_req, res) => {
   const programs = await Program.find({ isDeleted: notDeleted, status: 'Active' })
     .populate('departmentId', 'name code')
     .select(
-      'name code degreeLevel duration totalCredits description departmentId admissionOpensAt admissionClosesAt status'
+      'name code degreeLevel duration totalCredits description departmentId admissionOpensAt admissionClosesAt admissionFee status'
     )
     .sort({ name: 1 });
 
+  const feeMap = await loadActiveFeeSummariesByProgram(programs.map((p) => p._id));
+
   res.json({
     success: true,
-    data: programs.map((p) => serializePublicProgram(p, now)),
+    data: programs.map((p) =>
+      serializePublicProgram(p, now, feeMap.get(String(p._id)) || [])
+    ),
   });
 });
 
@@ -169,11 +278,13 @@ export const getPublicCatalog = handle(async (_req, res) => {
     Program.find({ isDeleted: notDeleted, status: 'Active' })
       .populate('departmentId', 'name code campusIds')
       .select(
-        'name code degreeLevel duration totalCredits description departmentId admissionOpensAt admissionClosesAt status'
+        'name code degreeLevel duration totalCredits description departmentId admissionOpensAt admissionClosesAt admissionFee status'
       )
       .sort({ name: 1 })
       .lean(),
   ]);
+
+  const feeMap = await loadActiveFeeSummariesByProgram(programs.map((p) => p._id));
 
   const campusIdSet = new Set(campuses.map((c) => String(c._id)));
 
@@ -219,7 +330,9 @@ export const getPublicCatalog = handle(async (_req, res) => {
       address: campus.address || null,
       programCount: campusPrograms.length,
       openProgramCount: openCount,
-      categories: groupProgramsByCategory(campusPrograms, (p) => serializePublicProgram(p, now)),
+      categories: groupProgramsByCategory(campusPrograms, (p) =>
+        serializePublicProgram(p, now, feeMap.get(String(p._id)) || [])
+      ),
     };
   });
 
@@ -358,8 +471,8 @@ export const trackPublicApplication = handle(async (req, res) => {
   }
 
   await application.populate([
-    { path: 'programId', select: 'name code' },
-    { path: 'campusId', select: 'name campusCode' },
+    { path: 'programId', select: 'name code admissionFee degreeLevel' },
+    { path: 'campusId', select: 'name campusCode address' },
     { path: 'academicSessionId', select: 'name code' },
   ]);
 
@@ -372,9 +485,14 @@ export const trackPublicApplication = handle(async (req, res) => {
     )
     .sort({ createdAt: -1 });
 
+  const admissionFee = await getAdmissionFeeForApplication(application._id);
+  const admissionChallan = admissionFee
+    ? await buildAdmissionChallanPrintView(admissionFee, application)
+    : null;
+
   res.json({
     success: true,
-    data: serializeTrackApplication(application, documents),
+    data: serializeTrackApplication(application, documents, admissionFee, admissionChallan),
   });
 });
 
@@ -472,8 +590,8 @@ export const updatePublicApplication = handle(async (req, res) => {
   await application.save();
 
   await application.populate([
-    { path: 'programId', select: 'name code' },
-    { path: 'campusId', select: 'name campusCode' },
+    { path: 'programId', select: 'name code admissionFee degreeLevel' },
+    { path: 'campusId', select: 'name campusCode address' },
     { path: 'academicSessionId', select: 'name code' },
   ]);
 
@@ -486,9 +604,14 @@ export const updatePublicApplication = handle(async (req, res) => {
     )
     .sort({ createdAt: -1 });
 
+  const admissionFee = await getAdmissionFeeForApplication(application._id);
+  const admissionChallan = admissionFee
+    ? await buildAdmissionChallanPrintView(admissionFee, application)
+    : null;
+
   res.json({
     success: true,
-    data: serializeTrackApplication(application, documents),
+    data: serializeTrackApplication(application, documents, admissionFee, admissionChallan),
     message: 'Updates sent to admissions. Your application is back Under Review.',
   });
 });

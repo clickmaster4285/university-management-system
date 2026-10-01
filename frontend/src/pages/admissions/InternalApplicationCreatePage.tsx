@@ -29,7 +29,7 @@ export default function InternalApplicationCreatePage() {
   const [campuses, setCampuses] = useState<Array<{ value: string; label: string }>>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState<StudentDossierFormValue>(emptyStudentDossierFormValue);
+  const [form, setForm] = useState<StudentDossierFormValue>(emptyStudentDossierFormValue());
   const [stagedDocuments, setStagedDocuments] = useState<StagedDocumentMap>({});
 
   useEffect(() => {
@@ -107,18 +107,18 @@ export default function InternalApplicationCreatePage() {
   }
 
   return (
-    <div className="max-w-5xl space-y-6">
+    <div className="space-y-6">
       <Button asChild variant="ghost" className="px-0">
         <Link to="/admissions">
-          <ArrowLeft className="h-4 w-4" /> Back to visitor applications
+          <ArrowLeft className="h-4 w-4" /> Back to offline applicants
         </Link>
       </Button>
 
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">New visitor application</h1>
+        <h1 className="text-2xl font-bold tracking-tight">New offline application</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Same form as the public apply page — for walk-ins and staff-assisted intake. After saving,
-          review and mark Shortlisted / Accepted as usual.
+          Same form as the public apply page — for walk-in admission applications (not campus
+          visitors). After saving, review and mark Shortlisted / Accepted as usual.
         </p>
       </div>
 

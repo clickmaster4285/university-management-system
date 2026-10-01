@@ -13,6 +13,7 @@ export const API_ROUTE_MODULES = {
   '/subjects': 'academic_catalog',
   '/attendance': 'assessments',
   '/admissions': 'admissions',
+  '/campus-visits': 'admissions',
   '/assignments': 'assessments',
   '/exams': 'assessments',
   '/faculties': 'governance',

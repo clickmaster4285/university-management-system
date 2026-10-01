@@ -21,6 +21,7 @@ import {
 } from "@/features/studentAdmissions";
 import { batchAPI } from "@/features/batches";
 import AdmissionDocumentsPanel from "./AdmissionDocumentsPanel";
+import AdmissionFeePanel from "./AdmissionFeePanel";
 
 export default function AdmissionDossierPage() {
   const { id } = useParams<{ id: string }>();
@@ -31,6 +32,7 @@ export default function AdmissionDossierPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [completing, setCompleting] = useState(false);
+  const [feeSatisfied, setFeeSatisfied] = useState(false);
   const [portalCreds, setPortalCreds] = useState<{ email: string; temporaryPassword: string } | null>(null);
   const [createdStudentPath, setCreatedStudentPath] = useState<string | null>(null);
 
@@ -67,7 +69,8 @@ export default function AdmissionDossierPage() {
   }, [id]);
 
   const missingFields = useMemo(() => getMissingDossierFields(form, "dossier"), [form]);
-  const canComplete = dossier?.status !== "Enrolled" && missingFields.length === 0;
+  const canComplete =
+    dossier?.status !== "Enrolled" && missingFields.length === 0 && feeSatisfied;
   const enrolled = dossier?.status === "Enrolled";
 
   const programLabel =
@@ -145,7 +148,7 @@ export default function AdmissionDossierPage() {
       <div className="text-center py-20">
         <p className="mb-4">Admission dossier not found.</p>
         <Button asChild variant="outline">
-          <Link to="/admissions">Back to visitor applications</Link>
+          <Link to="/admissions/dossiers">Back to fee &amp; enrollment</Link>
         </Button>
       </div>
     );
@@ -154,8 +157,8 @@ export default function AdmissionDossierPage() {
   return (
     <div className="space-y-8">
       <Button asChild variant="ghost" className="px-0">
-        <Link to="/admissions">
-          <ArrowLeft className="h-4 w-4" /> Back to visitor applications
+        <Link to="/admissions/dossiers">
+          <ArrowLeft className="h-4 w-4" /> Back to fee &amp; enrollment
         </Link>
       </Button>
 
@@ -202,10 +205,18 @@ export default function AdmissionDossierPage() {
 
       <AdmissionDocumentsPanel dossierId={id!} ownerLabel={dossier.admissionId} />
 
+      <AdmissionFeePanel
+        mode="dossier"
+        recordId={id!}
+        disabled={enrolled}
+        onSatisfiedChange={setFeeSatisfied}
+      />
+
       <div className="border rounded-lg p-4 space-y-3 bg-muted/20">
         <h3 className="font-semibold">Completion checklist</h3>
         <p className="text-sm text-muted-foreground">
-          Same fields as the public apply form, plus batch. Documents are optional for now.
+          Same fields as the public apply form, plus batch. Admission fee must be verified before
+          enroll.
         </p>
         <ul className="space-y-1 text-sm">
           {[
@@ -219,8 +230,12 @@ export default function AdmissionDossierPage() {
             { key: "batchId", label: "Batch" },
             { key: "fatherName", label: "Father name" },
             { key: "city", label: "City" },
+            { key: "fee", label: "Admission fee verified" },
           ].map((item) => {
-            const done = !missingFields.some((f) => f.key === item.key || f.label === item.label);
+            const done =
+              item.key === "fee"
+                ? feeSatisfied
+                : !missingFields.some((f) => f.key === item.key || f.label === item.label);
             return (
               <li key={item.key} className="flex items-center gap-2">
                 {done ? (
@@ -233,9 +248,17 @@ export default function AdmissionDossierPage() {
             );
           })}
         </ul>
-        {!canComplete && !enrolled && missingFields.length > 0 && (
+        {!canComplete && !enrolled && (
           <p className="text-sm text-amber-700 dark:text-amber-400">
-            Missing fields: {missingFields.map((f) => f.label).join(", ")}.
+            {[
+              missingFields.length
+                ? `Missing fields: ${missingFields.map((f) => f.label).join(", ")}`
+                : null,
+              !feeSatisfied ? "Admission fee not verified yet" : null,
+            ]
+              .filter(Boolean)
+              .join(" — ")}
+            .
           </p>
         )}
       </div>

@@ -34,6 +34,7 @@ export const STUDENT_DOCUMENT_TYPES = [
   'domicile',
   'character_certificate',
   'migration',
+  'fee_payment_proof',
   'other',
 ];
 

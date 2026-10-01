@@ -10,19 +10,44 @@ function populateStudent(query) {
     .populate("programId", "name code degreeLevel")
     .populate("departmentId", "name code")
     .populate("campusId", "name campusCode")
-    .populate("batchId", "name code")
+    .populate("batchId", "name code year admissionSemester")
     .populate("admissionId", "admissionId status")
     .populate("userId", "email role status");
 }
 
 export const getStudents = handle(async (req, res) => {
-  const { programId, departmentId, campusId, status, search, page = 1, limit = 50 } = req.query;
+  const {
+    programId,
+    departmentId,
+    campusId,
+    batchId,
+    year,
+    status,
+    search,
+    page = 1,
+    limit = 50,
+  } = req.query;
 
   const filter = { isDeleted: notDeleted };
   if (programId) filter.programId = programId;
   if (departmentId) filter.departmentId = departmentId;
   if (campusId) filter.campusId = campusId;
+  if (batchId) filter.batchId = batchId;
   if (status) filter.status = status;
+
+  if (year) {
+    const yearNum = parseInt(year, 10);
+    if (!Number.isNaN(yearNum)) {
+      const batches = await Batch.find({
+        year: yearNum,
+        isDeleted: notDeleted,
+      }).select('_id');
+      const ids = batches.map((b) => b._id);
+      filter.batchId = batchId
+        ? batchId
+        : { $in: ids.length ? ids : [null] };
+    }
+  }
 
   if (search) {
     filter.$or = [

@@ -136,6 +136,7 @@ export const createProgram = handle(async (req, res) => {
     status,
     admissionOpensAt,
     admissionClosesAt,
+    admissionFee,
   } = req.body;
 
   if (!name || !code || !departmentId || !degreeLevel) {
@@ -198,6 +199,7 @@ export const createProgram = handle(async (req, res) => {
     status: status || 'Active',
     admissionOpensAt: resolvedOpens,
     admissionClosesAt: resolvedCloses,
+    admissionFee: admissionFee !== undefined && admissionFee !== '' ? Number(admissionFee) || 0 : 0,
   });
 
   await program.save();
@@ -225,6 +227,7 @@ export const updateProgram = handle(async (req, res) => {
     status,
     admissionOpensAt,
     admissionClosesAt,
+    admissionFee,
   } = req.body;
 
   const program = await findProgramByIdentifier(id);
@@ -290,6 +293,9 @@ export const updateProgram = handle(async (req, res) => {
   }
   if (!opensParsed.skip) program.admissionOpensAt = opensParsed.value;
   if (!closesParsed.skip) program.admissionClosesAt = closesParsed.value;
+  if (admissionFee !== undefined && admissionFee !== '') {
+    program.admissionFee = Number(admissionFee) || 0;
+  }
 
   const windowError = validateAdmissionWindow(program.admissionOpensAt, program.admissionClosesAt);
   if (windowError) {

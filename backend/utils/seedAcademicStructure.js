@@ -261,17 +261,38 @@ async function ensureProgram(departmentId, programCode, programMeta, stats, dryR
   const admissionFields = {};
   if (meta.admissionOpensAt) admissionFields.admissionOpensAt = new Date(meta.admissionOpensAt);
   if (meta.admissionClosesAt) admissionFields.admissionClosesAt = new Date(meta.admissionClosesAt);
+  if (meta.admissionFee != null && meta.admissionFee !== '') {
+    admissionFields.admissionFee = Number(meta.admissionFee) || 0;
+  }
 
   const existing = await Program.findOne({ code, isDeleted: notDeleted });
   if (existing) {
     if (!dryRun && Object.keys(admissionFields).length > 0) {
-      const needsPatch =
-        (admissionFields.admissionOpensAt && !existing.admissionOpensAt) ||
-        (admissionFields.admissionClosesAt && !existing.admissionClosesAt);
-      if (needsPatch) {
-        Object.assign(existing, admissionFields);
-        await existing.save();
+      let dirty = false;
+      if (
+        admissionFields.admissionOpensAt &&
+        (!existing.admissionOpensAt ||
+          existing.admissionOpensAt.getTime() !== admissionFields.admissionOpensAt.getTime())
+      ) {
+        existing.admissionOpensAt = admissionFields.admissionOpensAt;
+        dirty = true;
       }
+      if (
+        admissionFields.admissionClosesAt &&
+        (!existing.admissionClosesAt ||
+          existing.admissionClosesAt.getTime() !== admissionFields.admissionClosesAt.getTime())
+      ) {
+        existing.admissionClosesAt = admissionFields.admissionClosesAt;
+        dirty = true;
+      }
+      if (
+        admissionFields.admissionFee != null &&
+        Number(existing.admissionFee || 0) !== Number(admissionFields.admissionFee)
+      ) {
+        existing.admissionFee = admissionFields.admissionFee;
+        dirty = true;
+      }
+      if (dirty) await existing.save();
     }
     stats.programs.reused += 1;
     return existing;
@@ -296,6 +317,7 @@ async function ensureProgram(departmentId, programCode, programMeta, stats, dryR
     duration: meta.duration,
     totalCredits: meta.totalCredits || 120,
     status: 'Active',
+    admissionFee: admissionFields.admissionFee ?? 0,
     ...admissionFields,
   });
 

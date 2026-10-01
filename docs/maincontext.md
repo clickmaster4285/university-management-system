@@ -358,7 +358,7 @@ Two-stage intake replaces the monolithic `Admission` model for new work:
 
 **Public (no login):** `/apply`, `/apply/status` — rate-limited API at `/api/public/*`.
 
-**Staff:** `/admissions` pipeline → review → promote to dossier → upload docs → complete admission → student appears in `/students`.
+**Staff:** Offline / Online applicants (full data) → promote → **Fee & Enrollment** (admission fee check + complete) → Student Directory. Visits are info-only (not applicants). See `docs/people-intake-flow.md`.
 
 **Program admission window (Oct 2026 Step 1):** `Program.admissionOpensAt` / `admissionClosesAt`. Public “Open” = Active + within dates; no dates = closed for apply. See `docs/public-admissions-catalog.md`.
 
@@ -371,7 +371,8 @@ Legacy `Admission` model, `/api/admissions/legacy/*`, and old `AdmissionsPage.ts
 | URL | Purpose |
 |-----|---------|
 | `/` | Public university site (Home, Programs, About, Contact) |
-| `/programs` | Browse campuses → categories → programs (open/closed) |
+| `/catalog` | Public browse campuses → categories → programs (open/closed) |
+| `/programs` | Staff program CRUD (academic catalog) |
 | `/apply`, `/apply/status` | Public admission apply + track (no login) |
 | `/login` | Staff portal sign-in (secondary entry) |
 | `/dashboard` | Authenticated staff dashboard (was `/`) |

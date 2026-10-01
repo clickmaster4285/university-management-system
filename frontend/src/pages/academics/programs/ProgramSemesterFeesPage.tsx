@@ -404,8 +404,9 @@ export default function ProgramSemesterFeesPage() {
             <div>
               <p className="font-semibold">How this works</p>
               <p className="text-sm text-muted-foreground mt-1 max-w-xl">
-                <strong>1. Build</strong> fees from curriculum → <strong>2. Add extras</strong> (optional) →{" "}
-                <strong>3. Publish</strong> so the semester package is live. One click per step where possible.
+                <strong>1. Build</strong> tuition from curriculum → <strong>2. Add extras</strong> (optional) →{" "}
+                <strong>3. Publish</strong>. These are semester packages for enrolled students — the
+                one-time admission / seat fee is set on the program form, not here.
               </p>
               <div className="flex flex-wrap gap-2 mt-3 text-xs">
                 <Badge variant={workflowStep >= 1 ? "default" : "outline"}>1. Session & category</Badge>

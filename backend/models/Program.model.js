@@ -56,6 +56,12 @@ const programSchema = new mongoose.Schema({
     type: Date,
     default: null,
   },
+  /** One-time admission / enrollment fee (PKR). Used for admission challan. */
+  admissionFee: {
+    type: Number,
+    min: 0,
+    default: 0,
+  },
   isDeleted: {
     type: Boolean,
     default: false,

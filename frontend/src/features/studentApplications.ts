@@ -1,6 +1,6 @@
 import axios from 'axios';
 import api from './axios';
-import type { StudentDocument } from './studentAdmissions';
+import type { AdmissionChallanPrint, AdmissionFeeRecord, StudentDocument } from './studentAdmissions';
 
 const normalizeApiBase = (value: string | undefined) => {
   const trimmed = value?.trim() ?? '';
@@ -109,6 +109,23 @@ export interface PublicCatalogProgram {
   admissionClosesAt?: string | null;
   admissionOpen?: boolean;
   admissionLabel?: string;
+  admissionFee?: number;
+  feeSummary?: {
+    admissionFee?: number;
+    studentCategory?: string;
+    semesterCount?: number;
+    sampleNetPayable?: number | null;
+    sampleSemester?: number | null;
+    tuitionTotal?: number;
+    programTotal?: number;
+    schedules?: Array<{
+      semester: number;
+      netPayable: number;
+      grossTotal?: number;
+      studentCategory?: string;
+      sessionName?: string | null;
+    }>;
+  };
 }
 
 export interface PublicCatalogCampus {
@@ -206,12 +223,48 @@ export const studentApplicationsAPI = {
       remarks,
       applicantMessage,
     });
-    return response.data?.data as StudentApplication;
+    return {
+      data: response.data?.data as StudentApplication,
+      message: response.data?.message as string | undefined,
+      admissionFee: response.data?.admissionFee,
+    };
   },
 
   promote: async (id: string) => {
     const response = await api.post(`/admissions/applications/${id}/promote`);
-    return response.data?.data;
+    return {
+      data: response.data?.data,
+      message: response.data?.message as string | undefined,
+      admissionFee: response.data?.admissionFee,
+    };
+  },
+
+  getAdmissionFee: async (id: string) => {
+    const response = await api.get(`/admissions/applications/${id}/admission-fee`);
+    return response.data as {
+      data: AdmissionFeeRecord | null;
+      printChallan?: AdmissionChallanPrint | null;
+    };
+  },
+
+  verifyAdmissionFee: async (
+    id: string,
+    payload?: {
+      markPaid?: boolean;
+      transactionId?: string;
+      notes?: string;
+      proofStatus?: string;
+      paymentMethod?: string;
+    }
+  ) => {
+    const response = await api.post(
+      `/admissions/applications/${id}/admission-fee/verify`,
+      payload || {}
+    );
+    return response.data as {
+      data: import('./studentAdmissions').AdmissionFeeRecord | null;
+      message?: string;
+    };
   },
 
   delete: async (id: string) => {

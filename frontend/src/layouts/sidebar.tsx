@@ -15,6 +15,7 @@ import {
   DollarSign, Wallet, Briefcase, BarChart3, Settings, Bell, Receipt,
   Sparkles, University, BookMarked, ChevronRight, Clock, Shield, UserCog,
   CalendarDays,
+  Info,
 } from "lucide-react";
 
 const SIDEBAR_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -34,8 +35,10 @@ const SIDEBAR_ICONS: Record<string, React.ComponentType<{ className?: string }>>
   "/workforce/recruitment": Briefcase,
   "/access": Shield,
   "/role-assignments": UserCog,
+  "/campus-visits": Info,
   "/admissions": UserPlus,
   "/admissions/online": Globe,
+  "/admissions/dossiers": Receipt,
   "/students": GraduationCap,
   "/academic-sessions": Calendar,
   "/batches": Layers,

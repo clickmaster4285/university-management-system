@@ -12,6 +12,7 @@ const HomePage = lazy(() => import("./pages/public/HomePage"));
 const AboutPage = lazy(() => import("./pages/public/AboutPage"));
 const ContactPage = lazy(() => import("./pages/public/ContactPage"));
 const ProgramsCatalogPage = lazy(() => import("./pages/public/ProgramsCatalogPage"));
+const ProgramsDirectoryPage = lazy(() => import("./pages/public/ProgramsDirectoryPage"));
 const ApplyPage = lazy(() => import("./pages/public/ApplyPage"));
 const ApplicationTrackPage = lazy(() => import("./pages/public/ApplicationTrackPage"));
 const LoginPage = lazy(() => import("./pages/auth/LoginPage"));
@@ -40,8 +41,10 @@ const CampusEditPage = lazy(() => import("./pages/university/campuses/CampusEdit
 const CampusDetailPage = lazy(() => import("./pages/university/campuses/CampusDetailPage"));
 
 // Academics Modular Pages
-const AdmissionsPage = lazy(() => import("./pages/admissions/VisitorApplicationsPage"));
+const AdmissionsPage = lazy(() => import("./pages/admissions/OfflineApplicantsPage"));
 const OnlineApplicantsPage = lazy(() => import("./pages/admissions/OnlineApplicantsPage"));
+const AdmissionDossiersPage = lazy(() => import("./pages/admissions/AdmissionDossiersPage"));
+const CampusVisitsPage = lazy(() => import("./pages/admissions/CampusVisitsPage"));
 const ApplicationReviewPage = lazy(() => import("./pages/admissions/ApplicationReviewPage"));
 const AdmissionDossierPage = lazy(() => import("./pages/admissions/AdmissionDossierPage"));
 const InternalApplicationCreatePage = lazy(() => import("./pages/admissions/InternalApplicationCreatePage"));
@@ -149,7 +152,8 @@ export const App = () => (
               {/* Public website */}
               <Route path="/" element={<PublicSiteLayout />}>
                 <Route index element={<HomePage />} />
-                <Route path="programs" element={<ProgramsCatalogPage />} />
+                <Route path="catalog" element={<ProgramsCatalogPage />} />
+                <Route path="catalog/directory" element={<ProgramsDirectoryPage />} />
                 <Route path="about" element={<AboutPage />} />
                 <Route path="contact" element={<ContactPage />} />
                 <Route path="apply" element={<ApplyPage />} />
@@ -184,8 +188,10 @@ export const App = () => (
                 <Route path="/notifications" element={<NotificationsPage />} />
 
                 {/* Academics */}
+                <Route path="/campus-visits" element={<CampusVisitsPage />} />
                 <Route path="/admissions" element={<AdmissionsPage />} />
                 <Route path="/admissions/online" element={<OnlineApplicantsPage />} />
+                <Route path="/admissions/dossiers" element={<AdmissionDossiersPage />} />
                 <Route path="/admissions/internal/create" element={<InternalApplicationCreatePage />} />
                 <Route path="/admissions/dossier/:id" element={<AdmissionDossierPage />} />
                 <Route path="/admissions/:id" element={<ApplicationReviewPage />} />

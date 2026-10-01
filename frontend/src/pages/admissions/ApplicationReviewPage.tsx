@@ -12,6 +12,7 @@ import {
   type StudentApplication,
 } from "@/features/studentApplications";
 import ApplicationDocumentsPanel from "./ApplicationDocumentsPanel";
+import AdmissionFeePanel from "./AdmissionFeePanel";
 
 const STATUS_ACTIONS: ApplicationStatus[] = [
   "Under Review",
@@ -58,7 +59,7 @@ export default function ApplicationReviewPage() {
   const backLabel =
     fromState === "online" || application?.source === "public"
       ? "Back to online applicants"
-      : "Back to visitor applications";
+      : "Back to offline applicants";
 
   const trackPath = application?.applicationId
     ? `/apply/status?applicationId=${encodeURIComponent(application.applicationId)}`
@@ -92,14 +93,14 @@ export default function ApplicationReviewPage() {
     if (!id) return;
     setBusy(true);
     try {
-      const updated = await studentApplicationsAPI.updateStatus(
+      const result = await studentApplicationsAPI.updateStatus(
         id,
         status,
         remarks,
         applicantMessage
       );
-      setApplication(updated);
-      toast.success(`Status updated to ${status}`);
+      setApplication(result.data);
+      toast.success(result.message || `Status updated to ${status}`);
     } catch {
       toast.error("Failed to update status");
     } finally {
@@ -115,13 +116,13 @@ export default function ApplicationReviewPage() {
     }
     setBusy(true);
     try {
-      const updated = await studentApplicationsAPI.updateStatus(
+      const result = await studentApplicationsAPI.updateStatus(
         id,
         "Action Required",
         remarks,
         applicantMessage.trim()
       );
-      setApplication(updated);
+      setApplication(result.data);
       toast.success("Sent to applicant — they can edit and press Send updates on the track page");
     } catch {
       toast.error("Failed to notify applicant");
@@ -143,10 +144,11 @@ export default function ApplicationReviewPage() {
     if (!id) return;
     setBusy(true);
     try {
-      const dossier = await studentApplicationsAPI.promote(id);
-      toast.success("Admission dossier created");
+      const result = await studentApplicationsAPI.promote(id);
+      const dossier = result.data;
+      toast.success(result.message || "Moved to Fee & Enrollment");
       navigate(`/admissions/dossier/${dossier.admissionId || dossier._id}`, {
-        state: { from: application?.source === "public" ? "online" : "visitor" },
+        state: { from: application?.source === "public" ? "online" : "offline" },
       });
     } catch (err: unknown) {
       const message =
@@ -231,7 +233,7 @@ You do not need to submit a new application.
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Badge variant="outline">
-            {application.source === "public" ? "Online apply" : "Visitor"}
+            {application.source === "public" ? "Online apply" : "Offline"}
           </Badge>
           <Badge className="text-sm">{application.status}</Badge>
         </div>
@@ -296,6 +298,13 @@ You do not need to submit a new application.
         applicationId={application.applicationId || application._id || id!}
         ownerLabel={application.applicationId}
       />
+
+      {["Accepted", "Promoted", "Shortlisted"].includes(application.status) ? (
+        <AdmissionFeePanel
+          mode="application"
+          recordId={application.applicationId || application._id || id!}
+        />
+      ) : null}
 
       {application.applicantReply ? (
         <section className="rounded-xl border border-primary/30 bg-primary/5 p-4 md:p-5 shadow-sm space-y-2">
@@ -401,7 +410,7 @@ You do not need to submit a new application.
           {dossierId ? (
             <Button asChild>
               <Link to={`/admissions/dossier/${dossierId}`}>
-                <FileText className="h-4 w-4" /> Open admission dossier
+                <FileText className="h-4 w-4" /> Open Fee &amp; Enrollment
               </Link>
             </Button>
           ) : (
@@ -409,7 +418,7 @@ You do not need to submit a new application.
               disabled={busy || !["Accepted", "Shortlisted"].includes(application.status)}
               onClick={promote}
             >
-              Promote to admission dossier
+              Promote to Fee &amp; Enrollment
             </Button>
           )}
         </div>

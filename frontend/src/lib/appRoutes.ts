@@ -126,8 +126,10 @@ export const SIDEBAR_NAV: SidebarNavSectionConfig[] = [
   {
     label: "Students",
     items: [
-      { to: "/admissions", label: "Visitor Applicants", module: "admissions", exact: true },
+      { to: "/campus-visits", label: "Campus Visits", module: "admissions" },
+      { to: "/admissions", label: "Offline Applicants", module: "admissions", exact: true },
       { to: "/admissions/online", label: "Online Applicants", module: "admissions" },
+      { to: "/admissions/dossiers", label: "Fee & Enrollment", module: "admissions" },
       { to: "/students", label: "Student Directory", module: "students" },
     ],
   },

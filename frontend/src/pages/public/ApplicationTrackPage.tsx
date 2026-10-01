@@ -16,8 +16,10 @@ import {
   type StudentDossierFormValue,
 } from "@/components/student/StudentDossierForm";
 import type { StagedDocumentMap } from "@/components/student/StudentDocumentSlots";
+import AdmissionFeeChallanForm from "@/components/student/AdmissionFeeChallanForm";
 import {
   STUDENT_DOCUMENT_TYPE_LABELS,
+  type AdmissionChallanPrint,
   type StudentDocument,
   type StudentDocumentType,
 } from "@/features/studentAdmissions";
@@ -30,6 +32,18 @@ type TrackResult = {
   applicantMessage?: string;
   applicantReply?: string;
   canEdit?: boolean;
+  canUploadFeeProof?: boolean;
+  feeSatisfied?: boolean;
+  admissionFee?: {
+    feeId?: string;
+    amount?: number;
+    dueDate?: string;
+    paymentStatus?: string;
+    proofStatus?: string;
+    proofNotes?: string;
+    description?: string;
+  } | null;
+  admissionChallan?: AdmissionChallanPrint | null;
   documents?: StudentDocument[];
   [key: string]: unknown;
 };
@@ -44,6 +58,8 @@ export default function ApplicationTrackPage() {
   const [form, setForm] = useState<StudentDossierFormValue>(emptyStudentDossierFormValue);
   const [reply, setReply] = useState("");
   const [stagedDocuments, setStagedDocuments] = useState<StagedDocumentMap>({});
+  const [feeProofFile, setFeeProofFile] = useState<File | null>(null);
+  const [uploadingFeeProof, setUploadingFeeProof] = useState(false);
   const [programs, setPrograms] = useState<Array<{ value: string; label: string }>>([]);
   const [campuses, setCampuses] = useState<Array<{ value: string; label: string }>>([]);
   const [sessions, setSessions] = useState<Array<{ value: string; label: string }>>([]);
@@ -87,6 +103,7 @@ export default function ApplicationTrackPage() {
       setForm(dossierToFormValue(data as Record<string, unknown>));
       setReply("");
       setStagedDocuments({});
+      setFeeProofFile(null);
     } catch (err: unknown) {
       setResult(null);
       const message =
@@ -143,9 +160,40 @@ export default function ApplicationTrackPage() {
     }
   };
 
+  const handleUploadFeeProof = async () => {
+    if (!result || !feeProofFile) {
+      toast.error("Choose a payment receipt file first");
+      return;
+    }
+    setUploadingFeeProof(true);
+    try {
+      await studentApplicationsAPI.uploadPublicApplicationDocument(result.applicationId, {
+        file: feeProofFile,
+        documentType: "fee_payment_proof",
+        documentName:
+          feeProofFile.name.replace(/\.[^.]+$/, "") ||
+          STUDENT_DOCUMENT_TYPE_LABELS.fee_payment_proof,
+        cnic: cnic.trim(),
+      });
+      toast.success("Payment proof uploaded — admissions will verify it");
+      setFeeProofFile(null);
+      await handleTrack();
+    } catch (err: unknown) {
+      const message =
+        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+        "Failed to upload payment proof";
+      toast.error(message);
+    } finally {
+      setUploadingFeeProof(false);
+    }
+  };
+
   const canEdit =
     Boolean(result?.canEdit) &&
     !["Promoted", "Accepted", "Rejected"].includes(result?.status || "");
+
+  const showFeeSection =
+    Boolean(result?.admissionFee) || Boolean(result?.canUploadFeeProof);
 
   return (
     <div className="max-w-[80vw] mx-auto px-6 py-12">
@@ -209,6 +257,72 @@ export default function ApplicationTrackPage() {
               </div>
             ) : null}
           </div>
+
+          {showFeeSection ? (
+            <div className="glass rounded-2xl p-6 space-y-4">
+              <div>
+                <h3 className="font-semibold">Admission fee</h3>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Print the challan, pay at the bank, then upload your stamped receipt / transfer
+                  proof.
+                </p>
+              </div>
+              {result.admissionChallan ? (
+                <AdmissionFeeChallanForm challan={result.admissionChallan} />
+              ) : result.admissionFee ? (
+                <dl className="grid sm:grid-cols-3 gap-3 text-sm">
+                  <div>
+                    <dt className="text-muted-foreground">Challan</dt>
+                    <dd className="font-mono font-medium">{result.admissionFee.feeId || "—"}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-muted-foreground">Amount</dt>
+                    <dd className="font-semibold">
+                      PKR {Number(result.admissionFee.amount || 0).toLocaleString()}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-muted-foreground">Status</dt>
+                    <dd>
+                      {result.admissionFee.paymentStatus || "Pending"} · Proof:{" "}
+                      {result.admissionFee.proofStatus || "None"}
+                    </dd>
+                  </div>
+                </dl>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  Challan will appear here once admissions accepts your application.
+                </p>
+              )}
+              {result.feeSatisfied ? (
+                <p className="text-sm text-emerald-700 dark:text-emerald-400 font-medium">
+                  Fee verified — admissions can complete enrollment.
+                </p>
+              ) : result.canUploadFeeProof && result.admissionFee ? (
+                <div className="space-y-3 border-t pt-3 print:hidden">
+                  <Label htmlFor="fee-proof">Upload payment proof</Label>
+                  <Input
+                    id="fee-proof"
+                    type="file"
+                    accept="image/*,.pdf"
+                    onChange={(e) => setFeeProofFile(e.target.files?.[0] || null)}
+                  />
+                  <Button
+                    type="button"
+                    disabled={uploadingFeeProof || !feeProofFile}
+                    onClick={handleUploadFeeProof}
+                  >
+                    {uploadingFeeProof ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Send className="h-4 w-4" />
+                    )}
+                    Submit payment proof
+                  </Button>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
 
           {canEdit ? (
             <div className="glass rounded-2xl p-6 md:p-8 space-y-6">

@@ -18,6 +18,91 @@ function applyHref(campusId: string, programId: string) {
   return `/apply?${params.toString()}`;
 }
 
+function formatPkr(amount: number) {
+  return `PKR ${Number(amount || 0).toLocaleString()}`;
+}
+
+function ProgramFeeBreakdown({ program }: { program: PublicCatalogProgram }) {
+  const summary = program.feeSummary;
+  const schedules = summary?.schedules || [];
+  if (!summary) return null;
+  if (!schedules.length && !summary.admissionFee) return null;
+
+  const tuitionTotal =
+    summary.tuitionTotal ??
+    schedules.reduce((sum, s) => sum + (Number(s.netPayable) || 0), 0);
+  const admissionFee = Number(summary.admissionFee || program.admissionFee || 0);
+  const programTotal = summary.programTotal ?? tuitionTotal + admissionFee;
+
+  return (
+    <details className="mt-2 group">
+      <summary className="cursor-pointer text-sm text-foreground/80 list-none flex flex-wrap items-center gap-x-2 gap-y-1">
+        <span className="underline-offset-2 group-open:no-underline group-hover:underline">
+          Fee structure
+        </span>
+        {schedules.length > 0 ? (
+          <span className="text-muted-foreground">
+            · {schedules.length} semesters · tuition {formatPkr(tuitionTotal)}
+            {admissionFee > 0 ? ` · total ${formatPkr(programTotal)}` : null}
+          </span>
+        ) : admissionFee > 0 ? (
+          <span className="text-muted-foreground">
+            · admission {formatPkr(admissionFee)}
+          </span>
+        ) : null}
+      </summary>
+      <div className="mt-2 rounded-lg border bg-muted/30 p-3 text-sm space-y-2">
+        {summary.studentCategory ? (
+          <p className="text-xs text-muted-foreground">
+            Shown for <span className="font-medium text-foreground">{summary.studentCategory}</span>{" "}
+            category (indicative; final challan may vary by session).
+          </p>
+        ) : null}
+        {schedules.length > 0 ? (
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-left text-muted-foreground border-b border-border/60">
+                <th className="py-1.5 font-medium">Semester</th>
+                <th className="py-1.5 font-medium text-right">Net payable</th>
+              </tr>
+            </thead>
+            <tbody>
+              {schedules.map((row) => (
+                <tr key={row.semester} className="border-b border-border/40 last:border-0">
+                  <td className="py-1.5">Semester {row.semester}</td>
+                  <td className="py-1.5 text-right font-medium tabular-nums">
+                    {formatPkr(row.netPayable)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : (
+          <p className="text-muted-foreground">Semester packages not published yet.</p>
+        )}
+        <dl className="space-y-1 border-t border-border/60 pt-2">
+          {schedules.length > 0 ? (
+            <div className="flex justify-between gap-4">
+              <dt className="text-muted-foreground">Tuition (all semesters)</dt>
+              <dd className="font-medium tabular-nums">{formatPkr(tuitionTotal)}</dd>
+            </div>
+          ) : null}
+          {admissionFee > 0 ? (
+            <div className="flex justify-between gap-4">
+              <dt className="text-muted-foreground">Admission fee (one-time)</dt>
+              <dd className="font-medium tabular-nums">{formatPkr(admissionFee)}</dd>
+            </div>
+          ) : null}
+          <div className="flex justify-between gap-4 text-foreground">
+            <dt className="font-semibold">Estimated program total</dt>
+            <dd className="font-semibold tabular-nums">{formatPkr(programTotal)}</dd>
+          </div>
+        </dl>
+      </div>
+    </details>
+  );
+}
+
 function ProgramRow({
   campus,
   program,
@@ -28,7 +113,7 @@ function ProgramRow({
   const open = !!program.admissionOpen;
 
   return (
-    <div className="flex flex-col sm:flex-row sm:items-center gap-3 py-4 border-b border-border/60 last:border-0">
+    <div className="flex flex-col sm:flex-row sm:items-start gap-3 py-4 border-b border-border/60 last:border-0">
       <div className="flex-1 min-w-0">
         <div className="flex flex-wrap items-center gap-2">
           <h3 className="font-semibold tracking-tight">{program.name}</h3>
@@ -47,8 +132,9 @@ function ProgramRow({
         <p className={`text-sm mt-1 ${open ? "text-emerald-700" : "text-muted-foreground"}`}>
           {program.admissionLabel || (open ? "Open" : "Closed")}
         </p>
+        <ProgramFeeBreakdown program={program} />
       </div>
-      <div className="shrink-0">
+      <div className="shrink-0 sm:pt-1">
         {open ? (
           <Button asChild size="sm" className="gradient-brand text-white border-0">
             <Link to={applyHref(campus._id, program._id)}>
@@ -116,7 +202,11 @@ export default function ProgramsCatalogPage() {
         <h1 className="text-3xl md:text-4xl font-bold tracking-tight">{uniName}</h1>
         <p className="mt-3 text-muted-foreground">
           Browse programs by campus and category. Apply only when admissions are open for that
-          program.
+          program. Prefer a full comparison? Open the{" "}
+          <Link to="/catalog/directory" className="text-primary underline underline-offset-2">
+            program directory
+          </Link>{" "}
+          (table, cards, fee matrix, CSV).
         </p>
         <div className="mt-5 flex flex-wrap gap-3 text-sm">
           <span className="inline-flex items-center gap-1.5 rounded-lg bg-muted/60 px-3 py-1.5">

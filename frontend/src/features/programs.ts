@@ -15,6 +15,7 @@ export interface Program {
   admissionOpensAt?: string | null;
   /** ISO date — public apply closes on this day when set */
   admissionClosesAt?: string | null;
+  admissionFee?: number;
   createdAt?: string;
   updatedAt?: string;
 }

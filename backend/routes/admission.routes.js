@@ -3,18 +3,22 @@ import { auth } from '../middleware/auth.js';
 import {
   createInternalApplication,
   deleteApplication,
+  getApplicationAdmissionFee,
   getApplicationById,
   getApplicationStats,
   listApplications,
   promoteApplication,
   updateApplicationStatus,
+  verifyApplicationAdmissionFee,
 } from '../controllers/studentApplication.controller.js';
 import {
   completeAdmission,
+  getDossierAdmissionFee,
   getDossierById,
   getDossierDocumentTypes,
   listDossiers,
   updateDossier,
+  verifyDossierAdmissionFee,
 } from '../controllers/studentAdmission.controller.js';
 import {
   deleteApplicationDocument,
@@ -48,6 +52,8 @@ router.post('/applications', createInternalApplication);
 router.get('/applications/:id', getApplicationById);
 router.patch('/applications/:id/status', updateApplicationStatus);
 router.post('/applications/:id/promote', promoteApplication);
+router.get('/applications/:id/admission-fee', getApplicationAdmissionFee);
+router.post('/applications/:id/admission-fee/verify', verifyApplicationAdmissionFee);
 router.delete('/applications/:id', deleteApplication);
 router.get('/applications/:id/documents', listApplicationDocuments);
 router.post(
@@ -65,6 +71,8 @@ router.get('/dossiers/document-types', getDossierDocumentTypes);
 router.get('/dossiers', listDossiers);
 router.get('/dossiers/:id', getDossierById);
 router.put('/dossiers/:id', updateDossier);
+router.get('/dossiers/:id/admission-fee', getDossierAdmissionFee);
+router.post('/dossiers/:id/admission-fee/verify', verifyDossierAdmissionFee);
 router.post('/dossiers/:id/complete', completeAdmission);
 router.get('/dossiers/:id/documents', listDossierDocuments);
 router.post(

@@ -29,15 +29,15 @@ const resolveRefLabel = (value: StudentApplication["programId"]) => {
   return value;
 };
 
-export type IntakeListVariant = "visitor" | "online";
+export type IntakeListVariant = "offline" | "online";
 
 interface ApplicationsPipelinePageProps {
-  /** visitor = walk-in / staff-entered (internal); online = /apply portal (public) */
+  /** offline = walk-in / staff-entered admission app (internal); online = /apply (public) */
   variant?: IntakeListVariant;
 }
 
 export default function ApplicationsPipelinePage({
-  variant = "visitor",
+  variant = "offline",
 }: ApplicationsPipelinePageProps) {
   const navigate = useNavigate();
   const source = variant === "online" ? "public" : "internal";
@@ -69,7 +69,7 @@ export default function ApplicationsPipelinePage({
       setApplications(listRes.data || []);
       setStats(statsRes);
     } catch {
-      toast.error(isOnline ? "Failed to load online applicants" : "Failed to load visitor applications");
+      toast.error(isOnline ? "Failed to load online applicants" : "Failed to load offline applicants");
     } finally {
       setLoading(false);
     }
@@ -125,7 +125,7 @@ export default function ApplicationsPipelinePage({
           variant="outline"
           onClick={() =>
             navigate(`/admissions/${row.applicationId}`, {
-              state: { from: isOnline ? "online" : "visitor" },
+              state: { from: isOnline ? "online" : "offline" },
             })
           }
         >
@@ -143,17 +143,17 @@ export default function ApplicationsPipelinePage({
         <div>
           <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
             <TitleIcon className="h-6 w-6 text-primary" />
-            {isOnline ? "Online applicants" : "Visitor applications"}
+            {isOnline ? "Online applicants" : "Offline applicants"}
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
             {isOnline
-              ? "Track students who applied from the public /apply portal. Review, shortlist, accept, then promote to dossier."
-              : "Walk-in and staff-assisted intake. Create a visitor application, then review and promote to dossier."}
+              ? "People who applied from the public /apply site. Review, accept, promote to an admission dossier — not yet students."
+              : "Walk-in / staff-entered admission applications (same pipeline as online). Not campus visitors — those are inquiry visits only."}
           </p>
         </div>
         {!isOnline ? (
           <Button onClick={() => navigate("/admissions/internal/create")}>
-            <Plus className="h-4 w-4" /> New visitor application
+            <Plus className="h-4 w-4" /> New offline application
           </Button>
         ) : null}
       </div>
@@ -214,7 +214,7 @@ export default function ApplicationsPipelinePage({
         <div className="rounded-lg border border-dashed p-10 text-center text-sm text-muted-foreground">
           {isOnline
             ? "No online applications yet. Applicants appear here after submitting /apply."
-            : "No visitor applications yet. Use New visitor application for walk-ins."}
+            : "No offline applications yet. Use New offline application for walk-in admissions."}
         </div>
       ) : (
         <DataTable columns={columns} data={filtered} />

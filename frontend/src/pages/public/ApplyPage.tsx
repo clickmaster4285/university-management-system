@@ -228,7 +228,7 @@ export default function ApplyPage() {
             {" at "}
             <span className="font-medium text-foreground">{selectedCampus.label}</span>
             {" · "}
-            <Link to="/programs" className="text-primary underline underline-offset-2">
+            <Link to="/catalog" className="text-primary underline underline-offset-2">
               Change program
             </Link>
           </p>
@@ -236,7 +236,7 @@ export default function ApplyPage() {
         {!lockSelection && (
           <p className="mt-3 text-sm text-muted-foreground">
             Prefer to browse first?{" "}
-            <Link to="/programs" className="text-primary underline underline-offset-2">
+            <Link to="/catalog" className="text-primary underline underline-offset-2">
               View programs by campus
             </Link>
           </p>
