@@ -203,14 +203,14 @@ export default function AdmissionDossierPage() {
         disabled={enrolled}
       />
 
-      <AdmissionDocumentsPanel dossierId={id!} ownerLabel={dossier.admissionId} />
-
       <AdmissionFeePanel
         mode="dossier"
         recordId={id!}
         disabled={enrolled}
         onSatisfiedChange={setFeeSatisfied}
       />
+
+      <AdmissionDocumentsPanel dossierId={id!} ownerLabel={dossier.admissionId} />
 
       <div className="border rounded-lg p-4 space-y-3 bg-muted/20">
         <h3 className="font-semibold">Completion checklist</h3>

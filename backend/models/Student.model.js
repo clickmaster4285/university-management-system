@@ -58,6 +58,25 @@ const studentSchema = new mongoose.Schema(
       trim: true,
       default: '',
     },
+    dateOfBirth: {
+      type: Date,
+      default: null,
+    },
+    gender: {
+      type: String,
+      enum: ['Male', 'Female', 'Other', ''],
+      default: '',
+    },
+    nationality: {
+      type: String,
+      trim: true,
+      default: 'Pakistani',
+    },
+    religion: {
+      type: String,
+      trim: true,
+      default: '',
+    },
     programId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Program',

@@ -1,15 +1,25 @@
 import { useCallback, useEffect, useState } from "react";
-import { CheckCircle2, Loader2, Receipt } from "lucide-react";
+import { CheckCircle2, Download, Eye, Loader2, Receipt } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import AdmissionFeeChallanForm from "@/components/student/AdmissionFeeChallanForm";
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import AdmissionFeeChallanForm from "@/components/student/AdmissionFeeChallanForm";
+import { resolveFileBlob } from "@/components/student/StudentDocumentSlots";
+import api from "@/features/axios";
+import {
+  STUDENT_DOCUMENT_TYPE_LABELS,
   studentAdmissionsAPI,
   type AdmissionChallanPrint,
   type AdmissionFeeRecord,
+  type StudentDocument,
 } from "@/features/studentAdmissions";
 import { studentApplicationsAPI } from "@/features/studentApplications";
 
@@ -36,6 +46,25 @@ export default function AdmissionFeePanel({
   const [verifying, setVerifying] = useState(false);
   const [notes, setNotes] = useState("");
   const [transactionId, setTransactionId] = useState("");
+  const [proofDoc, setProofDoc] = useState<StudentDocument | null>(null);
+  const [proofBusy, setProofBusy] = useState(false);
+  const [preview, setPreview] = useState<{ url: string; title: string; isImage: boolean } | null>(
+    null
+  );
+
+  const loadProof = useCallback(async () => {
+    try {
+      if (mode === "dossier") {
+        const docs = await studentAdmissionsAPI.listDossierDocuments(recordId);
+        setProofDoc(docs.find((d) => d.documentType === "fee_payment_proof") || null);
+      } else {
+        const docs = await studentApplicationsAPI.listDocuments(recordId);
+        setProofDoc(docs.find((d) => d.documentType === "fee_payment_proof") || null);
+      }
+    } catch {
+      setProofDoc(null);
+    }
+  }, [mode, recordId]);
 
   const load = useCallback(async () => {
     if (!recordId) return;
@@ -67,19 +96,74 @@ export default function AdmissionFeePanel({
         if (data?.proofNotes) setNotes(data.proofNotes);
         if (data?.transactionId) setTransactionId(data.transactionId);
       }
+      await loadProof();
     } catch {
       setFee(null);
       setPrintChallan(null);
+      setProofDoc(null);
       setSatisfied(false);
       onSatisfiedChange?.(false);
     } finally {
       setLoading(false);
     }
-  }, [mode, recordId, onSatisfiedChange]);
+  }, [mode, recordId, onSatisfiedChange, loadProof]);
 
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(
+    () => () => {
+      if (preview?.url) window.URL.revokeObjectURL(preview.url);
+    },
+    [preview?.url]
+  );
+
+  const fetchProofBlob = async () => {
+    if (!proofDoc?._id) throw new Error("No payment proof uploaded yet");
+    const url =
+      mode === "dossier"
+        ? `/admissions/dossiers/${recordId}/documents/${proofDoc._id}/download`
+        : `/admissions/applications/${recordId}/documents/${proofDoc._id}/download`;
+    const res = await api.get(url, { responseType: "blob" });
+    return resolveFileBlob(res.data as Blob, String(res.headers["content-type"] || ""));
+  };
+
+  const handleViewProof = async () => {
+    setProofBusy(true);
+    try {
+      const blob = await fetchProofBlob();
+      const url = window.URL.createObjectURL(blob);
+      const isImage = (blob.type || proofDoc?.mimeType || "").startsWith("image/");
+      setPreview({
+        url,
+        title: proofDoc?.documentName || STUDENT_DOCUMENT_TYPE_LABELS.fee_payment_proof,
+        isImage,
+      });
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Could not open payment proof");
+    } finally {
+      setProofBusy(false);
+    }
+  };
+
+  const handleDownloadProof = async () => {
+    setProofBusy(true);
+    try {
+      const blob = await fetchProofBlob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = proofDoc?.originalName || proofDoc?.fileName || "fee-payment-proof";
+      a.click();
+      window.URL.revokeObjectURL(url);
+      toast.success("Download started");
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Could not download payment proof");
+    } finally {
+      setProofBusy(false);
+    }
+  };
 
   const handleVerify = async () => {
     setVerifying(true);
@@ -195,13 +279,51 @@ export default function AdmissionFeePanel({
         <p className="text-sm text-muted-foreground">{fee.description}</p>
       ) : null}
 
+      <div className="rounded-lg border bg-muted/20 p-3 space-y-2">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <p className="text-sm font-medium">{STUDENT_DOCUMENT_TYPE_LABELS.fee_payment_proof}</p>
+            <p className="text-xs text-muted-foreground">
+              {proofDoc
+                ? `${proofDoc.originalName || proofDoc.documentName || "Uploaded file"} · ${
+                    proofDoc.reviewStatus || "Pending"
+                  }`
+                : "Applicant has not uploaded payment proof yet (track page)."}
+            </p>
+          </div>
+          {proofDoc ? (
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                disabled={proofBusy}
+                onClick={handleViewProof}
+              >
+                {proofBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Eye className="h-4 w-4" />}
+                View proof
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                disabled={proofBusy}
+                onClick={handleDownloadProof}
+              >
+                <Download className="h-4 w-4" />
+                Download
+              </Button>
+            </div>
+          ) : null}
+        </div>
+      </div>
+
       {printChallan ? <AdmissionFeeChallanForm challan={printChallan} /> : null}
 
       {!satisfied && !disabled ? (
         <div className="space-y-3 border-t pt-3">
           <p className="text-sm text-muted-foreground">
-            After the applicant uploads bank receipt / transfer proof, verify here to unlock
-            Complete → Student.
+            Open the payment proof above, then verify here to unlock Complete → Student.
           </p>
           <div className="grid sm:grid-cols-2 gap-3">
             <div className="space-y-1.5">
@@ -229,6 +351,27 @@ export default function AdmissionFeePanel({
           </Button>
         </div>
       ) : null}
+
+      <Dialog
+        open={Boolean(preview)}
+        onOpenChange={(open) => {
+          if (!open) {
+            if (preview?.url) window.URL.revokeObjectURL(preview.url);
+            setPreview(null);
+          }
+        }}
+      >
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>{preview?.title || "Payment proof"}</DialogTitle>
+          </DialogHeader>
+          {preview?.isImage ? (
+            <img src={preview.url} alt={preview.title} className="max-h-[70vh] w-full object-contain" />
+          ) : preview ? (
+            <iframe title={preview.title} src={preview.url} className="h-[70vh] w-full rounded-md border" />
+          ) : null}
+        </DialogContent>
+      </Dialog>
     </section>
   );
 }

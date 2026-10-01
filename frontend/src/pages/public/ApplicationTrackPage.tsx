@@ -304,7 +304,7 @@ export default function ApplicationTrackPage() {
                   <Input
                     id="fee-proof"
                     type="file"
-                    accept="image/*,.pdf"
+                    accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.webp,.gif,.odt,.txt,.rtf,image/*,application/pdf"
                     onChange={(e) => setFeeProofFile(e.target.files?.[0] || null)}
                   />
                   <Button

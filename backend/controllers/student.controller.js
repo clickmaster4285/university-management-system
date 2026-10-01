@@ -1,5 +1,5 @@
 import { handle } from "../utils/asyncHandler.js";
-import { Student, Program, Department, Campus, Batch } from "../models/index.js";
+import { Student, Program, Department, Campus, Batch, StudentAdmission } from "../models/index.js";
 import { ensureStudentPortalAccount } from "../utils/studentPortalAccount.js";
 import { generateStudentId } from "../utils/generateStudentId.js";
 
@@ -13,6 +13,118 @@ function populateStudent(query) {
     .populate("batchId", "name code year admissionSemester")
     .populate("admissionId", "admissionId status")
     .populate("userId", "email role status");
+}
+
+function refId(value) {
+  if (value == null || value === "") return value;
+  if (typeof value === "object") return value._id || value.id || null;
+  return value;
+}
+
+async function enrichStudentFromAdmission(student) {
+  const plain = student.toObject ? student.toObject({ virtuals: true }) : { ...student };
+  const admissionRef = plain.admissionId;
+  const admissionMongoId =
+    admissionRef && typeof admissionRef === "object" ? admissionRef._id : admissionRef;
+
+  if (!admissionMongoId) {
+    return {
+      ...plain,
+      guardian: {
+        fatherName: plain.fatherName || "",
+        motherName: plain.motherName || "",
+      },
+      address: {
+        city: plain.city || "",
+      },
+    };
+  }
+
+  const dossier = await StudentAdmission.findById(admissionMongoId).select(
+    "admissionId dateOfBirth gender nationality religion guardian address previousEducation academicSessionId status"
+  );
+  if (!dossier) {
+    return {
+      ...plain,
+      guardian: {
+        fatherName: plain.fatherName || "",
+        motherName: plain.motherName || "",
+      },
+      address: {
+        city: plain.city || "",
+      },
+    };
+  }
+
+  // Backfill student personal fields when enrollment predated schema fields
+  let dirty = false;
+  if (!plain.dateOfBirth && dossier.dateOfBirth) {
+    plain.dateOfBirth = dossier.dateOfBirth;
+    student.dateOfBirth = dossier.dateOfBirth;
+    dirty = true;
+  }
+  if (!plain.gender && dossier.gender) {
+    plain.gender = dossier.gender;
+    student.gender = dossier.gender;
+    dirty = true;
+  }
+  if (!plain.nationality && dossier.nationality) {
+    plain.nationality = dossier.nationality;
+    student.nationality = dossier.nationality;
+    dirty = true;
+  }
+  if (!plain.religion && dossier.religion) {
+    plain.religion = dossier.religion;
+    student.religion = dossier.religion;
+    dirty = true;
+  }
+  if (!plain.fatherName && dossier.guardian?.fatherName) {
+    plain.fatherName = dossier.guardian.fatherName;
+    student.fatherName = dossier.guardian.fatherName;
+    dirty = true;
+  }
+  if (!plain.motherName && dossier.guardian?.motherName) {
+    plain.motherName = dossier.guardian.motherName;
+    student.motherName = dossier.guardian.motherName;
+    dirty = true;
+  }
+  if (!plain.city && dossier.address?.city) {
+    plain.city = dossier.address.city;
+    student.city = dossier.address.city;
+    dirty = true;
+  }
+  if (dirty) {
+    try {
+      await student.save();
+    } catch {
+      /* enrichment is best-effort */
+    }
+  }
+
+  return {
+    ...plain,
+    admissionNumber:
+      (typeof admissionRef === "object" && admissionRef.admissionId) || dossier.admissionId,
+    guardian: {
+      fatherName: plain.fatherName || dossier.guardian?.fatherName || "",
+      motherName: plain.motherName || dossier.guardian?.motherName || "",
+      guardianName: dossier.guardian?.guardianName || "",
+      guardianPhone: dossier.guardian?.guardianPhone || "",
+      guardianRelation: dossier.guardian?.guardianRelation || "",
+    },
+    address: {
+      street: dossier.address?.street || "",
+      city: plain.city || dossier.address?.city || "",
+      state: dossier.address?.state || "",
+      postalCode: dossier.address?.postalCode || "",
+      country: dossier.address?.country || "Pakistan",
+    },
+    previousEducation: dossier.previousEducation || [],
+    dateOfBirth: plain.dateOfBirth || dossier.dateOfBirth || null,
+    gender: plain.gender || dossier.gender || "",
+    nationality: plain.nationality || dossier.nationality || "Pakistani",
+    religion: plain.religion || dossier.religion || "",
+  };
 }
 
 export const getStudents = handle(async (req, res) => {
@@ -96,7 +208,8 @@ export const getStudentById = handle(async (req, res) => {
     });
   }
 
-  res.json({ success: true, data: student });
+  const data = await enrichStudentFromAdmission(student);
+  res.json({ success: true, data });
 });
 
 export const createStudent = handle(async (req, res) => {
@@ -268,6 +381,10 @@ export const updateStudent = handle(async (req, res) => {
     "cnic",
     "fatherName",
     "motherName",
+    "dateOfBirth",
+    "gender",
+    "nationality",
+    "religion",
     "programId",
     "departmentId",
     "campusId",
@@ -284,14 +401,30 @@ export const updateStudent = handle(async (req, res) => {
     "profileImage",
   ];
 
+  const objectIdFields = new Set(["programId", "departmentId", "campusId", "batchId"]);
+
   for (const key of allowed) {
     if (req.body[key] !== undefined) {
-      existingStudent[key] = req.body[key];
+      let value = req.body[key];
+      if (objectIdFields.has(key)) {
+        value = refId(value);
+      }
+      existingStudent[key] = value;
     }
   }
 
+  if (req.body.guardian?.fatherName !== undefined) {
+    existingStudent.fatherName = String(req.body.guardian.fatherName || "").trim();
+  }
+  if (req.body.guardian?.motherName !== undefined) {
+    existingStudent.motherName = String(req.body.guardian.motherName || "").trim();
+  }
+  if (req.body.address?.city !== undefined) {
+    existingStudent.city = String(req.body.address.city || "").trim();
+  }
+
   if (req.body.programId) {
-    const program = await Program.findById(req.body.programId);
+    const program = await Program.findById(refId(req.body.programId));
     if (program) {
       existingStudent.program = program.name;
       if (program.departmentId) {
@@ -303,17 +436,17 @@ export const updateStudent = handle(async (req, res) => {
   }
 
   if (req.body.departmentId) {
-    const department = await Department.findById(req.body.departmentId);
+    const department = await Department.findById(refId(req.body.departmentId));
     existingStudent.department = department?.name || existingStudent.department;
   }
 
   if (req.body.campusId) {
-    const campus = await Campus.findById(req.body.campusId);
+    const campus = await Campus.findById(refId(req.body.campusId));
     existingStudent.campus = campus?.name || existingStudent.campus;
   }
 
   if (req.body.batchId) {
-    await Batch.findById(req.body.batchId);
+    await Batch.findById(refId(req.body.batchId));
   }
 
   if (existingStudent.firstName || existingStudent.lastName) {
@@ -323,10 +456,11 @@ export const updateStudent = handle(async (req, res) => {
   await existingStudent.save();
 
   const updatedStudent = await populateStudent(Student.findById(existingStudent._id).select("-__v"));
+  const data = await enrichStudentFromAdmission(updatedStudent);
 
   res.json({
     success: true,
-    data: updatedStudent,
+    data,
   });
 });
 

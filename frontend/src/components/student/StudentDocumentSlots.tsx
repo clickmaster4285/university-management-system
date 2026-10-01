@@ -343,7 +343,7 @@ export function StudentDocumentSlots({
                       }}
                       type="file"
                       className="hidden"
-                      accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx"
+                      accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.webp,.gif,.bmp,.odt,.txt,.rtf,image/*,application/pdf"
                       onChange={(e) => handleFileChange(type, e.target.files?.[0])}
                     />
                     <Button

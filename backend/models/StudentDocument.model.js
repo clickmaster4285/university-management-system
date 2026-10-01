@@ -1,16 +1,7 @@
 import mongoose from 'mongoose';
+import { STUDENT_DOCUMENT_TYPES as UPLOAD_STUDENT_DOCUMENT_TYPES } from '../utils/uploadPaths.js';
 
-export const STUDENT_DOCUMENT_TYPES = [
-  'cnic',
-  'photo',
-  'matric',
-  'intermediate',
-  'bachelor',
-  'domicile',
-  'character_certificate',
-  'migration',
-  'other',
-];
+export const STUDENT_DOCUMENT_TYPES = UPLOAD_STUDENT_DOCUMENT_TYPES;
 
 export const STUDENT_DOCUMENT_REVIEW_STATUSES = ['Pending', 'Approved', 'Rejected'];
 

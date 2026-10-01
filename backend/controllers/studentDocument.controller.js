@@ -159,11 +159,23 @@ export const listDossierDocuments = handle(async (req, res) => {
   }
 
   const { documentType } = req.query;
-  const filter = { studentAdmission: dossier._id, isDeleted: notDeleted };
+  const ownership = [{ studentAdmission: dossier._id }];
+  if (dossier.applicationId) {
+    ownership.push({ studentApplication: dossier.applicationId });
+  }
+  const filter = { isDeleted: notDeleted, $or: ownership };
   if (documentType) filter.documentType = documentType;
 
   const documents = await StudentDocument.find(filter).sort({ createdAt: -1 });
-  res.json({ success: true, data: documents });
+  // Dedupe by documentType keeping newest
+  const latest = [];
+  const seen = new Set();
+  for (const doc of documents) {
+    if (seen.has(doc.documentType)) continue;
+    seen.add(doc.documentType);
+    latest.push(doc);
+  }
+  res.json({ success: true, data: latest });
 });
 
 export const uploadDossierDocument = handle(async (req, res) => {
@@ -244,12 +256,21 @@ export const downloadDossierDocument = handle(async (req, res) => {
 
   const document = await StudentDocument.findOne({
     _id: req.params.documentId,
-    studentAdmission: dossier._id,
     isDeleted: notDeleted,
+    $or: [
+      { studentAdmission: dossier._id },
+      ...(dossier.applicationId ? [{ studentApplication: dossier.applicationId }] : []),
+    ],
   });
 
   if (!document) {
     return res.status(404).json({ success: false, message: 'Document not found' });
+  }
+
+  // Backfill admission link so later dossier downloads stay simple
+  if (!document.studentAdmission) {
+    document.studentAdmission = dossier._id;
+    await document.save();
   }
 
   return sendDocumentFile(res, document);
@@ -375,6 +396,10 @@ export const uploadApplicationDocument = handle(async (req, res) => {
   }
 
   if (documentType === 'fee_payment_proof') {
+    if (application.admissionDossierId && !document.studentAdmission) {
+      document.studentAdmission = application.admissionDossierId;
+      await document.save();
+    }
     await Fee.findOneAndUpdate(
       {
         studentApplicationId: application._id,
@@ -386,6 +411,9 @@ export const uploadApplicationDocument = handle(async (req, res) => {
         $set: {
           proofStatus: 'Submitted',
           proofNotes: req.body.notes || '',
+          ...(application.admissionDossierId
+            ? { studentAdmissionId: application.admissionDossierId }
+            : {}),
         },
       }
     );
