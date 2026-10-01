@@ -290,13 +290,20 @@ assignmentSchema.pre('save', async function(next) {
   next();
 });
 
-// Virtual field for status based on dates
-assignmentSchema.virtual('currentStatus').get(function() {
-  const now = new Date();
-  if (this.status === 'Draft' || this.status === 'Archived') return this.status;
-  if (now > this.dueDate) return 'Overdue';
-  if (now > this.submissionDeadline) return 'Closed';
-  return 'Open';
+assignmentSchema.set('toJSON', {
+  transform(_doc, ret) {
+    const now = new Date();
+    if (ret.status === 'Draft' || ret.status === 'Archived') {
+      ret.currentStatus = ret.status;
+    } else if (ret.dueDate && now > new Date(ret.dueDate)) {
+      ret.currentStatus = 'Overdue';
+    } else if (ret.submissionDeadline && now > new Date(ret.submissionDeadline)) {
+      ret.currentStatus = 'Closed';
+    } else {
+      ret.currentStatus = 'Open';
+    }
+    return ret;
+  },
 });
 
 // Method to check if assignment is accepting submissions

@@ -706,27 +706,22 @@ feeSchema.statics.getProgramFeeStats = function() {
   ]);
 };
 
-// ==================== VIRTUALS ====================
-feeSchema.virtual('isOverdue').get(function() {
-  return this.remainingAmount > 0 && new Date(this.dueDate) < new Date();
+// ==================== JSON SHAPE (no schema.virtual) ====================
+feeSchema.set('toJSON', {
+  transform(_doc, ret) {
+    const remaining = Number(ret.remainingAmount) || 0;
+    const amount = Number(ret.amount) || 0;
+    const paid = Number(ret.paidAmount) || 0;
+    const scholarship = Number(ret.scholarshipAmount) || 0;
+    const discount = Number(ret.discountApplied) || 0;
+    const waiver = Number(ret.waiverDetails?.amount) || 0;
+    ret.isOverdue = remaining > 0 && ret.dueDate && new Date(ret.dueDate) < new Date();
+    ret.isFullyPaid = remaining <= 0;
+    ret.paymentPercentage = amount === 0 ? 100 : Math.round(((amount - remaining) / amount) * 100);
+    ret.totalPaidIncludingScholarship = paid + scholarship + discount + waiver;
+    return ret;
+  },
 });
-
-feeSchema.virtual('isFullyPaid').get(function() {
-  return this.remainingAmount <= 0;
-});
-
-feeSchema.virtual('paymentPercentage').get(function() {
-  if (this.amount === 0) return 100;
-  return Math.round(((this.amount - this.remainingAmount) / this.amount) * 100);
-});
-
-feeSchema.virtual('totalPaidIncludingScholarship').get(function() {
-  return this.paidAmount + this.scholarshipAmount + this.discountApplied + (this.waiverDetails?.amount || 0);
-});
-
-// ==================== OPTIONS ====================
-feeSchema.set('toJSON', { virtuals: true });
-feeSchema.set('toObject', { virtuals: true });
 
 const Fee = mongoose.model('Fee', feeSchema);
 export default Fee;

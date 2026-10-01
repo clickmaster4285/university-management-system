@@ -22,7 +22,8 @@ function refId(value) {
 }
 
 async function enrichStudentFromAdmission(student) {
-  const plain = student.toObject ? student.toObject({ virtuals: true }) : { ...student };
+  const plain = student.toObject ? student.toObject() : { ...student };
+  plain.fullName = plain.name || `${plain.firstName || ''} ${plain.lastName || ''}`.trim();
   const admissionRef = plain.admissionId;
   const admissionMongoId =
     admissionRef && typeof admissionRef === "object" ? admissionRef._id : admissionRef;

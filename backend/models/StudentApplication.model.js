@@ -176,11 +176,11 @@ studentApplicationSchema.index({ cnic: 1 });
 studentApplicationSchema.index({ email: 1 });
 studentApplicationSchema.index({ status: 1 });
 
-studentApplicationSchema.virtual('fullName').get(function fullName() {
-  return `${this.firstName} ${this.lastName}`.trim();
+studentApplicationSchema.set('toJSON', {
+  transform(_doc, ret) {
+    ret.fullName = `${ret.firstName || ''} ${ret.lastName || ''}`.trim();
+    return ret;
+  },
 });
-
-studentApplicationSchema.set('toJSON', { virtuals: true });
-studentApplicationSchema.set('toObject', { virtuals: true });
 
 export default mongoose.model('StudentApplication', studentApplicationSchema);

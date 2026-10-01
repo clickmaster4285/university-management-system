@@ -192,15 +192,8 @@ studentSchema.index({ status: 1 });
 studentSchema.index({ programId: 1 });
 studentSchema.index({ firstName: 'text', lastName: 'text', name: 'text', email: 'text', studentId: 'text' });
 
-studentSchema.virtual('fullName').get(function fullName() {
-  if (this.firstName || this.lastName) {
-    return `${this.firstName || ''} ${this.lastName || ''}`.trim();
-  }
-  return this.name || '';
-});
-
 studentSchema.pre('save', function preSave(next) {
-  if (!this.name && (this.firstName || this.lastName)) {
+  if (this.firstName || this.lastName) {
     this.name = `${this.firstName || ''} ${this.lastName || ''}`.trim();
   }
   if (!this.semester && this.currentSemester) {
@@ -212,7 +205,11 @@ studentSchema.pre('save', function preSave(next) {
   next();
 });
 
-studentSchema.set('toJSON', { virtuals: true });
-studentSchema.set('toObject', { virtuals: true });
+studentSchema.set('toJSON', {
+  transform(_doc, ret) {
+    ret.fullName = ret.name || `${ret.firstName || ''} ${ret.lastName || ''}`.trim();
+    return ret;
+  },
+});
 
 export default mongoose.model('Student', studentSchema);

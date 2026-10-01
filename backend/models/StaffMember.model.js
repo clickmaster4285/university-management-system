@@ -266,12 +266,12 @@ staffMemberSchema.index({ isAcademic: 1 });
 staffMemberSchema.index({ 'employments.departmentId': 1 });
 staffMemberSchema.index({ firstName: 'text', lastName: 'text', email: 'text', staffId: 'text' });
 
-staffMemberSchema.virtual('fullName').get(function fullName() {
-  return `${this.firstName} ${this.lastName}`.trim();
+staffMemberSchema.set('toJSON', {
+  transform(_doc, ret) {
+    ret.fullName = `${ret.firstName || ''} ${ret.lastName || ''}`.trim();
+    return ret;
+  },
 });
-
-staffMemberSchema.set('toJSON', { virtuals: true });
-staffMemberSchema.set('toObject', { virtuals: true });
 
 const StaffMember = mongoose.model('StaffMember', staffMemberSchema);
 export default StaffMember;

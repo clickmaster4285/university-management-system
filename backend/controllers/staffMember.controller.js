@@ -141,7 +141,8 @@ function normalizeCompensation(compensation = {}) {
 
 function serializeStaffResponse(staff) {
   if (!staff) return staff;
-  const plain = staff.toObject ? staff.toObject({ virtuals: true }) : { ...staff };
+  const plain = staff.toObject ? staff.toObject() : { ...staff };
+  plain.fullName = `${plain.firstName || ''} ${plain.lastName || ''}`.trim();
   if (plain.userId?.moduleAccess) {
     plain.userId.moduleAccess = serializeModuleAccess(plain.userId.moduleAccess);
   }
