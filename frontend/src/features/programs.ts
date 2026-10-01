@@ -11,8 +11,49 @@ export interface Program {
   totalCredits?: number;
   description?: string;
   status?: 'Active' | 'Inactive';
+  /** ISO date — public apply opens from this day when set */
+  admissionOpensAt?: string | null;
+  /** ISO date — public apply closes on this day when set */
+  admissionClosesAt?: string | null;
   createdAt?: string;
   updatedAt?: string;
+}
+
+/** Staff/public helper: Active + within optional date window. No dates ⇒ not open. */
+export function isProgramAdmissionOpen(
+  program: Pick<Program, 'status' | 'admissionOpensAt' | 'admissionClosesAt'>,
+  now = new Date()
+): boolean {
+  if (program.status && program.status !== 'Active') return false;
+  const opens = program.admissionOpensAt ? new Date(program.admissionOpensAt) : null;
+  const closes = program.admissionClosesAt ? new Date(program.admissionClosesAt) : null;
+  if (!opens && !closes) return false;
+  if (opens && Number.isNaN(opens.getTime())) return false;
+  if (closes && Number.isNaN(closes.getTime())) return false;
+  if (opens && now < opens) return false;
+  if (closes) {
+    const end = new Date(closes);
+    end.setHours(23, 59, 59, 999);
+    if (now > end) return false;
+  }
+  return true;
+}
+
+export function formatAdmissionWindowLabel(
+  program: Pick<Program, 'status' | 'admissionOpensAt' | 'admissionClosesAt'>
+): { label: string; open: boolean } {
+  const open = isProgramAdmissionOpen(program);
+  if (program.status === 'Inactive') return { label: 'Inactive', open: false };
+  if (!program.admissionOpensAt && !program.admissionClosesAt) {
+    return { label: 'No window set', open: false };
+  }
+  if (open) {
+    const until = program.admissionClosesAt
+      ? String(program.admissionClosesAt).slice(0, 10)
+      : 'open-ended';
+    return { label: `Open until ${until}`, open: true };
+  }
+  return { label: 'Closed', open: false };
 }
 
 export interface ProgramStats {

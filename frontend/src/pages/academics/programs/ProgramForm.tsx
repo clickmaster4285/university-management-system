@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Layers, FileText, Save, Loader2 } from "lucide-react";
+import { Layers, FileText, Save, Loader2, CalendarRange } from "lucide-react";
 import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -19,6 +19,8 @@ export type ProgramFormData = {
   totalCredits: number;
   description: string;
   status: "Active" | "Inactive";
+  admissionOpensAt: string;
+  admissionClosesAt: string;
 };
 
 export const DEGREE_LEVELS: Program["degreeLevel"][] = ["BS", "MS", "PhD", "BBA", "MBA", "LLB", "Other"];
@@ -33,12 +35,19 @@ export const EMPTY_FORM: ProgramFormData = {
   totalCredits: 0,
   description: "",
   status: "Active",
+  admissionOpensAt: "",
+  admissionClosesAt: "",
 };
 
 const resolveRefId = (value: string | { _id: string } | null | undefined) => {
   if (!value) return "";
   if (typeof value === "object") return value._id || "";
   return value;
+};
+
+const toDateInput = (value?: string | null) => {
+  if (!value) return "";
+  return String(value).slice(0, 10);
 };
 
 const getProgramRecordId = (program: Program) => program._id || program.programId || "";
@@ -52,6 +61,21 @@ const toFormData = (program: Program): ProgramFormData => ({
   totalCredits: program.totalCredits ?? 0,
   description: program.description || "",
   status: program.status || "Active",
+  admissionOpensAt: toDateInput(program.admissionOpensAt),
+  admissionClosesAt: toDateInput(program.admissionClosesAt),
+});
+
+const toApiPayload = (formData: ProgramFormData) => ({
+  name: formData.name,
+  code: formData.code,
+  departmentId: formData.departmentId,
+  degreeLevel: formData.degreeLevel,
+  duration: formData.duration,
+  totalCredits: formData.totalCredits,
+  description: formData.description,
+  status: formData.status,
+  admissionOpensAt: formData.admissionOpensAt.trim() || null,
+  admissionClosesAt: formData.admissionClosesAt.trim() || null,
 });
 
 interface ProgramFormProps {
@@ -103,11 +127,20 @@ export function ProgramForm({ mode, program }: ProgramFormProps) {
       toast.error("Name, code, department and degree level are required");
       return;
     }
+    if (
+      formData.admissionOpensAt &&
+      formData.admissionClosesAt &&
+      formData.admissionOpensAt > formData.admissionClosesAt
+    ) {
+      toast.error("Admission opens date must be on or before the closes date");
+      return;
+    }
 
     setSaving(true);
     try {
+      const payload = toApiPayload(formData);
       if (mode === "create") {
-        await programAPI.create(formData);
+        await programAPI.create(payload);
         toast.success("Program created successfully");
       } else {
         const id = program ? getProgramRecordId(program) : "";
@@ -115,7 +148,7 @@ export function ProgramForm({ mode, program }: ProgramFormProps) {
           toast.error("Cannot update program: missing ID");
           return;
         }
-        await programAPI.update(id, formData);
+        await programAPI.update(id, payload);
         toast.success("Program updated successfully");
       }
       navigate("/programs");
@@ -229,6 +262,39 @@ export function ProgramForm({ mode, program }: ProgramFormProps) {
               <div className="space-y-2 md:col-span-3">
                 <Label htmlFor="description">Description</Label>
                 <Textarea id="description" name="description" value={formData.description} onChange={handleChange} rows={3} placeholder="Program description..." />
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold flex items-center gap-2">
+              <CalendarRange className="h-5 w-5 text-primary" />
+              Public admission window
+            </h3>
+            <p className="text-sm text-muted-foreground">
+              Active programs with no dates are listed as closed to the public until you set a window.
+              Leave both empty to keep applications closed.
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="admissionOpensAt">Opens on</Label>
+                <Input
+                  id="admissionOpensAt"
+                  name="admissionOpensAt"
+                  type="date"
+                  value={formData.admissionOpensAt}
+                  onChange={handleChange}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="admissionClosesAt">Closes on</Label>
+                <Input
+                  id="admissionClosesAt"
+                  name="admissionClosesAt"
+                  type="date"
+                  value={formData.admissionClosesAt}
+                  onChange={handleChange}
+                />
               </div>
             </div>
           </div>

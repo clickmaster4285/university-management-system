@@ -360,6 +360,8 @@ Two-stage intake replaces the monolithic `Admission` model for new work:
 
 **Staff:** `/admissions` pipeline → review → promote to dossier → upload docs → complete admission → student appears in `/students`.
 
+**Program admission window (Oct 2026 Step 1):** `Program.admissionOpensAt` / `admissionClosesAt`. Public “Open” = Active + within dates; no dates = closed for apply. See `docs/public-admissions-catalog.md`.
+
 Documents: `uploads/students/{admissionId|studentId}/{documentType}/...`
 
 Legacy `Admission` model, `/api/admissions/legacy/*`, and old `AdmissionsPage.tsx` **removed (Sep 2026)**. Use StudentApplication pipeline only.
@@ -388,6 +390,7 @@ Public layout: `PublicSiteLayout` — nav links + footer; admission CTA prominen
 
 | Priority | Work | Why |
 |----------|------|-----|
+| **In progress** | Public admissions catalog (browse → open/closed → stepped apply) | Plan: `docs/public-admissions-catalog.md` — Step 1 Program dates ✅ |
 | **Done** | ~~Student portal login (`Student.userId`)~~ | ✅ Sep 2026 — `/student` + `/api/student-portal/*` |
 | **Done** | ~~Leave balance admin UI~~ | ✅ Sep 2026 — `WorkforceLeavePage` quotas + staff deep-link |
 | **Done** | ~~Recruitment resume uploads~~ | ✅ Sep 2026 — `cvPath` + multer under `uploads/hr/recruitment/` |

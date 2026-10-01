@@ -258,17 +258,30 @@ async function ensureProgram(departmentId, programCode, programMeta, stats, dryR
     totalCredits: 120,
   };
 
+  const admissionFields = {};
+  if (meta.admissionOpensAt) admissionFields.admissionOpensAt = new Date(meta.admissionOpensAt);
+  if (meta.admissionClosesAt) admissionFields.admissionClosesAt = new Date(meta.admissionClosesAt);
+
   const existing = await Program.findOne({ code, isDeleted: notDeleted });
   if (existing) {
+    if (!dryRun && Object.keys(admissionFields).length > 0) {
+      const needsPatch =
+        (admissionFields.admissionOpensAt && !existing.admissionOpensAt) ||
+        (admissionFields.admissionClosesAt && !existing.admissionClosesAt);
+      if (needsPatch) {
+        Object.assign(existing, admissionFields);
+        await existing.save();
+      }
+    }
     stats.programs.reused += 1;
     return existing;
   }
 
   if (dryRun) {
-    const existing = await Program.findOne({ code, isDeleted: notDeleted });
-    if (existing) {
+    const existingDry = await Program.findOne({ code, isDeleted: notDeleted });
+    if (existingDry) {
       stats.programs.reused += 1;
-      return existing;
+      return existingDry;
     }
     stats.programs.created += 1;
     return { _id: dryId('program'), code };
@@ -283,6 +296,7 @@ async function ensureProgram(departmentId, programCode, programMeta, stats, dryR
     duration: meta.duration,
     totalCredits: meta.totalCredits || 120,
     status: 'Active',
+    ...admissionFields,
   });
 
   stats.programs.created += 1;

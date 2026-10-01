@@ -38,7 +38,18 @@
 
 ## 1. Priority features (in order)
 
+### 🔄 0. Public admissions catalog (browse → apply)
 
+**Why:** Public should see university → campuses → categorized programs with Open/Closed dates, then a stepped form — not one flat dropdown.
+
+**Plan:** `docs/public-admissions-catalog.md`
+
+- [x] **Step 1** — `Program.admissionOpensAt` / `admissionClosesAt` + staff Programs UI
+- [ ] **Step 2** — Public catalog tree API
+- [ ] **Step 3** — Public browse UI
+- [ ] **Step 4** — Stepped apply + reject closed on submit
+
+---
 
 ### ✅ 1. Student portal login (`Student.userId`)
 

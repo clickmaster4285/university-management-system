@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { programAPI, type Program } from "@/features/programs";
+import { programAPI, formatAdmissionWindowLabel, type Program } from "@/features/programs";
 import { departmentAPI, type Department } from "@/features/departments";
 import { DataTable, type Column } from "@/components/data-table";
 import { KpiCard } from "@/components/dashboard/kpi-card";
@@ -166,6 +166,18 @@ export default function ProgramsPage() {
       ),
     },
     {
+      key: "admissionClosesAt",
+      header: "Admissions",
+      cell: (p) => {
+        const { label, open } = formatAdmissionWindowLabel(p);
+        return (
+          <Badge variant={open ? "default" : "secondary"} className="whitespace-nowrap">
+            {label}
+          </Badge>
+        );
+      },
+    },
+    {
       key: "_id",
       header: "Actions",
       cell: (p) => (
@@ -307,6 +319,31 @@ export default function ProgramsPage() {
                   <Badge variant={viewingProgram.status === "Active" ? "default" : "secondary"}>
                     {viewingProgram.status || "Active"}
                   </Badge>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Public admissions</p>
+                  {(() => {
+                    const { label, open } = formatAdmissionWindowLabel(viewingProgram);
+                    return (
+                      <Badge variant={open ? "default" : "secondary"}>{label}</Badge>
+                    );
+                  })()}
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Opens on</p>
+                  <p className="font-medium">
+                    {viewingProgram.admissionOpensAt
+                      ? String(viewingProgram.admissionOpensAt).slice(0, 10)
+                      : "—"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Closes on</p>
+                  <p className="font-medium">
+                    {viewingProgram.admissionClosesAt
+                      ? String(viewingProgram.admissionClosesAt).slice(0, 10)
+                      : "—"}
+                  </p>
                 </div>
               </div>
               {viewingProgram.description && (

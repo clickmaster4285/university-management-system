@@ -58,7 +58,7 @@ Validation: if both dates are set, `admissionOpensAt` must be ≤ `admissionClos
 
 | Step | Work | Status |
 |------|------|--------|
-| **1** | Program model + staff create/edit/list for admission dates | 🔄 In progress |
+| **1** | Program model + staff create/edit/list for admission dates | ✅ Done |
 | **2** | Extend `/api/public/catalog` → university + campuses → categories → programs + open/closed | ⬜ |
 | **3** | Public browse UI (home / programs page) | ⬜ |
 | **4** | Stepped apply form; prefill campus/program; reject closed on submit | ⬜ |

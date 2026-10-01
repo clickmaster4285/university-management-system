@@ -254,4 +254,14 @@ Before this work, apply / visitor intake / student create / dossier each drifted
 
 ---
 
+## 13. Public catalog roadmap (Oct 2026)
+
+Public visitors should see **university → campuses → programs by category**, with **Open / Closed** admission windows, then a **stepped** apply form — not a single flat program dropdown.
+
+Full plan and rules: [`docs/public-admissions-catalog.md`](./public-admissions-catalog.md).
+
+**Step 1 (done):** `Program.admissionOpensAt` / `admissionClosesAt` on the model, create/update API, Programs staff form + list “Admissions” column. Active with no dates = not open for public apply.
+
+---
+
 *Document written to capture the student registration / admissions work completed around 2026-09-26.*

@@ -223,6 +223,8 @@ export const updateProgram = handle(async (req, res) => {
     totalCredits,
     description,
     status,
+    admissionOpensAt,
+    admissionClosesAt,
   } = req.body;
 
   const program = await findProgramByIdentifier(id);
@@ -277,6 +279,22 @@ export const updateProgram = handle(async (req, res) => {
   if (totalCredits !== undefined) program.totalCredits = Number(totalCredits) || 0;
   if (description !== undefined) program.description = description;
   if (status !== undefined && status !== '') program.status = status;
+
+  const opensParsed = parseOptionalAdmissionDate(admissionOpensAt, 'admissionOpensAt');
+  if (opensParsed.error) {
+    return res.status(400).json({ success: false, message: opensParsed.error });
+  }
+  const closesParsed = parseOptionalAdmissionDate(admissionClosesAt, 'admissionClosesAt');
+  if (closesParsed.error) {
+    return res.status(400).json({ success: false, message: closesParsed.error });
+  }
+  if (!opensParsed.skip) program.admissionOpensAt = opensParsed.value;
+  if (!closesParsed.skip) program.admissionClosesAt = closesParsed.value;
+
+  const windowError = validateAdmissionWindow(program.admissionOpensAt, program.admissionClosesAt);
+  if (windowError) {
+    return res.status(400).json({ success: false, message: windowError });
+  }
 
   await program.save();
 
