@@ -278,6 +278,7 @@ export const App = () => (
 
               {/* 404 Fallback Route */}
               <Route path="*" element={<NotFoundPage />} />
+              
             </Routes>
           </Suspense>
         </BrowserRouter>
