@@ -1,5 +1,6 @@
-import Fee from '../models/Fee.js';
+import { handle } from "../utils/asyncHandler.js";
 
+import { Fee } from "../models/index.js";
 const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 const formatMoney = (value) => Number(value || 0);
@@ -57,56 +58,46 @@ const buildFinancePayload = (fees) => {
   };
 };
 
-export const getFinanceData = async (req, res) => {
-  try {
-    const fees = await Fee.find({}).sort({ createdAt: -1 }).lean();
-    const data = buildFinancePayload(fees);
+export const getFinanceData = handle(async (req, res) => {
+  const fees = await Fee.find({ isDeleted: { $ne: true } }).sort({ createdAt: -1 }).lean();
+  const data = buildFinancePayload(fees);
 
-    res.status(200).json({ success: true, data });
-  } catch (error) {
-    console.error('Error fetching finance data:', error);
-    res.status(500).json({ success: false, message: 'Failed to fetch finance data', error: error.message });
-  }
-};
+  return res.status(200).json({ success: true, data });
+});
 
-export const getFinanceSummary = async (req, res) => {
-  try {
-    const fees = await Fee.find({}).lean();
-    const data = buildFinancePayload(fees);
+export const getFinanceSummary = handle(async (req, res) => {
+  const fees = await Fee.find({ isDeleted: { $ne: true } }).lean();
+  const data = buildFinancePayload(fees);
 
-    res.status(200).json({
-      success: true,
-      data: {
-        revenueYTD: data.revenueYTD,
-        expenses: data.expenses,
-        netIncome: data.netIncome,
-        totalInvoices: data.totalInvoices,
-        paidInvoices: fees.filter((fee) => fee.paymentStatus === 'Paid').length,
-        pendingInvoices: fees.filter((fee) => fee.paymentStatus === 'Pending').length
-      }
-    });
-  } catch (error) {
-    console.error('Error fetching finance summary:', error);
-    res.status(500).json({ success: false, message: 'Failed to fetch finance summary', error: error.message });
-  }
-};
+  return res.status(200).json({
+    success: true,
+    data: {
+      revenueYTD: data.revenueYTD,
+      expenses: data.expenses,
+      netIncome: data.netIncome,
+      totalInvoices: data.totalInvoices,
+      paidInvoices: fees.filter((fee) => fee.paymentStatus === 'Paid').length,
+      pendingInvoices: fees.filter((fee) => fee.paymentStatus === 'Pending').length
+    }
+  });
+});
 
-export const updateMonthlyData = async (req, res) => {
-  res.status(200).json({ success: true, message: 'Monthly data update is handled from the fees collection', data: await Fee.find({}).sort({ createdAt: -1 }).lean() });
-};
+export const updateMonthlyData = handle(async (req, res) => {
+  return res.status(200).json({ success: true, message: 'Monthly data update is handled from the fees collection', data: await Fee.find({ isDeleted: { $ne: true } }).sort({ createdAt: -1 }).lean() });
+});
 
-export const addInvoice = async (req, res) => {
-  res.status(200).json({ success: true, message: 'Invoice creation is handled through fee records', data: await Fee.find({}).sort({ createdAt: -1 }).lean() });
-};
+export const addInvoice = handle(async (req, res) => {
+  return res.status(200).json({ success: true, message: 'Invoice creation is handled through fee records', data: await Fee.find({ isDeleted: { $ne: true } }).sort({ createdAt: -1 }).lean() });
+});
 
-export const updateInvoiceStatus = async (req, res) => {
-  res.status(200).json({ success: true, message: 'Invoice status updates are handled through fee records', data: await Fee.find({}).sort({ createdAt: -1 }).lean() });
-};
+export const updateInvoiceStatus = handle(async (req, res) => {
+  return res.status(200).json({ success: true, message: 'Invoice status updates are handled through fee records', data: await Fee.find({ isDeleted: { $ne: true } }).sort({ createdAt: -1 }).lean() });
+});
 
-export const deleteInvoice = async (req, res) => {
-  res.status(200).json({ success: true, message: 'Invoice deletion is handled through fee records', data: await Fee.find({}).sort({ createdAt: -1 }).lean() });
-};
+export const deleteInvoice = handle(async (req, res) => {
+  return res.status(200).json({ success: true, message: 'Invoice deletion is handled through fee records', data: await Fee.find({ isDeleted: { $ne: true } }).sort({ createdAt: -1 }).lean() });
+});
 
-export const updateBudgetAllocation = async (req, res) => {
-  res.status(200).json({ success: true, message: 'Budget updates are derived from fee records', data: await Fee.find({}).sort({ createdAt: -1 }).lean() });
-};
+export const updateBudgetAllocation = handle(async (req, res) => {
+  return res.status(200).json({ success: true, message: 'Budget updates are derived from fee records', data: await Fee.find({ isDeleted: { $ne: true } }).sort({ createdAt: -1 }).lean() });
+});

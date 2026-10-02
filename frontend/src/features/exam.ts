@@ -5,6 +5,11 @@ export interface Exam {
   examId?: string;
   title: string;
   type: 'Midterm' | 'Final' | 'Quiz' | 'Lab Assessment' | 'Project Defense' | 'Case Study' | 'Written Exam' | 'Practical' | 'Viva' | 'Other';
+  offeringId?: string | null;
+  subjectId?: string | null;
+  programId?: string | null;
+  batchId?: string | null;
+  academicSessionId?: string | null;
   course: string;
   courseCode: string;
   department: string;
@@ -60,6 +65,11 @@ class ExamAPI {
     status?: string;
     type?: string;
     instructor?: string;
+    offeringId?: string;
+    subjectId?: string;
+    batchId?: string;
+    academicSessionId?: string;
+    programId?: string;
     search?: string;
     limit?: number;
     page?: number;

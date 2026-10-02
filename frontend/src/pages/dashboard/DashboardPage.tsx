@@ -1,5 +1,4 @@
 // src/pages/dashboard/DashboardPage.tsx
-import { AppShell } from "@/layouts";
 import { KpiCard } from "@/components/dashboard/kpi-card";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -54,7 +53,7 @@ export function DashboardPage() {
     try {
       setLoading(true);
       setError(null);
-      
+
       const [statsRes, activitiesRes] = await Promise.all([
         dashboardAPI.getStats(),
         dashboardAPI.getActivities(8)
@@ -160,29 +159,25 @@ export function DashboardPage() {
 
   if (loading) {
     return (
-      <AppShell title="Dashboard" subtitle="Loading your dashboard...">
-        <div className="flex justify-center items-center h-96">
-          <div className="text-center">
-            <Loader2 className="h-12 w-12 text-primary animate-spin mx-auto mb-4" />
-            <p className="text-muted-foreground">Loading dashboard data...</p>
-          </div>
+      <div className="flex justify-center items-center h-96">
+        <div className="text-center">
+          <Loader2 className="h-12 w-12 text-primary animate-spin mx-auto mb-4" />
+          <p className="text-muted-foreground">Loading dashboard data...</p>
         </div>
-      </AppShell>
+      </div>
     );
   }
 
   if (error) {
     return (
-      <AppShell title="Dashboard" subtitle="Error loading data">
-        <div className="flex flex-col items-center justify-center h-96 border-2 border-dashed rounded-lg p-8">
-          <AlertCircle className="h-16 w-16 text-destructive mb-4" />
-          <h3 className="text-xl font-semibold mb-2">Failed to load data</h3>
-          <p className="text-sm text-muted-foreground mb-4 text-center max-w-md">{error}</p>
-          <Button onClick={fetchDashboardData}>
-            <RefreshCw className="h-4 w-4 mr-2" /> Retry
-          </Button>
-        </div>
-      </AppShell>
+      <div className="flex flex-col items-center justify-center h-96 border-2 border-dashed rounded-lg p-8">
+        <AlertCircle className="h-16 w-16 text-destructive mb-4" />
+        <h3 className="text-xl font-semibold mb-2">Failed to load data</h3>
+        <p className="text-sm text-muted-foreground mb-4 text-center max-w-md">{error}</p>
+        <Button onClick={fetchDashboardData}>
+          <RefreshCw className="h-4 w-4 mr-2" /> Retry
+        </Button>
+      </div>
     );
   }
 
@@ -200,30 +195,14 @@ export function DashboardPage() {
   };
 
   return (
-    <AppShell
-      title="Welcome back, Dr. Ali"
-      subtitle="Here's what's happening across your campuses today."
-      actions={
-        <>
-          <Button variant="outline" onClick={() => toast.success("Report generated")}>
-            <Download className="h-4 w-4 mr-2" /> Export
-          </Button>
-          <Button className="gradient-brand text-white border-0" onClick={() => toast.success("New admission started")}>
-            <Plus className="h-4 w-4 mr-2" /> New admission
-          </Button>
-          <Button variant="outline" onClick={fetchDashboardData} disabled={loading}>
-            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-          </Button>
-        </>
-      }
-    >
-      {/* KPI Grid - Real Data */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+    <>
+    {/* KPI Grid - Real Data */}
+    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
         <KpiCard label="Total Students" value={overview?.totalStudents || 0} icon={GraduationCap} trend={4.2} tone="brand" />
         <KpiCard label="Active Students" value={overview?.activeStudents || 0} icon={UserCheck} trend={2.1} tone="success" />
         <KpiCard label="Total Teachers" value={overview?.totalTeachers || 0} icon={Users} tone="info" />
         <KpiCard label="Departments" value={overview?.totalDepartments || 0} icon={Building2} tone="brand" />
-        <KpiCard label="Courses" value={overview?.totalCourses || 0} icon={BookOpen} tone="info" />
+        <KpiCard label="Offerings" value={overview?.totalOfferings || 0} icon={BookOpen} tone="info" />
         <KpiCard label="Attendance Today" value={`${overview?.todayAttendance || 0}%`} icon={CalendarCheck} trend={0.8} tone="success" />
         <KpiCard label="Total Admissions" value={overview?.totalAdmissions || 0} icon={UserPlus} trend={12.5} tone="brand" />
         <KpiCard label="Pending Admissions" value={overview?.pendingAdmissions || 0} icon={AlertCircle} tone="warning" />
@@ -239,8 +218,8 @@ export function DashboardPage() {
         <KpiCard label="Graduated Students" value={Math.round((overview?.totalStudents || 0) * 0.15)} icon={Award} tone="info" />
       </div>
 
-      {/* Charts row 1 */}
-      <div className="grid lg:grid-cols-3 gap-4">
+    {/* Charts row 1 */}
+    <div className="grid lg:grid-cols-3 gap-4">
         <Card className="glass lg:col-span-2">
           <CardHeader>
             <div className="flex items-center justify-between">
@@ -298,8 +277,8 @@ export function DashboardPage() {
         </Card>
       </div>
 
-      {/* Charts row 2 */}
-      <div className="grid lg:grid-cols-3 gap-4">
+    {/* Charts row 2 */}
+    <div className="grid lg:grid-cols-3 gap-4">
         <Card className="glass">
           <CardHeader>
             <CardTitle>Revenue vs expenses</CardTitle>
@@ -361,8 +340,8 @@ export function DashboardPage() {
         </Card>
       </div>
 
-      {/* Bottom row */}
-      <div className="grid lg:grid-cols-3 gap-4">
+    {/* Bottom row */}
+    <div className="grid lg:grid-cols-3 gap-4">
         <Card className="glass lg:col-span-2">
           <CardHeader className="flex-row justify-between items-center">
             <div>
@@ -427,7 +406,7 @@ export function DashboardPage() {
           </CardContent>
         </Card>
       </div>
-    </AppShell>
+    </>
   );
 }
 

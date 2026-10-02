@@ -18,7 +18,7 @@ interface AuthContextType {
   user: User | null;
   loading: boolean;
   ready: boolean;
-  login: (credentials: LoginPayload) => Promise<void>;
+  login: (credentials: LoginPayload) => Promise<User | void>;
   logout: () => Promise<void>;
   register: (data: Partial<User> & { password: string }) => Promise<void>;
   updateProfile: (data: Partial<User>) => Promise<void>;
@@ -67,6 +67,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         const token = localStorage.getItem('token');
         const storedUser = localStorage.getItem('user');
         
+        if (token) {
+          try {
+            const response = await authAPI.getProfile();
+            if (response.success) {
+              updateUser(response.data);
+              return;
+            }
+          } catch (error) {
+            console.error('Failed to refresh profile:', error);
+          }
+        }
+
         if (token && storedUser) {
           try {
             const parsedUser = JSON.parse(storedUser);
@@ -110,7 +122,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           localStorage.setItem('token', token);
           updateUser(user);
           toast.success('Login successful!');
-          return;
+          return user;
         }
 
         toast.error(response.message || 'Login failed');

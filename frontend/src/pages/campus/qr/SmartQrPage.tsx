@@ -1,4 +1,3 @@
-import { AppShell } from "@/layouts";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -6,7 +5,6 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { QrCode as QrIcon, ScanLine, Printer, Download, CheckCircle2, DollarSign, Library, Home, Bus, GraduationCap } from "lucide-react";
 import { toast } from "sonner";
 import { useState } from "react";
-
 
 function QrPattern({ seed }: { seed: number }) {
   const size = 21;
@@ -50,8 +48,7 @@ export function SmartQrPage() {
   };
 
   return (
-    <AppShell title="Smart QR System" subtitle="Every student, one QR — instant access to everything">
-      <div className="grid lg:grid-cols-2 gap-4">
+    <div className="grid lg:grid-cols-2 gap-4">
         <Card className="glass">
           <CardHeader>
             <CardTitle>Student QR card</CardTitle>
@@ -131,8 +128,7 @@ export function SmartQrPage() {
           </CardContent>
         </Card>
       </div>
-    </AppShell>
-  );
+);
 }
 
 export default SmartQrPage;

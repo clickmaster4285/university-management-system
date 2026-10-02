@@ -1,27 +1,20 @@
 import express from "express";
+import { auth, authorize } from "../middleware/auth.js";
 import {
   createUniversity,
-  getUniversities,
-  getUniversityById,
+  getUniversity,
   updateUniversity,
   deleteUniversity,
-  getUniversityByCode,
-  getUniversityStats,
-  checkUniversityCode,
 } from "../controllers/university.controller.js";
 
 const router = express.Router();
 
-// Public routes
-router.post("/", createUniversity);
-router.get("/check-code/:code", checkUniversityCode);
+// Public route
+router.get("/", auth,  getUniversity);
 
-// Protected routes
-router.get("/", getUniversities);
-router.get("/:id", getUniversityById);
-router.get("/code/:code", getUniversityByCode);
-router.get("/:id/stats", getUniversityStats);
-router.put("/:id", updateUniversity);
-router.delete("/:id", deleteUniversity);
+// Protected routes (single-university: no :id params)
+router.post("/", auth, authorize("Admin"), createUniversity);
+router.put("/", auth, authorize("Admin"), updateUniversity);
+router.delete("/", auth, authorize("Admin"), deleteUniversity);
 
 export default router;

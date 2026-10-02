@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { auth } from "../middleware/auth.js";
 import {
   getStudents,
   getStudentById,
@@ -6,24 +7,40 @@ import {
   updateStudent,
   deleteStudent,
   bulkCreateStudents,
-  getStudentStats
+  getStudentStats,
+  enableStudentPortalLogin,
 } from "../controllers/student.controller.js";
+import { listStudentSemesterRegistrations } from "../controllers/semesterRegistration.controller.js";
+import {
+  deleteStudentDocument,
+  downloadStudentDocument,
+  listStudentDocuments,
+  resolveStudentForUpload,
+  uploadStudentDocument,
+} from "../controllers/studentDocument.controller.js";
+import { studentDocumentUpload } from "../middleware/upload.js";
 
 const router = Router();
 
-// GET routes
+router.use(auth);
+
 router.get("/", getStudents);
 router.get("/stats", getStudentStats);
+router.get("/:id/semester-registrations", listStudentSemesterRegistrations);
+router.post("/:id/portal-login", enableStudentPortalLogin);
+router.get("/:id/documents", listStudentDocuments);
+router.post(
+  "/:id/documents",
+  resolveStudentForUpload,
+  studentDocumentUpload.single("file"),
+  uploadStudentDocument
+);
+router.get("/:id/documents/:documentId/download", downloadStudentDocument);
+router.delete("/:id/documents/:documentId", deleteStudentDocument);
 router.get("/:id", getStudentById);
-
-// POST routes
 router.post("/", createStudent);
 router.post("/bulk", bulkCreateStudents);
-
-// PUT routes
 router.put("/:id", updateStudent);
-
-// DELETE routes
 router.delete("/:id", deleteStudent);
 
 export default router;

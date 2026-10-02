@@ -1,4 +1,3 @@
-import { AppShell } from "@/layouts";
 import { KpiCard } from "@/components/dashboard/kpi-card";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -26,16 +25,7 @@ export function GenericModulePage({
     destructive: "bg-destructive/15 text-destructive border-0",
   };
   return (
-    <AppShell
-      title={title}
-      subtitle={subtitle}
-      actions={
-        <>
-          <Button variant="outline" onClick={() => toast.success("Exported")}><Download className="h-4 w-4" /> Export</Button>
-          <Button className="gradient-brand text-white border-0" onClick={() => toast.success("Item created")}><Plus className="h-4 w-4" /> Add new</Button>
-        </>
-      }
-    >
+    <>
       <div className={`grid grid-cols-2 md:grid-cols-${Math.min(kpis.length, 4)} gap-4`}>
         {kpis.map((k) => <KpiCard key={k.label} {...k} />)}
       </div>
@@ -65,6 +55,6 @@ export function GenericModulePage({
           ))}
         </CardContent>
       </Card>
-    </AppShell>
+    </>
   );
 }

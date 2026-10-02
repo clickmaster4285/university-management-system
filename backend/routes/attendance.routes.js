@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { auth } from "../middleware/auth.js";
 import {
   getAttendance,
   getAttendanceById,
@@ -11,6 +12,8 @@ import {
 } from "../controllers/attendance.controller.js";
 
 const router = Router();
+
+router.use(auth);
 
 // Routes without ID
 router.get("/", getAttendance);

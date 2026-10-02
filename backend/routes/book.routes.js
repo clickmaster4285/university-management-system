@@ -1,4 +1,5 @@
 import express from 'express';
+import { auth } from '../middleware/auth.js';
 import {
   getAllBooks,
   getBookById,
@@ -13,26 +14,24 @@ import {
   getAllBorrowings,
   payFine
 } from '../controllers/book.controller.js';
-import auth from '../middleware/auth.js';
 
 const router = express.Router();
 
-// Public routes
+router.use(auth);
+
 router.get('/', getAllBooks);
 router.get('/stats/summary', getBookStats);
 router.get('/isbn/:isbn', getBookByISBN);
 router.get('/:id', getBookById);
-
-// Protected routes
-router.post('/', auth, createBook);
-router.put('/:id', auth, updateBook);
-router.delete('/:id', auth, deleteBook);
+router.post('/', createBook);
+router.put('/:id', updateBook);
+router.delete('/:id', deleteBook);
 
 // Borrowing routes
-router.post('/:id/borrow', auth, borrowBook);
-router.put('/borrowings/:id/return', auth, returnBook);
-router.get('/borrowings/:userId', auth, getUserBorrowings);
-router.get('/borrowings/all', auth, getAllBorrowings);
-router.put('/borrowings/:id/pay-fine', auth, payFine);
+router.post('/:id/borrow', borrowBook);
+router.put('/borrowings/:id/return', returnBook);
+router.get('/borrowings/:userId', getUserBorrowings);
+router.get('/borrowings/all', getAllBorrowings);
+router.put('/borrowings/:id/pay-fine', payFine);
 
 export default router;

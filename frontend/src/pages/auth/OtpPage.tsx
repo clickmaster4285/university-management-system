@@ -19,7 +19,7 @@ export function OtpPage() {
     setTimeout(() => {
       login({ name: "Dr. Ali Raza", email: "admin@scholaros.edu", role: "Super Admin" });
       toast.success("Verified");
-      navigate("/");
+      navigate("/dashboard");
     }, 800);
   };
 

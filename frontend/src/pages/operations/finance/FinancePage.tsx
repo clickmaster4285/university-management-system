@@ -1,5 +1,4 @@
 // src/routes/app.finance.tsx
-import { AppShell } from "@/layouts";
 import { KpiCard } from "@/components/dashboard/kpi-card";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -26,7 +25,6 @@ import { AreaChart, Area, ResponsiveContainer, CartesianGrid, XAxis, YAxis, Tool
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { financeAPI, Finance, Invoice, BudgetAllocation } from "@/features/finance";
-
 
 export function FinancePage() {
   const [financeData, setFinanceData] = useState<Finance | null>(null);
@@ -201,54 +199,30 @@ export function FinancePage() {
 
   if (loading) {
     return (
-      <AppShell title="Finance" subtitle="Loading financial data...">
-        <div className="flex justify-center items-center h-64">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-            <p className="mt-4 text-muted-foreground">Loading financial data...</p>
-          </div>
+      <div className="flex justify-center items-center h-64">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-4 text-muted-foreground">Loading financial data...</p>
         </div>
-      </AppShell>
+      </div>
     );
   }
 
   if (error) {
     return (
-      <AppShell title="Finance" subtitle="Error loading data">
-        <div className="flex flex-col items-center justify-center h-64 border-2 border-dashed rounded-lg p-8">
-          <AlertCircle className="h-12 w-12 text-destructive mb-4" />
-          <h3 className="text-lg font-semibold mb-2">Failed to load data</h3>
-          <p className="text-sm text-muted-foreground mb-4 text-center max-w-md">{error}</p>
-          <Button onClick={fetchFinanceData}>
-            <RefreshCw className="h-4 w-4 mr-2" /> Retry
-          </Button>
-        </div>
-      </AppShell>
+      <div className="flex flex-col items-center justify-center h-64 border-2 border-dashed rounded-lg p-8">
+        <AlertCircle className="h-12 w-12 text-destructive mb-4" />
+        <h3 className="text-lg font-semibold mb-2">Failed to load data</h3>
+        <p className="text-sm text-muted-foreground mb-4 text-center max-w-md">{error}</p>
+        <Button onClick={fetchFinanceData}>
+          <RefreshCw className="h-4 w-4 mr-2" /> Retry
+        </Button>
+      </div>
     );
   }
 
   return (
-    <AppShell 
-      title="Finance" 
-      subtitle={`${financeData?.fiscalYear || '2024'} · ${financeData?.invoices?.length || 0} invoices`}
-      actions={
-        <>
-          <Button 
-            onClick={openAddInvoice}
-            className="gradient-brand text-white border-0"
-          >
-            <Plus className="h-4 w-4 mr-2" /> Add Invoice
-          </Button>
-          <Button 
-            variant="outline" 
-            onClick={fetchFinanceData}
-            disabled={loading}
-          >
-            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-          </Button>
-        </>
-      }
-    >
+    <>
       {/* KPI Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <KpiCard 
@@ -597,7 +571,7 @@ export function FinancePage() {
           </div>
         </div>
       )}
-    </AppShell>
+    </>
   );
 }
 

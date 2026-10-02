@@ -1,15 +1,17 @@
 // backend/src/controllers/report.controller.js
-import Report from '../models/Report.js';
-import Student from '../models/Student.js';
-import Teacher from '../models/Teacher.js';
-import Admission from '../models/Admission.js';
-import Attendance from '../models/Attendance.js';
-import Fee from '../models/Fee.js';
-import Employee from '../models/Employee.js';
-import Leave from '../models/Leave.js';
 import mongoose from 'mongoose';
+import { handle } from "../utils/asyncHandler.js";
 
 // Helper: derive a readable name from an email local-part
+import {
+  Attendance,
+  Fee,
+  Report,
+  StaffLeave,
+  StaffMember,
+  Student,
+  StudentApplication,
+} from '../models/index.js';
 const deriveNameFromEmail = (email) => {
   if (!email || typeof email !== 'string') return 'N/A';
   const local = email.split('@')[0] || '';
@@ -44,6 +46,7 @@ const generateStudentReport = async (params = {}) => {
   const { department, program, status, startDate, endDate } = params;
   
   const query = {};
+  query.isDeleted = { $ne: true };
   if (department) query.department = department;
   if (program) query.program = program;
   if (status) query.status = status;
@@ -61,7 +64,7 @@ const generateStudentReport = async (params = {}) => {
   // Log sample student data for debugging
   if (students.length > 0) {
   } else {
-    const total = await Student.countDocuments();
+    const total = await Student.countDocuments({ isDeleted: { $ne: true } });
   }
   
   const totalStudents = students.length;
@@ -111,93 +114,122 @@ const generateStudentReport = async (params = {}) => {
 // Helper: Generate teacher report
 const generateTeacherReport = async (params = {}) => {
   const { department, status } = params;
-  
-  const query = {};
-  if (department) query.department = department;
+
+  const query = { isDeleted: { $ne: true }, isAcademic: true };
   if (status) query.status = status;
-  
-  const teachers = await Teacher.find(query).sort({ createdAt: -1 });
-  
+  if (department) {
+    query['employments.departmentId'] = department;
+  }
+
+  const teachers = await StaffMember.find(query).sort({ createdAt: -1 });
+
   const totalTeachers = teachers.length;
-  const activeTeachers = teachers.filter(t => t.status === 'Active').length;
+  const activeTeachers = teachers.filter((t) => t.status === 'Active').length;
   const byDepartment = {};
   const byDesignation = {};
-  
-  teachers.forEach(t => {
-    byDepartment[t.department] = (byDepartment[t.department] || 0) + 1;
-    byDesignation[t.designation] = (byDesignation[t.designation] || 0) + 1;
+
+  teachers.forEach((teacher) => {
+    const primaryEmployment =
+      teacher.employments?.find((item) => item.isPrimary) || teacher.employments?.[0];
+    const departmentLabel = primaryEmployment?.departmentId?.toString() || 'Unassigned';
+    const designation = primaryEmployment?.designation || 'Unassigned';
+    byDepartment[departmentLabel] = (byDepartment[departmentLabel] || 0) + 1;
+    byDesignation[designation] = (byDesignation[designation] || 0) + 1;
   });
-  
+
   return {
-    title: 'Teacher Performance Report',
+    title: 'Academic Staff Report',
     generatedAt: new Date().toISOString(),
     summary: {
       total: totalTeachers,
       active: activeTeachers,
-      inactive: totalTeachers - activeTeachers
+      inactive: totalTeachers - activeTeachers,
     },
     byDepartment,
     byDesignation,
-    teachers: teachers.map(t => ({
-      id: t._id,
-      name: t.name || 'N/A',
-      email: t.email || '',
-      department: t.department || '',
-      designation: t.designation || '',
-      status: t.status || '',
-      rating: t.rating || 0
-    }))
+    teachers: teachers.map((teacher) => {
+      const primaryEmployment =
+        teacher.employments?.find((item) => item.isPrimary) || teacher.employments?.[0];
+      return {
+        id: teacher._id,
+        name: `${teacher.firstName} ${teacher.lastName}`.trim(),
+        email: teacher.email || '',
+        department: primaryEmployment?.departmentId?.toString() || '',
+        designation: primaryEmployment?.designation || '',
+        status: teacher.status || '',
+      };
+    }),
   };
 };
 
 // Helper: Generate admission report
 const generateAdmissionReport = async (params = {}) => {
   const { program, status, startDate, endDate } = params;
-  
-  const query = {};
-  if (program) query.program = program;
+
+  const query = { isDeleted: { $ne: true } };
+  if (program) query.programId = program;
   if (status) query.status = status;
   if (startDate || endDate) {
-    query.applicationDate = {};
-    if (startDate) query.applicationDate.$gte = new Date(startDate);
-    if (endDate) query.applicationDate.$lte = new Date(endDate);
+    query.submittedAt = {};
+    if (startDate) query.submittedAt.$gte = new Date(startDate);
+    if (endDate) query.submittedAt.$lte = new Date(endDate);
   }
-  
-  const admissions = await Admission.find(query).sort({ createdAt: -1 });
-  
+
+  const admissions = await StudentApplication.find(query)
+    .populate('programId', 'name code')
+    .populate('campusId', 'name code')
+    .sort({ createdAt: -1 });
+
   const total = admissions.length;
   const byStatus = {};
   const byProgram = {};
   const byDepartment = {};
-  
-  admissions.forEach(a => {
+
+  admissions.forEach((a) => {
     byStatus[a.status] = (byStatus[a.status] || 0) + 1;
-    byProgram[a.program] = (byProgram[a.program] || 0) + 1;
-    byDepartment[a.department] = (byDepartment[a.department] || 0) + 1;
+    const programLabel =
+      (a.programId && typeof a.programId === 'object' && (a.programId.name || a.programId.code)) ||
+      'Unassigned';
+    byProgram[programLabel] = (byProgram[programLabel] || 0) + 1;
+    const campusLabel =
+      (a.campusId && typeof a.campusId === 'object' && (a.campusId.name || a.campusId.code)) ||
+      'Unassigned';
+    byDepartment[campusLabel] = (byDepartment[campusLabel] || 0) + 1;
   });
-  
+
+  const pending =
+    (byStatus.Submitted || 0) + (byStatus['Under Review'] || 0) + (byStatus.Shortlisted || 0);
+
   return {
     title: 'Admissions Funnel Report',
     generatedAt: new Date().toISOString(),
     summary: {
       total,
-      pending: byStatus.Pending || 0,
+      pending,
       accepted: byStatus.Accepted || 0,
       rejected: byStatus.Rejected || 0,
-      enrolled: byStatus.Enrolled || 0
+      enrolled: byStatus.Promoted || 0,
     },
     byStatus,
     byProgram,
     byDepartment,
-    admissions: admissions.map(a => ({
-      id: a._id,
-      name: a.name || 'N/A',
-      email: a.email || '',
-      program: a.program || '',
-      department: a.department || '',
-      status: a.status || '',
-      applicationDate: a.applicationDate
-    }))
+    admissions: admissions.map((a) => {
+      const programLabel =
+        (a.programId && typeof a.programId === 'object' && (a.programId.name || a.programId.code)) ||
+        '';
+      const campusLabel =
+        (a.campusId && typeof a.campusId === 'object' && (a.campusId.name || a.campusId.code)) ||
+        '';
+      return {
+        id: a._id,
+        name: `${a.firstName || ''} ${a.lastName || ''}`.trim() || 'N/A',
+        email: a.email || '',
+        program: programLabel,
+        department: campusLabel,
+        status: a.status || '',
+        applicationDate: a.submittedAt,
+      };
+    }),
   };
 };
 
@@ -206,6 +238,7 @@ const generateAttendanceReport = async (params = {}) => {
   const { department, startDate, endDate } = params;
   
   const query = {};
+  query.isDeleted = { $ne: true };
   if (department) query.department = department;
   if (startDate || endDate) {
     query.date = {};
@@ -246,6 +279,7 @@ const generateFinanceReport = async (params = {}) => {
   const { startDate, endDate } = params;
   
   const query = {};
+  query.isDeleted = { $ne: true };
   if (startDate || endDate) {
     query.createdAt = {};
     if (startDate) query.createdAt.$gte = new Date(startDate);
@@ -281,19 +315,24 @@ const generateFinanceReport = async (params = {}) => {
 // Helper: Generate HR report
 const generateHRReport = async (params = {}) => {
   const { department, status } = params;
-  
-  const query = {};
-  if (department) query.department = department;
+
+  const query = { isDeleted: { $ne: true } };
   if (status) query.status = status;
-  
-  const employees = await Employee.find(query).sort({ createdAt: -1 });
-  const leaves = await Leave.find({ status: 'Approved' }).sort({ startDate: -1 });
-  
+  if (department) {
+    query['employments.departmentId'] = department;
+  }
+
+  const employees = await StaffMember.find(query).sort({ createdAt: -1 });
+  const leaves = await StaffLeave.find({
+    status: 'Approved',
+    isDeleted: { $ne: true },
+  }).sort({ startDate: -1 });
+
   const totalEmployees = employees.length;
-  const activeEmployees = employees.filter(e => e.status === 'Active').length;
-  const onLeave = employees.filter(e => e.status === 'On Leave').length;
+  const activeEmployees = employees.filter((e) => e.status === 'Active').length;
+  const onLeave = employees.filter((e) => e.status === 'On Leave').length;
   const totalLeaves = leaves.length;
-  
+
   return {
     title: 'Human Resources Report',
     generatedAt: new Date().toISOString(),
@@ -301,23 +340,27 @@ const generateHRReport = async (params = {}) => {
       totalEmployees,
       active: activeEmployees,
       onLeave,
-      totalLeaves
+      totalLeaves,
     },
-    employees: employees.map(e => ({
-      id: e._id,
-      name: getDisplayNameForRecord(e),
-      department: e.department || '',
-      designation: e.designation || '',
-      status: e.status || '',
-      salary: e.salary || 0
-    })),
-    leaves: leaves.map(l => ({
-      employee: l.employeeName || 'N/A',
+    employees: employees.map((e) => {
+      const primaryEmployment =
+        e.employments?.find((item) => item.isPrimary) || e.employments?.[0];
+      return {
+        id: e._id,
+        name: getDisplayNameForRecord(e),
+        department: primaryEmployment?.departmentId?.toString() || '',
+        designation: primaryEmployment?.designation || '',
+        status: e.status || '',
+        salary: e.currentSalary || e.salary || 0,
+      };
+    }),
+    leaves: leaves.map((l) => ({
+      employee: l.staffName || 'N/A',
       type: l.type || '',
       startDate: l.startDate,
       endDate: l.endDate,
-      days: l.days || 0
-    }))
+      days: l.days || 0,
+    })),
   };
 };
 
@@ -384,335 +427,275 @@ const generateExamReport = async (params = {}) => {
 // ==================== CONTROLLER FUNCTIONS ====================
 
 // Get all reports
-export const getAllReports = async (req, res) => {
-  try {
-    const reports = await Report.find({ isArchived: false })
-      .sort({ createdAt: -1 })
-      .populate('generatedBy', 'name email');
-    
-    res.status(200).json({
-      success: true,
-      data: reports,
-      count: reports.length
-    });
-  } catch (error) {
-    console.error('Error fetching reports:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to fetch reports',
-      error: error.message
-    });
-  }
-};
+export const getAllReports = handle(async (req, res) => {
+  const reports = await Report.find({ isArchived: false, isDeleted: { $ne: true } })
+    .sort({ createdAt: -1 })
+    .populate('generatedBy', 'name email');
+  
+  res.status(200).json({
+    success: true,
+    data: reports,
+    count: reports.length
+  });
+});
 
 // Get report by ID
-export const getReportById = async (req, res) => {
-  try {
-    const report = await Report.findById(req.params.id)
-      .populate('generatedBy', 'name email');
-    
-    if (!report) {
-      return res.status(404).json({
-        success: false,
-        message: 'Report not found'
-      });
-    }
-    
-    res.status(200).json({
-      success: true,
-      data: report
-    });
-  } catch (error) {
-    res.status(500).json({
+export const getReportById = handle(async (req, res) => {
+  const report = await Report.findOne({ _id: req.params.id, isDeleted: { $ne: true } })
+    .populate('generatedBy', 'name email');
+  
+  if (!report) {
+    return res.status(404).json({
       success: false,
-      message: 'Failed to fetch report',
-      error: error.message
+      message: 'Report not found'
     });
   }
-};
+  
+  res.status(200).json({
+    success: true,
+    data: report
+  });
+});
 
 // Generate a new report
-export const generateReport = async (req, res) => {
-  try {
-    const { name, category, type, parameters, schedule, recipients, tags } = req.body;
-    
-    let reportData = null;
-    let generatedAt = new Date();
-    
-    switch (category) {
-      case 'Student':
-        reportData = await generateStudentReport(parameters);
-        break;
-      case 'Teacher':
-        reportData = await generateTeacherReport(parameters);
-        break;
-      case 'Admission':
-        reportData = await generateAdmissionReport(parameters);
-        break;
-      case 'Attendance':
-        reportData = await generateAttendanceReport(parameters);
-        break;
-      case 'Finance':
-        reportData = await generateFinanceReport(parameters);
-        break;
-      case 'HR':
-        reportData = await generateHRReport(parameters);
-        break;
-      case 'Library':
-        reportData = await generateLibraryReport(parameters);
-        break;
-      case 'Hostel':
-        reportData = await generateHostelReport(parameters);
-        break;
-      case 'Transport':
-        reportData = await generateTransportReport(parameters);
-        break;
-      case 'Exam':
-        reportData = await generateExamReport(parameters);
-        break;
-      default:
-        return res.status(400).json({
-          success: false,
-          message: 'Invalid report category'
-        });
-    }
-    
-    const report = new Report({
-      name,
-      category,
-      type: type || 'PDF',
-      parameters: parameters || {},
-      data: reportData,
-      generatedBy: req.user?.id || null,
-      generatedAt,
-      status: 'Completed',
-      schedule: schedule || { enabled: false },
-      recipients: recipients || [],
-      tags: tags || []
-    });
-    
-    await report.save();
-    
-    res.status(201).json({
-      success: true,
-      data: report,
-      message: 'Report generated successfully'
-    });
-  } catch (error) {
-    console.error('Error generating report:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to generate report',
-      error: error.message
-    });
-  }
-};
-
-// Update report
-export const updateReport = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const updateData = req.body;
-    
-    const report = await Report.findByIdAndUpdate(
-      id,
-      updateData,
-      { new: true, runValidators: true }
-    );
-    
-    if (!report) {
-      return res.status(404).json({
-        success: false,
-        message: 'Report not found'
-      });
-    }
-    
-    res.status(200).json({
-      success: true,
-      data: report,
-      message: 'Report updated successfully'
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: 'Failed to update report',
-      error: error.message
-    });
-  }
-};
-
-// Delete report (soft delete)
-export const deleteReport = async (req, res) => {
-  try {
-    const report = await Report.findByIdAndUpdate(
-      req.params.id,
-      { isArchived: true },
-      { new: true }
-    );
-    
-    if (!report) {
-      return res.status(404).json({
-        success: false,
-        message: 'Report not found'
-      });
-    }
-    
-    res.status(200).json({
-      success: true,
-      message: 'Report archived successfully'
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: 'Failed to delete report',
-      error: error.message
-    });
-  }
-};
-
-// Export report as CSV
-export const exportCSV = async (req, res) => {
-  try {
-    const report = await Report.findById(req.params.id);
-    if (!report) {
-      return res.status(404).json({
-        success: false,
-        message: 'Report not found'
-      });
-    }
-    
-    let csvData = '';
-    const data = report.data;
-    
-    if (data && data.students && data.students.length > 0) {
-      // Student report - prefer valid 'name', fallback to email-derived name
-      const headers = ['Name', 'Email', 'Department', 'Program', 'Status'];
-      csvData = headers.join(',') + '\n';
-
-      const deriveNameFromEmail = (email) => {
-        if (!email || typeof email !== 'string') return 'N/A';
-        const local = email.split('@')[0] || '';
-        if (!local) return 'N/A';
-        const pretty = local.replace(/[._\-]+/g, ' ').split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-        return pretty || 'N/A';
-      };
-
-      data.students.forEach((s) => {
-        let name = 'N/A';
-        if (s.name && typeof s.name === 'string') {
-          const n = s.name.trim();
-          if (n && n !== 'N/A' && n !== 'undefined undefined' && n !== 'undefined') {
-            name = n;
-          }
-        }
-        if (name === 'N/A') {
-          name = deriveNameFromEmail(s.email);
-        }
-
-        csvData += `"${name}","${s.email || ''}","${s.department || ''}","${s.program || ''}","${s.status || ''}"\n`;
-      });
-    } else if (data && data.teachers && data.teachers.length > 0) {
-      const headers = ['Name', 'Email', 'Department', 'Designation', 'Status', 'Rating'];
-      csvData = headers.join(',') + '\n';
-      data.teachers.forEach((t) => {
-        csvData += `"${t.name || 'N/A'}","${t.email || ''}","${t.department || ''}","${t.designation || ''}","${t.status || ''}","${t.rating || 0}"\n`;
-      });
-    } else if (data && data.admissions && data.admissions.length > 0) {
-      const headers = ['Name', 'Email', 'Program', 'Department', 'Status', 'Application Date'];
-      csvData = headers.join(',') + '\n';
-      data.admissions.forEach((a) => {
-        csvData += `"${a.name || ''}","${a.email || ''}","${a.program || ''}","${a.department || ''}","${a.status || ''}","${a.applicationDate || ''}"\n`;
-      });
-    } else if (data && data.fees && data.fees.length > 0) {
-      const headers = ['Student', 'Type', 'Amount', 'Status', 'Due Date', 'Paid Date'];
-      csvData = headers.join(',') + '\n';
-      data.fees.forEach((f) => {
-        csvData += `"${f.student || ''}","${f.type || ''}","${f.amount || 0}","${f.status || ''}","${f.dueDate || ''}","${f.paidDate || ''}"\n`;
-      });
-    } else if (data && data.employees && data.employees.length > 0) {
-      const headers = ['Name', 'Department', 'Designation', 'Status', 'Salary'];
-      csvData = headers.join(',') + '\n';
-      data.employees.forEach((e) => {
-          // e may be a plain object coming from stored report.data; try to use firstName/lastName/email fallbacks
-          const name = getDisplayNameForRecord(e);
-          csvData += `"${name}","${e.department || ''}","${e.designation || ''}","${e.status || ''}","${e.salary || 0}"\n`;
-        });
-    } else {
+export const generateReport = handle(async (req, res) => {
+  const { name, category, type, parameters, schedule, recipients, tags } = req.body;
+  
+  let reportData = null;
+  let generatedAt = new Date();
+  
+  switch (category) {
+    case 'Student':
+      reportData = await generateStudentReport(parameters);
+      break;
+    case 'Teacher':
+      reportData = await generateTeacherReport(parameters);
+      break;
+    case 'Admission':
+      reportData = await generateAdmissionReport(parameters);
+      break;
+    case 'Attendance':
+      reportData = await generateAttendanceReport(parameters);
+      break;
+    case 'Finance':
+      reportData = await generateFinanceReport(parameters);
+      break;
+    case 'HR':
+      reportData = await generateHRReport(parameters);
+      break;
+    case 'Library':
+      reportData = await generateLibraryReport(parameters);
+      break;
+    case 'Hostel':
+      reportData = await generateHostelReport(parameters);
+      break;
+    case 'Transport':
+      reportData = await generateTransportReport(parameters);
+      break;
+    case 'Exam':
+      reportData = await generateExamReport(parameters);
+      break;
+    default:
       return res.status(400).json({
         success: false,
-        message: 'No data available for CSV export'
+        message: 'Invalid report category'
       });
-    }
-    
-    res.setHeader('Content-Type', 'text/csv');
-    res.setHeader('Content-Disposition', `attachment; filename=${report.name.replace(/\s+/g, '_')}.csv`);
-    res.send(csvData);
-  } catch (error) {
-    console.error('Error exporting CSV:', error);
-    res.status(500).json({
+  }
+  
+  const report = new Report({
+    name,
+    category,
+    type: type || 'PDF',
+    parameters: parameters || {},
+    data: reportData,
+    generatedBy: req.user?.id || null,
+    generatedAt,
+    status: 'Completed',
+    schedule: schedule || { enabled: false },
+    recipients: recipients || [],
+    tags: tags || []
+  });
+  
+  await report.save();
+  
+  res.status(201).json({
+    success: true,
+    data: report,
+    message: 'Report generated successfully'
+  });
+});
+
+// Update report
+export const updateReport = handle(async (req, res) => {
+  const { id } = req.params;
+  const updateData = req.body;
+  
+  delete updateData.isDeleted;
+  delete updateData.deletedAt;
+  delete updateData.deletedBy;
+  delete updateData._id;
+  delete updateData.createdAt;
+  delete updateData.updatedAt;
+  
+  const report = await Report.findOneAndUpdate(
+    { _id: id, isDeleted: { $ne: true } },
+    updateData,
+    { new: true, runValidators: true }
+  );
+  
+  if (!report) {
+    return res.status(404).json({
       success: false,
-      message: 'Failed to export CSV',
-      error: error.message
+      message: 'Report not found'
     });
   }
-};
+  
+  res.status(200).json({
+    success: true,
+    data: report,
+    message: 'Report updated successfully'
+  });
+});
+
+// Delete report (soft delete)
+export const deleteReport = handle(async (req, res) => {
+  const report = await Report.findOneAndUpdate(
+    { _id: req.params.id, isDeleted: { $ne: true } },
+    { isArchived: true },
+    { new: true }
+  );
+  
+  if (!report) {
+    return res.status(404).json({
+      success: false,
+      message: 'Report not found'
+    });
+  }
+  
+  res.status(200).json({
+    success: true,
+    message: 'Report archived successfully'
+  });
+});
+
+// Export report as CSV
+export const exportCSV = handle(async (req, res) => {
+  const report = await Report.findOne({ _id: req.params.id, isDeleted: { $ne: true } });
+  if (!report) {
+    return res.status(404).json({
+      success: false,
+      message: 'Report not found'
+    });
+  }
+  
+  let csvData = '';
+  const data = report.data;
+  
+  if (data && data.students && data.students.length > 0) {
+    // Student report - prefer valid 'name', fallback to email-derived name
+    const headers = ['Name', 'Email', 'Department', 'Program', 'Status'];
+    csvData = headers.join(',') + '\n';
+
+    const deriveNameFromEmail = (email) => {
+      if (!email || typeof email !== 'string') return 'N/A';
+      const local = email.split('@')[0] || '';
+      if (!local) return 'N/A';
+      const pretty = local.replace(/[._\-]+/g, ' ').split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+      return pretty || 'N/A';
+    };
+
+    data.students.forEach((s) => {
+      let name = 'N/A';
+      if (s.name && typeof s.name === 'string') {
+        const n = s.name.trim();
+        if (n && n !== 'N/A' && n !== 'undefined undefined' && n !== 'undefined') {
+          name = n;
+        }
+      }
+      if (name === 'N/A') {
+        name = deriveNameFromEmail(s.email);
+      }
+
+      csvData += `"${name}","${s.email || ''}","${s.department || ''}","${s.program || ''}","${s.status || ''}"\n`;
+    });
+  } else if (data && data.teachers && data.teachers.length > 0) {
+    const headers = ['Name', 'Email', 'Department', 'Designation', 'Status', 'Rating'];
+    csvData = headers.join(',') + '\n';
+    data.teachers.forEach((t) => {
+      csvData += `"${t.name || 'N/A'}","${t.email || ''}","${t.department || ''}","${t.designation || ''}","${t.status || ''}","${t.rating || 0}"\n`;
+    });
+  } else if (data && data.admissions && data.admissions.length > 0) {
+    const headers = ['Name', 'Email', 'Program', 'Department', 'Status', 'Application Date'];
+    csvData = headers.join(',') + '\n';
+    data.admissions.forEach((a) => {
+      csvData += `"${a.name || ''}","${a.email || ''}","${a.program || ''}","${a.department || ''}","${a.status || ''}","${a.applicationDate || ''}"\n`;
+    });
+  } else if (data && data.fees && data.fees.length > 0) {
+    const headers = ['Student', 'Type', 'Amount', 'Status', 'Due Date', 'Paid Date'];
+    csvData = headers.join(',') + '\n';
+    data.fees.forEach((f) => {
+      csvData += `"${f.student || ''}","${f.type || ''}","${f.amount || 0}","${f.status || ''}","${f.dueDate || ''}","${f.paidDate || ''}"\n`;
+    });
+  } else if (data && data.employees && data.employees.length > 0) {
+    const headers = ['Name', 'Department', 'Designation', 'Status', 'Salary'];
+    csvData = headers.join(',') + '\n';
+    data.employees.forEach((e) => {
+        // e may be a plain object coming from stored report.data; try to use firstName/lastName/email fallbacks
+        const name = getDisplayNameForRecord(e);
+        csvData += `"${name}","${e.department || ''}","${e.designation || ''}","${e.status || ''}","${e.salary || 0}"\n`;
+      });
+  } else {
+    return res.status(400).json({
+      success: false,
+      message: 'No data available for CSV export'
+    });
+  }
+  
+  res.setHeader('Content-Type', 'text/csv');
+  res.setHeader('Content-Disposition', `attachment; filename=${report.name.replace(/\s+/g, '_')}.csv`);
+  res.send(csvData);
+});
 
 // Get report stats
-export const getReportStats = async (req, res) => {
-  try {
-    const total = await Report.countDocuments({ isArchived: false });
-    const byCategory = await Report.aggregate([
-      { $match: { isArchived: false } },
-      { $group: { _id: '$category', count: { $sum: 1 } } }
-    ]);
-    
-    const recent = await Report.find({ isArchived: false })
-      .sort({ generatedAt: -1 })
-      .limit(5)
-      .populate('generatedBy', 'name');
-    
-    res.status(200).json({
-      success: true,
-      data: {
-        total,
-        byCategory,
-        recent
-      }
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: 'Failed to fetch report stats',
-      error: error.message
-    });
-  }
-};
+export const getReportStats = handle(async (req, res) => {
+  const total = await Report.countDocuments({ isArchived: false, isDeleted: { $ne: true } });
+  const byCategory = await Report.aggregate([
+    { $match: { isArchived: false, isDeleted: { $ne: true } } },
+    { $group: { _id: '$category', count: { $sum: 1 } } }
+  ]);
+  
+  const recent = await Report.find({ isArchived: false, isDeleted: { $ne: true } })
+    .sort({ generatedAt: -1 })
+    .limit(5)
+    .populate('generatedBy', 'name');
+  
+  res.status(200).json({
+    success: true,
+    data: {
+      total,
+      byCategory,
+      recent
+    }
+  });
+});
 
 // Get report categories
-export const getReportCategories = async (req, res) => {
-  try {
-    const categories = [
-      { id: 'Student', label: 'Student Enrollment', icon: 'Users' },
-      { id: 'Teacher', label: 'Teacher Performance', icon: 'Users' },
-      { id: 'Admission', label: 'Admissions Funnel', icon: 'FileText' },
-      { id: 'Attendance', label: 'Attendance Analytics', icon: 'Calendar' },
-      { id: 'Finance', label: 'Finance Summary', icon: 'Wallet' },
-      { id: 'HR', label: 'Human Resources', icon: 'Users' },
-      { id: 'Library', label: 'Library Usage', icon: 'BookOpen' },
-      { id: 'Hostel', label: 'Hostel Occupancy', icon: 'Building2' },
-      { id: 'Transport', label: 'Transport Utilization', icon: 'Bus' },
-      { id: 'Exam', label: 'Exam Results', icon: 'Award' }
-    ];
-    
-    res.status(200).json({
-      success: true,
-      data: categories
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: 'Failed to fetch report categories',
-      error: error.message
-    });
-  }
-};
+export const getReportCategories = handle(async (req, res) => {
+  const categories = [
+    { id: 'Student', label: 'Student Enrollment', icon: 'Users' },
+    { id: 'Teacher', label: 'Academic Staff', icon: 'Users' },
+    { id: 'Admission', label: 'Admissions Funnel', icon: 'FileText' },
+    { id: 'Attendance', label: 'Attendance Analytics', icon: 'Calendar' },
+    { id: 'Finance', label: 'Finance Summary', icon: 'Wallet' },
+    { id: 'HR', label: 'Human Resources', icon: 'Users' },
+    { id: 'Library', label: 'Library Usage', icon: 'BookOpen' },
+    { id: 'Hostel', label: 'Hostel Occupancy', icon: 'Building2' },
+    { id: 'Transport', label: 'Transport Utilization', icon: 'Bus' },
+    { id: 'Exam', label: 'Exam Results', icon: 'Award' }
+  ];
+  
+  res.status(200).json({
+    success: true,
+    data: categories
+  });
+});

@@ -1,382 +1,589 @@
-import Student from '../models/Student.js';
+import { handle } from "../utils/asyncHandler.js";
+import { Student, Program, Department, Campus, Batch, StudentAdmission } from "../models/index.js";
+import { ensureStudentPortalAccount } from "../utils/studentPortalAccount.js";
+import { generateStudentId } from "../utils/generateStudentId.js";
 
-// GET /api/students
-export async function getStudents(req, res, next) {
-  try {
-    // Support query parameters for filtering
-    const { program, department, status, search, page = 1, limit = 10 } = req.query;
-    
-    // Build filter object
-    const filter = {};
-    if (program) filter.program = program;
-    if (department) filter.department = department;
-    if (status) filter.status = status;
-    
-    // Text search on name and email
-    if (search) {
-      filter.$or = [
-        { name: { $regex: search, $options: 'i' } },
-        { email: { $regex: search, $options: 'i' } }
-      ];
-    }
+const notDeleted = { $ne: true };
 
-    // Pagination
-    const skip = (parseInt(page) - 1) * parseInt(limit);
-    
-    // Get students with pagination
-    const students = await Student.find(filter)
-      .skip(skip)
-      .limit(parseInt(limit))
-      .sort({ createdAt: -1 })
-      .select('-__v');
-
-    const totalCount = await Student.countDocuments(filter);
-
-    res.json({
-      success: true,
-      count: students.length,
-      total: totalCount,
-      page: parseInt(page),
-      totalPages: Math.ceil(totalCount / parseInt(limit)),
-      data: students
-    });
-  } catch (err) {
-    next(err);
-  }
+function populateStudent(query) {
+  return query
+    .populate("programId", "name code degreeLevel")
+    .populate("departmentId", "name code")
+    .populate("campusId", "name campusCode")
+    .populate("batchId", "name code year admissionSemester")
+    .populate("admissionId", "admissionId status")
+    .populate("userId", "email role status");
 }
 
-// GET /api/students/:id
-export async function getStudentById(req, res, next) {
-  try {
-    const student = await Student.findById(req.params.id).select('-__v');
-    
-    if (!student) {
-      return res.status(404).json({
-        success: false,
-        message: `Student ${req.params.id} not found`
-      });
-    }
-    
-    res.json({ success: true, data: student });
-  } catch (err) {
-    // Handle invalid ObjectId format
-    if (err.name === 'CastError') {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid student ID format'
-      });
-    }
-    next(err);
-  }
+function refId(value) {
+  if (value == null || value === "") return value;
+  if (typeof value === "object") return value._id || value.id || null;
+  return value;
 }
 
-// POST /api/students
-export async function createStudent(req, res, next) {
-  try {
-    const { name, program, department, email, cnic } = req.body;
-    
-    // Validate required fields
-    if (!name || !program || !department) {
-      return res.status(400).json({
-        success: false,
-        message: "name, program and department are required fields",
-      });
-    }
+async function enrichStudentFromAdmission(student) {
+  const plain = student.toObject ? student.toObject() : { ...student };
+  plain.fullName = plain.name || `${plain.firstName || ''} ${plain.lastName || ''}`.trim();
+  const admissionRef = plain.admissionId;
+  const admissionMongoId =
+    admissionRef && typeof admissionRef === "object" ? admissionRef._id : admissionRef;
 
-    // Check for duplicate email
-    if (email) {
-      const existingEmail = await Student.findOne({ email });
-      if (existingEmail) {
-        return res.status(400).json({
-          success: false,
-          message: `Student with email ${email} already exists`
-        });
-      }
-    }
-
-    // Check for duplicate CNIC
-    if (cnic) {
-      const existingCnic = await Student.findOne({ cnic });
-      if (existingCnic) {
-        return res.status(400).json({
-          success: false,
-          message: `Student with CNIC ${cnic} already exists`
-        });
-      }
-    }
-
-    // Create new student with defaults
-    const studentData = {
-      name,
-      program,
-      department,
-      semester: req.body.semester ?? 1,
-      gpa: req.body.gpa ?? 0,
-      cgpa: req.body.cgpa ?? 0,
-      attendance: req.body.attendance ?? 0,
-      fee: req.body.fee ?? "Pending",
-      city: req.body.city ?? "",
-      campus: req.body.campus ?? "",
-      status: req.body.status ?? "Active",
-      email: email ?? "",
-      phone: req.body.phone ?? "",
-      fatherName: req.body.fatherName ?? "",
-      motherName: req.body.motherName ?? "",
-      cnic: cnic ?? "",
+  if (!admissionMongoId) {
+    return {
+      ...plain,
+      guardian: {
+        fatherName: plain.fatherName || "",
+        motherName: plain.motherName || "",
+      },
+      address: {
+        city: plain.city || "",
+      },
     };
-
-    const student = new Student(studentData);
-    await student.save();
-
-    res.status(201).json({
-      success: true,
-      data: student
-    });
-  } catch (err) {
-    // Handle duplicate key errors
-    if (err.code === 11000) {
-      const field = Object.keys(err.keyPattern)[0];
-      return res.status(400).json({
-        success: false,
-        message: `Duplicate ${field}. Please use a unique value.`
-      });
-    }
-    
-    // Handle validation errors
-    if (err.name === 'ValidationError') {
-      const errors = Object.values(err.errors).map(e => e.message);
-      return res.status(400).json({
-        success: false,
-        message: 'Validation failed',
-        errors
-      });
-    }
-    
-    next(err);
   }
-}
 
-// PUT /api/students/:id
-export async function updateStudent(req, res, next) {
-  try {
-    const { id } = req.params;
-    
-    // Check if student exists
-    const existingStudent = await Student.findById(id);
-    if (!existingStudent) {
-      return res.status(404).json({
-        success: false,
-        message: `Student ${id} not found`
-      });
-    }
-
-    // Check for duplicate email (if updating)
-    if (req.body.email) {
-      const duplicateEmail = await Student.findOne({
-        email: req.body.email,
-        _id: { $ne: id }
-      });
-      if (duplicateEmail) {
-        return res.status(400).json({
-          success: false,
-          message: `Student with email ${req.body.email} already exists`
-        });
-      }
-    }
-
-    // Check for duplicate CNIC (if updating)
-    if (req.body.cnic) {
-      const duplicateCnic = await Student.findOne({
-        cnic: req.body.cnic,
-        _id: { $ne: id }
-      });
-      if (duplicateCnic) {
-        return res.status(400).json({
-          success: false,
-          message: `Student with CNIC ${req.body.cnic} already exists`
-        });
-      }
-    }
-
-    // Update student - remove id from body if present
-    const { id: _, ...updateData } = req.body;
-    
-    const updatedStudent = await Student.findByIdAndUpdate(
-      id,
-      updateData,
-      {
-        new: true, // Return updated document
-        runValidators: true // Run validation on update
-      }
-    ).select('-__v');
-
-    res.json({
-      success: true,
-      data: updatedStudent
-    });
-  } catch (err) {
-    // Handle invalid ObjectId format
-    if (err.name === 'CastError') {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid student ID format'
-      });
-    }
-    
-    // Handle validation errors
-    if (err.name === 'ValidationError') {
-      const errors = Object.values(err.errors).map(e => e.message);
-      return res.status(400).json({
-        success: false,
-        message: 'Validation failed',
-        errors
-      });
-    }
-    
-    next(err);
-  }
-}
-
-// DELETE /api/students/:id
-export async function deleteStudent(req, res, next) {
-  try {
-    const { id } = req.params;
-    
-    const student = await Student.findByIdAndDelete(id);
-    
-    if (!student) {
-      return res.status(404).json({
-        success: false,
-        message: `Student ${id} not found`
-      });
-    }
-
-    res.json({
-      success: true,
-      message: "Student deleted successfully",
-      data: student
-    });
-  } catch (err) {
-    // Handle invalid ObjectId format
-    if (err.name === 'CastError') {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid student ID format'
-      });
-    }
-    next(err);
-  }
-}
-
-// BULK CREATE /api/students/bulk
-export async function bulkCreateStudents(req, res, next) {
-  try {
-    const students = req.body.students || req.body;
-    
-    if (!Array.isArray(students)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Please provide an array of students'
-      });
-    }
-
-    if (students.length === 0) {
-      return res.status(400).json({
-        success: false,
-        message: 'Student array cannot be empty'
-      });
-    }
-
-    // Validate each student has required fields
-    const invalidStudents = students.filter(s => !s.name || !s.program || !s.department);
-    if (invalidStudents.length > 0) {
-      return res.status(400).json({
-        success: false,
-        message: 'Each student must have name, program and department',
-        invalidCount: invalidStudents.length
-      });
-    }
-
-    // Insert all students
-    const createdStudents = await Student.insertMany(students);
-    
-    res.status(201).json({
-      success: true,
-      count: createdStudents.length,
-      data: createdStudents
-    });
-  } catch (err) {
-    // Handle duplicate key errors
-    if (err.code === 11000) {
-      return res.status(400).json({
-        success: false,
-        message: 'Duplicate key error. Check for duplicate emails or CNIC',
-        error: err.message
-      });
-    }
-    next(err);
-  }
-}
-
-// GET /api/students/stats
-export async function getStudentStats(req, res, next) {
-  try {
-    // Get overall statistics
-    const stats = await Student.aggregate([
-      {
-        $group: {
-          _id: null,
-          totalStudents: { $sum: 1 },
-          averageGPA: { $avg: '$gpa' },
-          averageAttendance: { $avg: '$attendance' },
-          paidFee: {
-            $sum: { $cond: [{ $eq: ['$fee', 'Paid'] }, 1, 0] }
-          },
-          pendingFee: {
-            $sum: { $cond: [{ $eq: ['$fee', 'Pending'] }, 1, 0] }
-          }
-        }
-      }
-    ]);
-
-    // Get statistics by program
-    const programStats = await Student.aggregate([
-      {
-        $group: {
-          _id: '$program',
-          count: { $sum: 1 },
-          avgGPA: { $avg: '$gpa' }
-        }
+  const dossier = await StudentAdmission.findById(admissionMongoId).select(
+    "admissionId dateOfBirth gender nationality religion guardian address previousEducation academicSessionId status"
+  );
+  if (!dossier) {
+    return {
+      ...plain,
+      guardian: {
+        fatherName: plain.fatherName || "",
+        motherName: plain.motherName || "",
       },
-      { $sort: { count: -1 } }
-    ]);
-
-    // Get statistics by status
-    const statusStats = await Student.aggregate([
-      {
-        $group: {
-          _id: '$status',
-          count: { $sum: 1 }
-        }
+      address: {
+        city: plain.city || "",
       },
-      { $sort: { count: -1 } }
-    ]);
-
-    res.json({
-      success: true,
-      data: {
-        overall: stats[0] || {
-          totalStudents: 0,
-          averageGPA: 0,
-          averageAttendance: 0,
-          paidFee: 0,
-          pendingFee: 0
-        },
-        byProgram: programStats,
-        byStatus: statusStats
-      }
-    });
-  } catch (err) {
-    next(err);
+    };
   }
+
+  // Backfill student personal fields when enrollment predated schema fields
+  let dirty = false;
+  if (!plain.dateOfBirth && dossier.dateOfBirth) {
+    plain.dateOfBirth = dossier.dateOfBirth;
+    student.dateOfBirth = dossier.dateOfBirth;
+    dirty = true;
+  }
+  if (!plain.gender && dossier.gender) {
+    plain.gender = dossier.gender;
+    student.gender = dossier.gender;
+    dirty = true;
+  }
+  if (!plain.nationality && dossier.nationality) {
+    plain.nationality = dossier.nationality;
+    student.nationality = dossier.nationality;
+    dirty = true;
+  }
+  if (!plain.religion && dossier.religion) {
+    plain.religion = dossier.religion;
+    student.religion = dossier.religion;
+    dirty = true;
+  }
+  if (!plain.fatherName && dossier.guardian?.fatherName) {
+    plain.fatherName = dossier.guardian.fatherName;
+    student.fatherName = dossier.guardian.fatherName;
+    dirty = true;
+  }
+  if (!plain.motherName && dossier.guardian?.motherName) {
+    plain.motherName = dossier.guardian.motherName;
+    student.motherName = dossier.guardian.motherName;
+    dirty = true;
+  }
+  if (!plain.city && dossier.address?.city) {
+    plain.city = dossier.address.city;
+    student.city = dossier.address.city;
+    dirty = true;
+  }
+  if (dirty) {
+    try {
+      await student.save();
+    } catch {
+      /* enrichment is best-effort */
+    }
+  }
+
+  return {
+    ...plain,
+    admissionNumber:
+      (typeof admissionRef === "object" && admissionRef.admissionId) || dossier.admissionId,
+    guardian: {
+      fatherName: plain.fatherName || dossier.guardian?.fatherName || "",
+      motherName: plain.motherName || dossier.guardian?.motherName || "",
+      guardianName: dossier.guardian?.guardianName || "",
+      guardianPhone: dossier.guardian?.guardianPhone || "",
+      guardianRelation: dossier.guardian?.guardianRelation || "",
+    },
+    address: {
+      street: dossier.address?.street || "",
+      city: plain.city || dossier.address?.city || "",
+      state: dossier.address?.state || "",
+      postalCode: dossier.address?.postalCode || "",
+      country: dossier.address?.country || "Pakistan",
+    },
+    previousEducation: dossier.previousEducation || [],
+    dateOfBirth: plain.dateOfBirth || dossier.dateOfBirth || null,
+    gender: plain.gender || dossier.gender || "",
+    nationality: plain.nationality || dossier.nationality || "Pakistani",
+    religion: plain.religion || dossier.religion || "",
+  };
 }
+
+export const getStudents = handle(async (req, res) => {
+  const {
+    programId,
+    departmentId,
+    campusId,
+    batchId,
+    year,
+    status,
+    search,
+    page = 1,
+    limit = 50,
+  } = req.query;
+
+  const filter = { isDeleted: notDeleted };
+  if (programId) filter.programId = programId;
+  if (departmentId) filter.departmentId = departmentId;
+  if (campusId) filter.campusId = campusId;
+  if (batchId) filter.batchId = batchId;
+  if (status) filter.status = status;
+
+  if (year) {
+    const yearNum = parseInt(year, 10);
+    if (!Number.isNaN(yearNum)) {
+      const batches = await Batch.find({
+        year: yearNum,
+        isDeleted: notDeleted,
+      }).select('_id');
+      const ids = batches.map((b) => b._id);
+      filter.batchId = batchId
+        ? batchId
+        : { $in: ids.length ? ids : [null] };
+    }
+  }
+
+  if (search) {
+    filter.$or = [
+      { firstName: { $regex: search, $options: "i" } },
+      { lastName: { $regex: search, $options: "i" } },
+      { name: { $regex: search, $options: "i" } },
+      { email: { $regex: search, $options: "i" } },
+      { studentId: { $regex: search, $options: "i" } },
+      { cnic: { $regex: search, $options: "i" } },
+    ];
+  }
+
+  const skip = (parseInt(page, 10) - 1) * parseInt(limit, 10);
+
+  const [students, totalCount] = await Promise.all([
+    populateStudent(
+      Student.find(filter).skip(skip).limit(parseInt(limit, 10)).sort({ createdAt: -1 }).select("-__v")
+    ),
+    Student.countDocuments(filter),
+  ]);
+
+  res.json({
+    success: true,
+    count: students.length,
+    total: totalCount,
+    page: parseInt(page, 10),
+    totalPages: Math.ceil(totalCount / parseInt(limit, 10)),
+    data: students,
+  });
+});
+
+export const getStudentById = handle(async (req, res) => {
+  const query = [{ studentId: req.params.id }];
+  if (req.params.id.match(/^[0-9a-fA-F]{24}$/)) {
+    query.unshift({ _id: req.params.id });
+  }
+
+  const student = await populateStudent(
+    Student.findOne({ $or: query, isDeleted: notDeleted }).select("-__v")
+  );
+
+  if (!student) {
+    return res.status(404).json({
+      success: false,
+      message: `Student ${req.params.id} not found`,
+    });
+  }
+
+  const data = await enrichStudentFromAdmission(student);
+  res.json({ success: true, data });
+});
+
+export const createStudent = handle(async (req, res) => {
+  const {
+    firstName,
+    lastName,
+    email,
+    phone,
+    cnic,
+    programId,
+    campusId,
+    batchId,
+    fatherName,
+    motherName,
+    dateOfBirth,
+    gender,
+    city,
+    currentSemester,
+    status,
+  } = req.body;
+
+  if (!firstName || !lastName || !email || !phone || !cnic || !programId || !campusId || !batchId) {
+    return res.status(400).json({
+      success: false,
+      message:
+        "firstName, lastName, email, phone, cnic, programId, campusId, and batchId are required",
+    });
+  }
+
+  if (!fatherName || !String(fatherName).trim()) {
+    return res.status(400).json({ success: false, message: "fatherName is required" });
+  }
+  if (!city || !String(city).trim()) {
+    return res.status(400).json({ success: false, message: "city is required" });
+  }
+  if (!gender || !["Male", "Female", "Other"].includes(gender)) {
+    return res.status(400).json({ success: false, message: "gender is required" });
+  }
+  if (!dateOfBirth) {
+    return res.status(400).json({ success: false, message: "dateOfBirth is required" });
+  }
+
+  const normalizedEmail = String(email).toLowerCase().trim();
+  const normalizedCnic = String(cnic).trim();
+
+  const duplicate = await Student.findOne({
+    isDeleted: notDeleted,
+    $or: [{ email: normalizedEmail }, { cnic: normalizedCnic }],
+  });
+  if (duplicate) {
+    return res.status(409).json({
+      success: false,
+      message: "A student with this email or CNIC already exists",
+    });
+  }
+
+  const [program, campus, batch] = await Promise.all([
+    Program.findById(programId),
+    Campus.findById(campusId),
+    Batch.findById(batchId),
+  ]);
+
+  if (!program) {
+    return res.status(400).json({ success: false, message: "Invalid program" });
+  }
+  if (!campus) {
+    return res.status(400).json({ success: false, message: "Invalid campus" });
+  }
+  if (!batch) {
+    return res.status(400).json({ success: false, message: "Invalid batch" });
+  }
+
+  let departmentId = program.departmentId || null;
+  let departmentName = "";
+  if (departmentId) {
+    const department = await Department.findById(departmentId);
+    departmentName = department?.name || "";
+  }
+
+  const studentId = await generateStudentId();
+  const student = await Student.create({
+    studentId,
+    firstName: String(firstName).trim(),
+    lastName: String(lastName).trim(),
+    name: `${String(firstName).trim()} ${String(lastName).trim()}`.trim(),
+    fatherName: String(fatherName).trim(),
+    motherName: motherName ? String(motherName).trim() : "",
+    cnic: normalizedCnic,
+    email: normalizedEmail,
+    phone: String(phone).trim(),
+    programId,
+    departmentId,
+    campusId,
+    batchId,
+    program: program.name || "",
+    department: departmentName,
+    campus: campus.name || "",
+    city: String(city).trim(),
+    status: status || "Active",
+    enrollmentDate: new Date(),
+    currentSemester: currentSemester ? Number(currentSemester) : 1,
+    semester: currentSemester ? Number(currentSemester) : 1,
+  });
+
+  // dateOfBirth/gender stored only on admission today — keep on student if schema supports later
+  void dateOfBirth;
+  void gender;
+
+  const portalResult = await ensureStudentPortalAccount(student);
+  const populated = await populateStudent(Student.findById(student._id).select("-__v"));
+
+  res.status(201).json({
+    success: true,
+    data: populated,
+    portalLogin: portalResult.portalLogin,
+    message: portalResult.portalLogin?.temporaryPassword
+      ? `Student ${studentId} created. Portal password shown once — save it now.`
+      : `Student ${studentId} created successfully`,
+  });
+});
+
+export const updateStudent = handle(async (req, res) => {
+  const query = [{ studentId: req.params.id }];
+  if (req.params.id.match(/^[0-9a-fA-F]{24}$/)) {
+    query.unshift({ _id: req.params.id });
+  }
+
+  const existingStudent = await Student.findOne({ $or: query, isDeleted: notDeleted });
+  if (!existingStudent) {
+    return res.status(404).json({
+      success: false,
+      message: `Student ${req.params.id} not found`,
+    });
+  }
+
+  if (req.body.email) {
+    const duplicateEmail = await Student.findOne({
+      email: req.body.email,
+      _id: { $ne: existingStudent._id },
+      isDeleted: notDeleted,
+    });
+    if (duplicateEmail) {
+      return res.status(400).json({
+        success: false,
+        message: `Student with email ${req.body.email} already exists`,
+      });
+    }
+  }
+
+  if (req.body.cnic) {
+    const duplicateCnic = await Student.findOne({
+      cnic: req.body.cnic,
+      _id: { $ne: existingStudent._id },
+      isDeleted: notDeleted,
+    });
+    if (duplicateCnic) {
+      return res.status(400).json({
+        success: false,
+        message: `Student with CNIC ${req.body.cnic} already exists`,
+      });
+    }
+  }
+
+  const allowed = [
+    "firstName",
+    "lastName",
+    "email",
+    "phone",
+    "cnic",
+    "fatherName",
+    "motherName",
+    "dateOfBirth",
+    "gender",
+    "nationality",
+    "religion",
+    "programId",
+    "departmentId",
+    "campusId",
+    "batchId",
+    "currentSemester",
+    "semester",
+    "gpa",
+    "cgpa",
+    "attendance",
+    "fee",
+    "city",
+    "status",
+    "photo",
+    "profileImage",
+  ];
+
+  const objectIdFields = new Set(["programId", "departmentId", "campusId", "batchId"]);
+
+  for (const key of allowed) {
+    if (req.body[key] !== undefined) {
+      let value = req.body[key];
+      if (objectIdFields.has(key)) {
+        value = refId(value);
+      }
+      existingStudent[key] = value;
+    }
+  }
+
+  if (req.body.guardian?.fatherName !== undefined) {
+    existingStudent.fatherName = String(req.body.guardian.fatherName || "").trim();
+  }
+  if (req.body.guardian?.motherName !== undefined) {
+    existingStudent.motherName = String(req.body.guardian.motherName || "").trim();
+  }
+  if (req.body.address?.city !== undefined) {
+    existingStudent.city = String(req.body.address.city || "").trim();
+  }
+
+  if (req.body.programId) {
+    const program = await Program.findById(refId(req.body.programId));
+    if (program) {
+      existingStudent.program = program.name;
+      if (program.departmentId) {
+        existingStudent.departmentId = program.departmentId;
+        const department = await Department.findById(program.departmentId);
+        existingStudent.department = department?.name || "";
+      }
+    }
+  }
+
+  if (req.body.departmentId) {
+    const department = await Department.findById(refId(req.body.departmentId));
+    existingStudent.department = department?.name || existingStudent.department;
+  }
+
+  if (req.body.campusId) {
+    const campus = await Campus.findById(refId(req.body.campusId));
+    existingStudent.campus = campus?.name || existingStudent.campus;
+  }
+
+  if (req.body.batchId) {
+    await Batch.findById(refId(req.body.batchId));
+  }
+
+  if (existingStudent.firstName || existingStudent.lastName) {
+    existingStudent.name = `${existingStudent.firstName || ""} ${existingStudent.lastName || ""}`.trim();
+  }
+
+  await existingStudent.save();
+
+  const updatedStudent = await populateStudent(Student.findById(existingStudent._id).select("-__v"));
+  const data = await enrichStudentFromAdmission(updatedStudent);
+
+  res.json({
+    success: true,
+    data,
+  });
+});
+
+export const deleteStudent = handle(async (req, res) => {
+  const query = [{ studentId: req.params.id }];
+  if (req.params.id.match(/^[0-9a-fA-F]{24}$/)) {
+    query.unshift({ _id: req.params.id });
+  }
+
+  const student = await Student.findOne({ $or: query, isDeleted: notDeleted });
+  if (!student) {
+    return res.status(404).json({
+      success: false,
+      message: `Student ${req.params.id} not found`,
+    });
+  }
+
+  student.isDeleted = true;
+  student.deletedAt = new Date();
+  student.deletedBy = req.user?._id || null;
+  await student.save();
+
+  res.json({
+    success: true,
+    message: "Student deleted successfully",
+    data: student,
+  });
+});
+
+export const bulkCreateStudents = handle(async (_req, res) => {
+  return res.status(400).json({
+    success: false,
+    message: "Bulk student creation is disabled. Complete admission dossiers instead.",
+  });
+});
+
+async function findStudentByIdentifier(identifier) {
+  const query = [{ studentId: identifier }];
+  if (identifier.match(/^[0-9a-fA-F]{24}$/)) {
+    query.unshift({ _id: identifier });
+  }
+  return Student.findOne({ $or: query, isDeleted: notDeleted });
+}
+
+export const enableStudentPortalLogin = handle(async (req, res) => {
+  const student = await findStudentByIdentifier(req.params.id);
+  if (!student) {
+    return res.status(404).json({ success: false, message: `Student ${req.params.id} not found` });
+  }
+
+  if (student.userId) {
+    return res.status(409).json({
+      success: false,
+      message: "Portal login already enabled for this student",
+    });
+  }
+
+  const { password } = req.body || {};
+  if (password && String(password).length < 8) {
+    return res.status(400).json({
+      success: false,
+      message: "Password must be at least 8 characters",
+    });
+  }
+
+  const result = await ensureStudentPortalAccount(student, { password });
+  if (result.error) {
+    return res.status(400).json({ success: false, message: result.error });
+  }
+
+  const populated = await populateStudent(Student.findById(student._id).select("-__v"));
+
+  res.status(201).json({
+    success: true,
+    data: populated,
+    portalLogin: result.portalLogin,
+    message: result.portalLogin?.temporaryPassword
+      ? "Portal login enabled. Temporary password shown once — save it now."
+      : "Portal login linked to existing student account",
+  });
+});
+
+export const getStudentStats = handle(async (_req, res) => {
+  const match = { isDeleted: notDeleted };
+  const [totalStudents, activeStudents, graduatedStudents] = await Promise.all([
+    Student.countDocuments(match),
+    Student.countDocuments({ ...match, status: "Active" }),
+    Student.countDocuments({ ...match, status: "Graduated" }),
+  ]);
+
+  const programStats = await Student.aggregate([
+    { $match: match },
+    {
+      $group: {
+        _id: "$programId",
+        count: { $sum: 1 },
+        avgGpa: { $avg: "$gpa" },
+      },
+    },
+    { $sort: { count: -1 } },
+    { $limit: 10 },
+  ]);
+
+  const statusStats = await Student.aggregate([
+    { $match: match },
+    {
+      $group: {
+        _id: "$status",
+        count: { $sum: 1 },
+      },
+    },
+    { $sort: { count: -1 } },
+  ]);
+
+  res.json({
+    success: true,
+    data: {
+      totalStudents,
+      activeStudents,
+      graduatedStudents,
+      byProgram: programStats,
+      byStatus: statusStats,
+    },
+  });
+});

@@ -1,5 +1,4 @@
 // src/routes/app.reports.tsx
-import { AppShell } from "@/layouts";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -38,7 +37,6 @@ import {
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { reportAPI, Report, ReportCategory } from "@/features/reports";
-
 
 const categoryIcons: Record<string, any> = {
   'Student': Users,
@@ -471,54 +469,30 @@ export function ReportsPage() {
 
   if (loading) {
     return (
-      <AppShell title="Reports" subtitle="Loading reports...">
-        <div className="flex justify-center items-center h-64">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-            <p className="mt-4 text-muted-foreground">Loading reports...</p>
-          </div>
+      <div className="flex justify-center items-center h-64">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-4 text-muted-foreground">Loading reports...</p>
         </div>
-      </AppShell>
+      </div>
     );
   }
 
   if (error) {
     return (
-      <AppShell title="Reports" subtitle="Error loading data">
-        <div className="flex flex-col items-center justify-center h-96 border-2 border-dashed rounded-lg p-8">
-          <AlertCircle className="h-16 w-16 text-destructive mb-4" />
-          <h3 className="text-xl font-semibold mb-2">Failed to load data</h3>
-          <p className="text-sm text-muted-foreground mb-4 text-center max-w-md">{error}</p>
-          <Button onClick={fetchData}>
-            <RefreshCw className="h-4 w-4 mr-2" /> Retry
-          </Button>
-        </div>
-      </AppShell>
+      <div className="flex flex-col items-center justify-center h-96 border-2 border-dashed rounded-lg p-8">
+        <AlertCircle className="h-16 w-16 text-destructive mb-4" />
+        <h3 className="text-xl font-semibold mb-2">Failed to load data</h3>
+        <p className="text-sm text-muted-foreground mb-4 text-center max-w-md">{error}</p>
+        <Button onClick={fetchData}>
+          <RefreshCw className="h-4 w-4 mr-2" /> Retry
+        </Button>
+      </div>
     );
   }
 
   return (
-    <AppShell 
-      title="Reports" 
-      subtitle={`${reports.length} reports available · Generate, print, and export any operational report`}
-      actions={
-        <>
-          <Button 
-            onClick={() => setIsModalOpen(true)}
-            className="gradient-brand text-white border-0"
-          >
-            <Plus className="h-4 w-4 mr-2" /> Generate Report
-          </Button>
-          <Button 
-            variant="outline" 
-            onClick={fetchData}
-            disabled={loading}
-          >
-            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-          </Button>
-        </>
-      }
-    >
+    <>
       {/* ====== VISUAL GRAPHICS SECTION ====== */}
       {reports.length > 0 && (
         <div className="mb-6 grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -953,7 +927,7 @@ export function ReportsPage() {
           box-shadow: 0 12px 40px rgba(0, 0, 0, 0.08);
         }
       `}</style>
-    </AppShell>
+    </>
   );
 }
 

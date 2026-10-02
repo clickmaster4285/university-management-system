@@ -1,7 +1,8 @@
 // backend/src/controllers/notification.controller.js
-import Notification from '../models/Notification.js';
 import nodemailer from 'nodemailer';
+import { handle } from "../utils/asyncHandler.js";
 
+import { Notification } from '../models/index.js';
 let transporter = null;
 let emailConfigured = false;
 
@@ -463,7 +464,7 @@ const generateTestEmailHTML = () => {
 
 const processNotificationEmailDelivery = async (notificationId, recipients, title) => {
   try {
-    const notification = await Notification.findById(notificationId);
+    const notification = await Notification.findOne({ _id: notificationId, isDeleted: { $ne: true } });
     if (!notification) {
       console.error(`⚠️ Notification ${notificationId} not found for background email delivery`);
       return;
@@ -500,348 +501,286 @@ const processNotificationEmailDelivery = async (notificationId, recipients, titl
       }
     }
 
-    await Notification.findByIdAndUpdate(notificationId, {
-      deliveredCount,
-      failedCount,
-      status: deliveredCount > 0 ? 'sent' : 'failed',
-      sentAt: new Date()
-    });
+    await Notification.findOneAndUpdate(
+      { _id: notificationId, isDeleted: { $ne: true } },
+      {
+        deliveredCount,
+        failedCount,
+        status: deliveredCount > 0 ? 'sent' : 'failed',
+        sentAt: new Date()
+      }
+    );
 
   } catch (error) {
     console.error(`❌ Background email delivery failed for ${notificationId}:`, error.message);
-    await Notification.findByIdAndUpdate(notificationId, {
-      status: 'failed',
-      sentAt: new Date()
-    });
+    await Notification.findOneAndUpdate(
+      { _id: notificationId, isDeleted: { $ne: true } },
+      {
+        status: 'failed',
+        sentAt: new Date()
+      }
+    );
   }
 };
 
 // ==================== CONTROLLER FUNCTIONS ====================
 
 // Get all notifications
-export const getAllNotifications = async (req, res) => {
-  try {
-    const notifications = await Notification.find({ isArchived: false })
-      .sort({ createdAt: -1 });
+export const getAllNotifications = handle(async (req, res) => {
+  const notifications = await Notification.find({ isArchived: false, isDeleted: { $ne: true } })
+    .sort({ createdAt: -1 });
 
-    const total = await Notification.countDocuments({ isArchived: false });
-    const unread = await Notification.countDocuments({ isArchived: false, isRead: false });
+  const total = await Notification.countDocuments({ isArchived: false, isDeleted: { $ne: true } });
+  const unread = await Notification.countDocuments({ isArchived: false, isRead: false, isDeleted: { $ne: true } });
 
-    res.status(200).json({
-      success: true,
-      data: notifications,
-      counts: { total, unread }
-    });
-  } catch (error) {
-    console.error('Error fetching notifications:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to fetch notifications',
-      error: error.message
-    });
-  }
-};
+  res.status(200).json({
+    success: true,
+    data: notifications,
+    counts: { total, unread }
+  });
+});
 
 // Get notification by ID
-export const getNotificationById = async (req, res) => {
-  try {
-    const notification = await Notification.findById(req.params.id);
-    if (!notification) {
-      return res.status(404).json({
-        success: false,
-        message: 'Notification not found'
-      });
-    }
-
-    if (!notification.isRead) {
-      notification.isRead = true;
-      await notification.save();
-    }
-
-    res.status(200).json({
-      success: true,
-      data: notification
-    });
-  } catch (error) {
-    res.status(500).json({
+export const getNotificationById = handle(async (req, res) => {
+  const notification = await Notification.findOne({ _id: req.params.id, isDeleted: { $ne: true } });
+  if (!notification) {
+    return res.status(404).json({
       success: false,
-      message: 'Failed to fetch notification',
-      error: error.message
+      message: 'Notification not found'
     });
   }
-};
+
+  if (!notification.isRead) {
+    notification.isRead = true;
+    await notification.save();
+  }
+
+  res.status(200).json({
+    success: true,
+    data: notification
+  });
+});
 
 // Update notification
-export const updateNotification = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const updateData = req.body;
+export const updateNotification = handle(async (req, res) => {
+  const { id } = req.params;
+  const updateData = req.body;
 
-    const notification = await Notification.findByIdAndUpdate(
-      id,
-      updateData,
-      { new: true, runValidators: true }
-    );
+  delete updateData.isDeleted;
+  delete updateData.deletedAt;
+  delete updateData.deletedBy;
+  delete updateData._id;
+  delete updateData.createdAt;
+  delete updateData.updatedAt;
 
-    if (!notification) {
-      return res.status(404).json({
-        success: false,
-        message: 'Notification not found'
-      });
-    }
+  const notification = await Notification.findOneAndUpdate(
+    { _id: id, isDeleted: { $ne: true } },
+    updateData,
+    { new: true, runValidators: true }
+  );
 
-    res.status(200).json({
-      success: true,
-      data: notification,
-      message: 'Notification updated successfully'
-    });
-  } catch (error) {
-    res.status(500).json({
+  if (!notification) {
+    return res.status(404).json({
       success: false,
-      message: 'Failed to update notification',
-      error: error.message
+      message: 'Notification not found'
     });
   }
-};
+
+  res.status(200).json({
+    success: true,
+    data: notification,
+    message: 'Notification updated successfully'
+  });
+});
 
 // Create and send notification
-export const createNotification = async (req, res) => {
-  try {
-    const {
-      title,
-      message,
-      type = 'announcement',
-      channel = 'email',
-      recipients = [],
-      priority = 'medium',
-      category = 'general',
-      sendEmail: shouldSendEmail = true,
-      senderName = req.user?.name || 'ScholarOS Administration'
-    } = req.body;
+export const createNotification = handle(async (req, res) => {
+  const {
+    title,
+    message,
+    type = 'announcement',
+    channel = 'email',
+    recipients = [],
+    priority = 'medium',
+    category = 'general',
+    sendEmail: shouldSendEmail = true,
+    senderName = req.user?.name || 'ScholarOS Administration'
+  } = req.body;
 
-    const normalizedRecipients = Array.isArray(recipients)
-      ? recipients.map((recipient) => String(recipient).trim()).filter(Boolean)
-      : typeof recipients === 'string'
-        ? recipients.split(',').map((recipient) => recipient.trim()).filter(Boolean)
-        : [];
+  const normalizedRecipients = Array.isArray(recipients)
+    ? recipients.map((recipient) => String(recipient).trim()).filter(Boolean)
+    : typeof recipients === 'string'
+      ? recipients.split(',').map((recipient) => recipient.trim()).filter(Boolean)
+      : [];
 
 
-    const notification = new Notification({
-      title,
-      message,
-      type,
-      channel,
-      recipients: normalizedRecipients,
-      recipientCount: normalizedRecipients.length || 1,
-      priority,
-      category,
-      senderName,
-      status: 'pending'
-    });
+  const notification = new Notification({
+    title,
+    message,
+    type,
+    channel,
+    recipients: normalizedRecipients,
+    recipientCount: normalizedRecipients.length || 1,
+    priority,
+    category,
+    senderName,
+    status: 'pending'
+  });
 
+  await notification.save();
+
+  let emailResult = null;
+  let emailError = null;
+
+  if (shouldSendEmail && (channel === 'email' || channel === 'all')) {
+    const emailRecipients = normalizedRecipients.length > 0
+      ? normalizedRecipients
+      : [process.env.NOTIFICATION_EMAIL || 'samiahayat95@gmail.com'];
+
+    notification.status = 'pending';
+    notification.sentAt = new Date();
     await notification.save();
 
-    let emailResult = null;
-    let emailError = null;
+    void processNotificationEmailDelivery(notification._id.toString(), emailRecipients, title);
 
-    if (shouldSendEmail && (channel === 'email' || channel === 'all')) {
-      const emailRecipients = normalizedRecipients.length > 0
-        ? normalizedRecipients
-        : [process.env.NOTIFICATION_EMAIL || 'samiahayat95@gmail.com'];
-
-      notification.status = 'pending';
-      notification.sentAt = new Date();
-      await notification.save();
-
-      void processNotificationEmailDelivery(notification._id.toString(), emailRecipients, title);
-
-      emailResult = {
-        delivered: 0,
-        failed: 0
-      };
-    } else {
-      notification.status = 'sent';
-      notification.sentAt = new Date();
-      await notification.save();
-    }
-
-    res.status(201).json({
-      success: true,
-      data: notification,
-      email: emailResult,
-      emailError: emailError || null,
-      message: shouldSendEmail && (channel === 'email' || channel === 'all')
-        ? 'Notification created and email delivery is being processed'
-        : 'Notification created and sent successfully'
-    });
-  } catch (error) {
-    console.error('❌ Error creating notification:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to create notification',
-      error: error.message
-    });
+    emailResult = {
+      delivered: 0,
+      failed: 0
+    };
+  } else {
+    notification.status = 'sent';
+    notification.sentAt = new Date();
+    await notification.save();
   }
-};
+
+  res.status(201).json({
+    success: true,
+    data: notification,
+    email: emailResult,
+    emailError: emailError || null,
+    message: shouldSendEmail && (channel === 'email' || channel === 'all')
+      ? 'Notification created and email delivery is being processed'
+      : 'Notification created and sent successfully'
+  });
+});
 
 // Delete notification
-export const deleteNotification = async (req, res) => {
-  try {
-    const notification = await Notification.findByIdAndUpdate(
-      req.params.id,
-      { isArchived: true },
-      { new: true }
-    );
+export const deleteNotification = handle(async (req, res) => {
+  const notification = await Notification.findOneAndUpdate(
+    { _id: req.params.id, isDeleted: { $ne: true } },
+    { isArchived: true },
+    { new: true }
+  );
 
-    if (!notification) {
-      return res.status(404).json({
-        success: false,
-        message: 'Notification not found'
-      });
-    }
-
-    res.status(200).json({
-      success: true,
-      message: 'Notification deleted successfully'
-    });
-  } catch (error) {
-    res.status(500).json({
+  if (!notification) {
+    return res.status(404).json({
       success: false,
-      message: 'Failed to delete notification',
-      error: error.message
+      message: 'Notification not found'
     });
   }
-};
+
+  res.status(200).json({
+    success: true,
+    message: 'Notification deleted successfully'
+  });
+});
 
 // Mark as read
-export const markAsRead = async (req, res) => {
-  try {
-    const notification = await Notification.findByIdAndUpdate(
-      req.params.id,
-      { isRead: true },
-      { new: true }
-    );
+export const markAsRead = handle(async (req, res) => {
+  const notification = await Notification.findOneAndUpdate(
+    { _id: req.params.id, isDeleted: { $ne: true } },
+    { isRead: true },
+    { new: true }
+  );
 
-    if (!notification) {
-      return res.status(404).json({
-        success: false,
-        message: 'Notification not found'
-      });
-    }
-
-    res.status(200).json({
-      success: true,
-      data: notification,
-      message: 'Marked as read'
-    });
-  } catch (error) {
-    res.status(500).json({
+  if (!notification) {
+    return res.status(404).json({
       success: false,
-      message: 'Failed to mark as read',
-      error: error.message
+      message: 'Notification not found'
     });
   }
-};
+
+  res.status(200).json({
+    success: true,
+    data: notification,
+    message: 'Marked as read'
+  });
+});
 
 // Mark all as read
-export const markAllAsRead = async (req, res) => {
-  try {
-    await Notification.updateMany({ isRead: false }, { isRead: true });
-    res.status(200).json({
-      success: true,
-      message: 'All notifications marked as read'
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: 'Failed to mark all as read',
-      error: error.message
-    });
-  }
-};
+export const markAllAsRead = handle(async (req, res) => {
+  await Notification.updateMany({ isRead: false }, { isRead: true });
+  res.status(200).json({
+    success: true,
+    message: 'All notifications marked as read'
+  });
+});
 
 // Get notification stats
-export const getNotificationStats = async (req, res) => {
-  try {
-    const total = await Notification.countDocuments({ isArchived: false });
-    const unread = await Notification.countDocuments({ isArchived: false, isRead: false });
-    const sent = await Notification.countDocuments({ isArchived: false, status: 'sent' });
-    const pending = await Notification.countDocuments({ isArchived: false, status: 'pending' });
-    const failed = await Notification.countDocuments({ isArchived: false, status: 'failed' });
+export const getNotificationStats = handle(async (req, res) => {
+  const total = await Notification.countDocuments({ isArchived: false, isDeleted: { $ne: true } });
+  const unread = await Notification.countDocuments({ isArchived: false, isRead: false, isDeleted: { $ne: true } });
+  const sent = await Notification.countDocuments({ isArchived: false, status: 'sent', isDeleted: { $ne: true } });
+  const pending = await Notification.countDocuments({ isArchived: false, status: 'pending', isDeleted: { $ne: true } });
+  const failed = await Notification.countDocuments({ isArchived: false, status: 'failed', isDeleted: { $ne: true } });
 
-    res.status(200).json({
-      success: true,
-      data: { total, unread, sent, pending, failed }
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: 'Failed to fetch stats',
-      error: error.message
-    });
-  }
-};
+  res.status(200).json({
+    success: true,
+    data: { total, unread, sent, pending, failed }
+  });
+});
 
 // Send test email
-export const sendTestEmail = async (req, res) => {
-  try {
-    const { email } = req.body;
-    const testEmail = email || process.env.NOTIFICATION_EMAIL || 'samiahayat95@gmail.com';
+export const sendTestEmail = handle(async (req, res) => {
+  const { email } = req.body;
+  const testEmail = email || process.env.NOTIFICATION_EMAIL || 'samiahayat95@gmail.com';
 
 
-    if (!emailConfigured || !transporter) {
-      await createTransporter();
-    }
+  if (!emailConfigured || !transporter) {
+    await createTransporter();
+  }
 
-    if (!transporter || !emailConfigured) {
-      return res.status(200).json({
-        success: false,
-        message: 'Email not configured. Please check your .env file',
-        warning: true
-      });
-    }
+  if (!transporter || !emailConfigured) {
+    return res.status(200).json({
+      success: false,
+      message: 'Email not configured. Please check your .env file',
+      warning: true
+    });
+  }
 
-    // Replace recipient placeholder in template
-    let emailHTML = generateTestEmailHTML();
-    emailHTML = emailHTML.replace(/\{recipient\}/g, testEmail);
+  // Replace recipient placeholder in template
+  let emailHTML = generateTestEmailHTML();
+  emailHTML = emailHTML.replace(/\{recipient\}/g, testEmail);
 
-    const result = await sendNotificationEmail(
-      testEmail,
-      'ScholarOS — Notification System Verification',
-      emailHTML
-    );
+  const result = await sendNotificationEmail(
+    testEmail,
+    'ScholarOS — Notification System Verification',
+    emailHTML
+  );
 
-    if (result.success) {
-      res.status(200).json({
-        success: true,
-        message: `Test email sent successfully to ${testEmail}`
-      });
-    } else {
-      res.status(500).json({
-        success: false,
-        message: 'Failed to send test email',
-        error: result.error
-      });
-    }
-  } catch (error) {
-    console.error('❌ Test email error:', error);
+  if (result.success) {
+    res.status(200).json({
+      success: true,
+      message: `Test email sent successfully to ${testEmail}`
+    });
+  } else {
     res.status(500).json({
       success: false,
       message: 'Failed to send test email',
-      error: error.message
+      error: result.error
     });
   }
-};
+});
 
 // Get email status
-export const getEmailStatus = (req, res) => {
+export const getEmailStatus = handle((req, res) => {
   res.status(200).json({
     success: true,
     configured: emailConfigured,
     email: process.env.EMAIL_USER || 'not set',
     notificationEmail: process.env.NOTIFICATION_EMAIL || 'not set'
   });
-};
+});
 
 // Initialize transporter
 createTransporter();
